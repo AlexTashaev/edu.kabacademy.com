@@ -26,3 +26,4 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['choosereadme'] = 'Kabacademy — дочерняя тема Boost с визуальной полосой прогресса на странице Мои курсы.';
 $string['pluginname'] = 'Kabacademy';
+$string['progresspercent'] = '{$a}% выполнено';

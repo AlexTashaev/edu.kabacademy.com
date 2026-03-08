@@ -64,24 +64,13 @@ function theme_kabacademy_get_extra_scss($theme) {
 
     // Custom progress bar styles for block_myoverview.
     $scss .= '
-    .block_myoverview .progress-bar-container {
+    .block_myoverview .dashboard-progress-bar {
         .progress {
-            height: 8px;
-            border-radius: 4px;
-            background-color: #e9ecef;
             overflow: hidden;
 
             .progress-bar {
-                background-color: #0f6cbf;
-                border-radius: 4px;
                 transition: width 0.3s ease;
             }
-        }
-
-        .progress-text {
-            font-size: 0.75rem;
-            color: #6c757d;
-            margin-top: 4px;
         }
     }
     ';

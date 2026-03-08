@@ -28,19 +28,19 @@
     Example context (json):
     { "progress": 50 }
 }}
-<div class="progress-bar-container">
+<div class="dashboard-progress-bar">
     <span class="visually-hidden">
         {{#str}}aria:courseprogress, block_myoverview{{/str}}
     </span>
-    <div class="progress" style="height: 8px;">
-        <div class="progress-bar" role="progressbar"
-             style="width: {{progress}}%"
+    <div class="progress" style="height: 8px; border-radius: 4px; background-color: #e9ecef;">
+        <div class="progress-bar bg-primary" role="progressbar"
+             style="width: {{progress}}%; border-radius: 4px;"
              aria-valuenow="{{progress}}"
              aria-valuemin="0"
              aria-valuemax="100">
         </div>
     </div>
-    <div class="progress-text">
-        <span>{{#str}}completepercent, block_myoverview, {{progress}}{{/str}}</span>
+    <div class="small text-muted mt-1">
+        {{#str}}progresspercent, theme_kabacademy, {{progress}}{{/str}}
     </div>
 </div>
