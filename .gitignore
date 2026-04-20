@@ -1,0 +1,66 @@
+# =============================================================
+# Moodle site — .gitignore
+# =============================================================
+# This repository stores only CUSTOM code: themes and plugins.
+# Standard Moodle core files, user data, and sensitive configs
+# must NEVER be committed.
+# =============================================================
+
+# ---- Moodle data directories (user uploads, cache, sessions) ---
+moodledata/
+filedir/
+cache/
+localcache/
+temp/
+tmp/
+trashdir/
+sessions/
+locks/
+
+# ---- Moodle config (contains DB password and secret salt) ------
+config.php
+
+# ---- Environment / secret files --------------------------------
+.env
+.env.*
+*.key
+*.pem
+*.ppk
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+id_ecdsa
+authorized_keys
+known_hosts
+
+# ---- Database dumps --------------------------------------------
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# ---- Archives --------------------------------------------------
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.bz2
+*.rar
+
+# ---- Logs ------------------------------------------------------
+*.log
+logs/
+
+# ---- OS / IDE artefacts ----------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ---- Browser-saved "view-source" snapshots ---------------------
+view-source_*.html
