@@ -208,54 +208,105 @@ class completion_progress implements \renderable {
             call_user_func($progresscallback, 0);
         }
 
+        // KAB perf fix: rewrite without per-user N+1 transactions/queries.
+        // Original code did BEGIN+SELECT+INSERT/UPDATE+COMMIT for every user, plus
+        // for_user() per user — which on courses with thousands of enrolled users
+        // (course 231: 4807 users) took ~120 seconds and hit the request timeout.
+        // New flow: one bulk SELECT of existing cache rows, in-memory computation,
+        // one bulk INSERT for new rows + a single transaction wrapping any UPDATEs.
+
         $numdone = 0;
         $numcompletions = count($this->completions);
         $cachetime = get_config('block_completion_progress', 'overviewcachetime') ?: defaults::OVERVIEWCACHETIME;
+        $now = time();
+
+        // Bulk-load all existing cache records for this block in one query.
+        $existingbyuser = $DB->get_records('block_completion_progress',
+            ['blockinstanceid' => $this->blockinstance->id], '', '*', 0, 0);
+        $existingmap = [];
+        foreach ($existingbyuser as $rec) {
+            $existingmap[$rec->userid] = $rec;
+        }
+        unset($existingbyuser);
+
+        $toinsert = [];
+        $toupdate = [];
+
+        // KAB perf fix: pre-compute the set of activities considered visible at
+        // the course level (visible flag + tracked completion). DO NOT call
+        // for_user($x) inside the loop — that triggers per-user availability
+        // condition checks (availability_completion::get_data, lesson_timer
+        // queries, get_completion_data, etc.), which is N+1 across thousands
+        // of users on big courses. Trade-off: percentage no longer accounts
+        // for per-user availability hides; users for whom some cms are hidden
+        // by group/grouping/date conditions will see those cms counted in the
+        // denominator. This is acceptable for an overview report.
+        $genericvisible = [];
+        if (!empty($this->activities)) {
+            foreach ($this->activities as $key => $activity) {
+                $genericvisible[$key] = $activity;
+            }
+        }
+        $genericvisiblecount = count($genericvisible);
+
         foreach ($this->completions as $userid => $completions) {
-            $trans = $DB->start_delegated_transaction();
-            $rec = [
+            $rec = $existingmap[$userid] ?? (object)[
                 'blockinstanceid' => $this->blockinstance->id,
                 'userid' => $userid,
             ];
-            $rec = $DB->get_record('block_completion_progress', $rec) ?: (object)$rec;
 
-            if (!empty($rec->timemodified) && time() - $rec->timemodified < $cachetime) {
-                $trans->allow_commit();
+            // Skip users whose cached row is still fresh.
+            if (!empty($rec->timemodified) && $now - $rec->timemodified < $cachetime) {
+                $numdone++;
                 continue;
             }
 
-            if (count($completions) == 0) {
+            if (count($completions) == 0 || $genericvisiblecount === 0) {
                 $rec->percentage = null;
             } else {
-                $this->for_user((object)['id' => $userid]);
-                if (empty($this->visibleactivities)) {
-                    $rec->percentage = null;
-                } else {
-                    $completecount = 0;
-                    foreach ($completions as $cmid => $complete) {
-                        if (!isset($this->visibleactivities[$cmid])) {
-                            continue;
-                        }
-                        if ($complete == COMPLETION_COMPLETE || $complete == COMPLETION_COMPLETE_PASS) {
-                            $completecount++;
-                        }
+                $completecount = 0;
+                foreach ($completions as $cmid => $complete) {
+                    if (!isset($genericvisible[$cmid])) {
+                        continue;
                     }
-                    $rec->percentage = (int)round(100 * $completecount / count($this->visibleactivities));
+                    if ($complete == COMPLETION_COMPLETE || $complete == COMPLETION_COMPLETE_PASS) {
+                        $completecount++;
+                    }
                 }
+                $rec->percentage = (int)round(100 * $completecount / $genericvisiblecount);
             }
-            $rec->timemodified = time();
+            $rec->timemodified = $now;
 
             if (empty($rec->id)) {
-                $rec->id = $DB->insert_record('block_completion_progress', $rec);
+                $toinsert[] = $rec;
             } else {
-                $DB->update_record('block_completion_progress', $rec);
+                $toupdate[] = $rec;
             }
-            $trans->allow_commit();
 
             $numdone++;
             if (is_callable($progresscallback)) {
                 call_user_func($progresscallback, 100 * $numdone / $numcompletions);
             }
+        }
+
+        // Reset $this->user — compute_overview_percentages must not leave the
+        // object in a per-user specialised state for callers that follow.
+        $this->user = null;
+        $this->visibleactivities = null;
+
+        // Bulk INSERT all new rows in one statement.
+        if (!empty($toinsert)) {
+            $DB->insert_records('block_completion_progress', $toinsert);
+        }
+
+        // UPDATE existing rows inside a single transaction so the per-row
+        // cost is just the row work, not BEGIN/COMMIT round trips.
+        if (!empty($toupdate)) {
+            $trans = $DB->start_delegated_transaction();
+            foreach ($toupdate as $rec) {
+                $DB->update_record('block_completion_progress', $rec);
+            }
+            $trans->allow_commit();
         }
 
         if (is_callable($progresscallback)) {
@@ -635,14 +686,21 @@ class completion_progress implements \renderable {
         // Somewhat faster than lots of calls to completion_info::get_data($cm, true, $userid)
         // where its cache can't be used because the userid is different.
         $enrolsql = get_enrolled_join($this->context, 'u.id', false);
-        $query = "SELECT DISTINCT " . $DB->sql_concat('cm.id', "'-'", 'u.id') . " AS id,
+        // KAB perf fix: dedupe enrolments per user in a subquery so the outer
+        // CROSS JOIN doesn't multiply rows by enrolment-method count, which
+        // forced MySQL to materialise a ~1M row temporary table for DISTINCT.
+        // Without DISTINCT here, the recordset has at most 1 row per (cmid,userid).
+        $query = "SELECT " . $DB->sql_concat('cm.id', "'-'", 'u.id') . " AS id,
                         u.id AS userid, cm.id AS cmid,
                         COALESCE(cmc.completionstate, :incomplete) AS completionstate
-                    FROM {user} u {$enrolsql->joins}
+                    FROM (
+                          SELECT DISTINCT u.id
+                            FROM {user} u {$enrolsql->joins}
+                           WHERE {$enrolsql->wheres}
+                         ) u
               CROSS JOIN {course_modules} cm
                LEFT JOIN {course_modules_completion} cmc ON cmc.coursemoduleid = cm.id AND cmc.userid = u.id
-                   WHERE {$enrolsql->wheres}
-                     AND cm.course = :courseid
+                   WHERE cm.course = :courseid
                      AND cm.completion <> :none";
         $params = $enrolsql->params + [
             'courseid' => $this->course->id,
