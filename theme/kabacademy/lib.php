@@ -75,5 +75,27 @@ function theme_kabacademy_get_extra_scss($theme) {
     }
     ';
 
+    // Responsive Google Drive video embeds.
+    //
+    // Videos are embedded as <iframe src=".../preview" width="100%" height="480">.
+    // The fixed 480px height looks fine on desktop (wide container ~16:9) but on
+    // mobile the container shrinks to ~360px wide while the height stays 480px, so
+    // the 16:9 video collapses into a thin strip and the Google Drive player
+    // controls overlap it. Dropping the fixed height and enforcing a 16:9 ratio
+    // makes the player scale correctly at any width.
+    //
+    // Scoped to height="480" so PDF/Google Docs previews (embedded at other
+    // heights) are left untouched.
+    $scss .= \'
+    iframe[src*="drive.google.com"][height="480"] {
+        display: block;
+        width: 100% !important;
+        height: auto !important;
+        aspect-ratio: 16 / 9;
+        max-width: 100%;
+        border: 0;
+    }
+    \';
+
     return $scss;
 }
