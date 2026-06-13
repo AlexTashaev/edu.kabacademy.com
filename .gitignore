@@ -1,0 +1,70 @@
+# =============================================================================
+# Moodle / edu.kabacademy.com — .gitignore
+# =============================================================================
+
+# ── Moodle runtime & generated data ──────────────────────────────────────────
+moodledata/
+filedir/
+cache/
+localcache/
+trashdir/
+temp/
+tmp/
+sessions/
+*.log
+
+# ── Moodle main configuration (contains DB credentials and secret salt) ──────
+config.php
+
+# ── Environment / secrets ────────────────────────────────────────────────────
+.env
+.env.*
+*.key
+*.pem
+*.ppk
+*.pfx
+*.p12
+id_rsa
+id_ed25519
+
+# ── Composer / Node dependencies — install via package manager ───────────────
+vendor/
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# ── Build artefacts ──────────────────────────────────────────────────────────
+/theme/*/styles/
+/theme/*/style/compiled/
+
+# ── Database dumps ───────────────────────────────────────────────────────────
+*.sql
+*.sql.gz
+*.sqlite
+*.sqlite3
+
+# ── Archives ─────────────────────────────────────────────────────────────────
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tgz
+*.rar
+
+# ── OS artefacts ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE / editor ─────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── PHP artefacts ────────────────────────────────────────────────────────────
+*.phar
+
+# ── Moodle upgrade lock ───────────────────────────────────────────────────────
+climaintenance.html
