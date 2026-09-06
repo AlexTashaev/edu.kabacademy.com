@@ -23,6 +23,7 @@ Git-форк Moodle 5.1 для LMS академии. Репозиторий де
 |---|---|---|
 | `2d7f538` | Request-level статические кэши в `availability/condition/{grouping,group}` и `availability/classes/capability_checker.php` | N+1 в `filter_user_list`: на большом курсе `/my/` грузился 100+ секунд и ловил 504. После патча 2–3 секунды |
 | `14733fd` | Bulk-load и bulk-insert в `block_completion_progress`, `compute_overview_percentages` и `load_completions` | Сортировка по прогрессу на overview занимала 100+ секунд и ловила 524. После патча ~3 секунды |
+| `12e2425` + `4b1acef` | Перенос обоих hunks `14733fd` на апстрим `block_completion_progress` 2026083100 (обновлён на проде 06.09.2026; апстрим N+1 так и не починил) | При следующем обновлении блока портировать снова — актуальный патченный код лежит в `blocks/completion_progress` этого репо |
 | `666bbe5` | `aspect-ratio: 16/9` для iframe Google Drive в Boost SCSS и `mobileapp.css` | Жёсткий `height=480` ужимал 16:9 на мобильном, контролы плеера перекрывали видео |
 
 Компромисс патча `14733fd` осознанный: процент прохождения больше не учитывает
