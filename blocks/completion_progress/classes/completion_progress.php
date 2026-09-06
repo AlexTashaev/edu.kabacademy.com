@@ -676,14 +676,21 @@ class completion_progress implements \renderable, \templatable {
         // Somewhat faster than lots of calls to completion_info::get_data($cm, true, $userid)
         // where its cache can't be used because the userid is different.
         $enrolsql = get_enrolled_join($this->context, 'u.id', false);
-        $query = "SELECT DISTINCT " . $DB->sql_concat('cm.id', "'-'", 'u.id') . " AS id,
+        // KAB perf fix: dedupe enrolments per user in a subquery so the outer
+        // CROSS JOIN doesn't multiply rows by enrolment-method count, which
+        // forced MySQL to materialise a ~1M row temporary table for DISTINCT.
+        // Without DISTINCT here, the recordset has at most 1 row per (cmid,userid).
+        $query = "SELECT " . $DB->sql_concat('cm.id', "'-'", 'u.id') . " AS id,
                         u.id AS userid, cm.id AS cmid,
                         COALESCE(cmc.completionstate, :incomplete) AS completionstate
-                    FROM {user} u {$enrolsql->joins}
+                    FROM (
+                          SELECT DISTINCT u.id
+                            FROM {user} u {$enrolsql->joins}
+                           WHERE {$enrolsql->wheres}
+                         ) u
               CROSS JOIN {course_modules} cm
                LEFT JOIN {course_modules_completion} cmc ON cmc.coursemoduleid = cm.id AND cmc.userid = u.id
-                   WHERE {$enrolsql->wheres}
-                     AND cm.course = :courseid
+                   WHERE cm.course = :courseid
                      AND cm.completion <> :none";
         $params = $enrolsql->params + [
             'courseid' => $this->course->id,
