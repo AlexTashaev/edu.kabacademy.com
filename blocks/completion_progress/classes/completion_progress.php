@@ -38,7 +38,7 @@ use coding_exception;
  * @copyright  2021 Jonathon Fowler <fowlerj@usq.edu.au>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class completion_progress implements \renderable {
+class completion_progress implements \renderable, \templatable {
     /**
      * Sort activities by course order.
      */
@@ -177,7 +177,7 @@ class completion_progress implements \renderable {
      * Specialise for overview page use.
      * @return self
      */
-    public function for_overview() {
+    public function for_overview(): self {
         if ($this->user) {
             throw new coding_exception('cannot re-specialise for overview');
         }
@@ -208,105 +208,56 @@ class completion_progress implements \renderable {
             call_user_func($progresscallback, 0);
         }
 
-        // KAB perf fix: rewrite without per-user N+1 transactions/queries.
-        // Original code did BEGIN+SELECT+INSERT/UPDATE+COMMIT for every user, plus
-        // for_user() per user — which on courses with thousands of enrolled users
-        // (course 231: 4807 users) took ~120 seconds and hit the request timeout.
-        // New flow: one bulk SELECT of existing cache rows, in-memory computation,
-        // one bulk INSERT for new rows + a single transaction wrapping any UPDATEs.
+        $clock = \core\di::get(\core\clock::class);
 
         $numdone = 0;
         $numcompletions = count($this->completions);
         $cachetime = get_config('block_completion_progress', 'overviewcachetime') ?: defaults::OVERVIEWCACHETIME;
-        $now = time();
-
-        // Bulk-load all existing cache records for this block in one query.
-        $existingbyuser = $DB->get_records('block_completion_progress',
-            ['blockinstanceid' => $this->blockinstance->id], '', '*', 0, 0);
-        $existingmap = [];
-        foreach ($existingbyuser as $rec) {
-            $existingmap[$rec->userid] = $rec;
-        }
-        unset($existingbyuser);
-
-        $toinsert = [];
-        $toupdate = [];
-
-        // KAB perf fix: pre-compute the set of activities considered visible at
-        // the course level (visible flag + tracked completion). DO NOT call
-        // for_user($x) inside the loop — that triggers per-user availability
-        // condition checks (availability_completion::get_data, lesson_timer
-        // queries, get_completion_data, etc.), which is N+1 across thousands
-        // of users on big courses. Trade-off: percentage no longer accounts
-        // for per-user availability hides; users for whom some cms are hidden
-        // by group/grouping/date conditions will see those cms counted in the
-        // denominator. This is acceptable for an overview report.
-        $genericvisible = [];
-        if (!empty($this->activities)) {
-            foreach ($this->activities as $key => $activity) {
-                $genericvisible[$key] = $activity;
-            }
-        }
-        $genericvisiblecount = count($genericvisible);
-
         foreach ($this->completions as $userid => $completions) {
-            $rec = $existingmap[$userid] ?? (object)[
+            $trans = $DB->start_delegated_transaction();
+            $rec = [
                 'blockinstanceid' => $this->blockinstance->id,
                 'userid' => $userid,
             ];
+            $rec = $DB->get_record('block_completion_progress', $rec) ?: (object)$rec;
 
-            // Skip users whose cached row is still fresh.
-            if (!empty($rec->timemodified) && $now - $rec->timemodified < $cachetime) {
-                $numdone++;
+            if (!empty($rec->timemodified) && $clock->time() - $rec->timemodified < $cachetime) {
+                $trans->allow_commit();
                 continue;
             }
 
-            if (count($completions) == 0 || $genericvisiblecount === 0) {
+            if (count($completions) == 0) {
                 $rec->percentage = null;
             } else {
-                $completecount = 0;
-                foreach ($completions as $cmid => $complete) {
-                    if (!isset($genericvisible[$cmid])) {
-                        continue;
+                $this->for_user((object)['id' => $userid]);
+                if (empty($this->visibleactivities)) {
+                    $rec->percentage = null;
+                } else {
+                    $completecount = 0;
+                    foreach ($completions as $cmid => $complete) {
+                        if (!isset($this->visibleactivities[$cmid])) {
+                            continue;
+                        }
+                        if ($complete == COMPLETION_COMPLETE || $complete == COMPLETION_COMPLETE_PASS) {
+                            $completecount++;
+                        }
                     }
-                    if ($complete == COMPLETION_COMPLETE || $complete == COMPLETION_COMPLETE_PASS) {
-                        $completecount++;
-                    }
+                    $rec->percentage = (int)round(100 * $completecount / count($this->visibleactivities));
                 }
-                $rec->percentage = (int)round(100 * $completecount / $genericvisiblecount);
             }
-            $rec->timemodified = $now;
+            $rec->timemodified = $clock->time();
 
             if (empty($rec->id)) {
-                $toinsert[] = $rec;
+                $rec->id = $DB->insert_record('block_completion_progress', $rec);
             } else {
-                $toupdate[] = $rec;
+                $DB->update_record('block_completion_progress', $rec);
             }
+            $trans->allow_commit();
 
             $numdone++;
             if (is_callable($progresscallback)) {
                 call_user_func($progresscallback, 100 * $numdone / $numcompletions);
             }
-        }
-
-        // Reset $this->user — compute_overview_percentages must not leave the
-        // object in a per-user specialised state for callers that follow.
-        $this->user = null;
-        $this->visibleactivities = null;
-
-        // Bulk INSERT all new rows in one statement.
-        if (!empty($toinsert)) {
-            $DB->insert_records('block_completion_progress', $toinsert);
-        }
-
-        // UPDATE existing rows inside a single transaction so the per-row
-        // cost is just the row work, not BEGIN/COMMIT round trips.
-        if (!empty($toupdate)) {
-            $trans = $DB->start_delegated_transaction();
-            foreach ($toupdate as $rec) {
-                $DB->update_record('block_completion_progress', $rec);
-            }
-            $trans->allow_commit();
         }
 
         if (is_callable($progresscallback)) {
@@ -600,35 +551,28 @@ class completion_progress implements \renderable {
      * Filter down the activities to those a user can see.
      */
     protected function filter_visible_activities() {
-        global $CFG, $USER;
-
         if (!$this->user || $this->activities === null) {
             return;
         }
 
         $this->visibleactivities = [];
         $modinfo = get_fast_modinfo($this->course, $this->user->id);
-        $canviewhidden = has_capability('moodle/course:viewhiddenactivities', $this->context, $this->user);
 
         // Keep only activities that are visible.
         foreach ($this->activities as $key => $activity) {
             $cm = $modinfo->cms[$activity->id];
+            $section = $cm->get_section_info();
 
-            // Check visibility in course.
-            if (!$cm->visible && !$canviewhidden) {
+            if (!$section->uservisible) {
                 continue;
-            }
-
-            // Check availability, allowing for visible, but not accessible items.
-            if (!empty($CFG->enableavailability)) {
-                if ($canviewhidden) {
-                    $activity->available = true;
+            } else if (!$cm->uservisible) {
+                if (!!$cm->availableinfo) {
+                    $activity->available = false;
                 } else {
-                    if (isset($cm->available) && !$cm->available && empty($cm->availableinfo)) {
-                        continue;
-                    }
-                    $activity->available = $cm->available;
+                    continue;
                 }
+            } else {
+                $activity->available = true;
             }
 
             // Check for exclusions.
@@ -636,7 +580,7 @@ class completion_progress implements \renderable {
                 continue;
             }
 
-            // Save the visible event.
+            // Save the visible activity.
             $this->visibleactivities[$key] = $activity;
         }
     }
@@ -686,21 +630,14 @@ class completion_progress implements \renderable {
         // Somewhat faster than lots of calls to completion_info::get_data($cm, true, $userid)
         // where its cache can't be used because the userid is different.
         $enrolsql = get_enrolled_join($this->context, 'u.id', false);
-        // KAB perf fix: dedupe enrolments per user in a subquery so the outer
-        // CROSS JOIN doesn't multiply rows by enrolment-method count, which
-        // forced MySQL to materialise a ~1M row temporary table for DISTINCT.
-        // Without DISTINCT here, the recordset has at most 1 row per (cmid,userid).
-        $query = "SELECT " . $DB->sql_concat('cm.id', "'-'", 'u.id') . " AS id,
+        $query = "SELECT DISTINCT " . $DB->sql_concat('cm.id', "'-'", 'u.id') . " AS id,
                         u.id AS userid, cm.id AS cmid,
                         COALESCE(cmc.completionstate, :incomplete) AS completionstate
-                    FROM (
-                          SELECT DISTINCT u.id
-                            FROM {user} u {$enrolsql->joins}
-                           WHERE {$enrolsql->wheres}
-                         ) u
+                    FROM {user} u {$enrolsql->joins}
               CROSS JOIN {course_modules} cm
                LEFT JOIN {course_modules_completion} cmc ON cmc.coursemoduleid = cm.id AND cmc.userid = u.id
-                   WHERE cm.course = :courseid
+                   WHERE {$enrolsql->wheres}
+                     AND cm.course = :courseid
                      AND cm.completion <> :none";
         $params = $enrolsql->params + [
             'courseid' => $this->course->id,
@@ -894,5 +831,193 @@ class completion_progress implements \renderable {
                 $this->submissions[$obj->userid][$obj->cmid] = $obj;
             }
         }
+    }
+
+    /**
+     * Produce template data for rendering.
+     * @param \renderer_base $output
+     * @return stdClass
+     */
+    public function export_for_template(\renderer_base $output): stdClass {
+        global $CFG, $USER;
+
+        $data = new stdClass();
+
+        $clock = \core\di::get(\core\clock::class);
+        $now = $clock->time();
+        $activities = $this->get_visible_activities();
+        $completions = $this->get_completions();
+        $config = $this->get_block_config();
+        $userid = $this->get_user()->id;
+        $courseid = $this->get_course()->id;
+        $instance = $this->get_block_instance()->id;
+        $simple = $this->is_simple_bar();
+        $numactivities = count($activities);
+
+        // Get relevant block instance settings or use defaults.
+        $useicons = get_config('block_completion_progress', 'forceiconsinbar') ?:
+            ($config->progressBarIcons ?? defaults::PROGRESSBARICONS);
+        $orderby = $config->orderby ?? defaults::ORDERBY;
+        $longbars = $config->longbars ??
+            (get_config('block_completion_progress', 'defaultlongbars') ?: defaults::LONGBARS);
+        $displaynow = $orderby == self::ORDERBY_TIME;
+        $showpercentage = $config->showpercentage ?? defaults::SHOWPERCENTAGE;
+
+        $alternatelinks = [
+            'assign' => [
+                'url' => '/mod/assign/view.php?id=:cmid&action=grade&userid=:userid',
+                'capability' => 'mod/assign:grade',
+            ],
+            'feedback' => [
+                // Breaks if anonymous feedback is collected.
+                'url' => '/mod/feedback/show_entries.php?id=:cmid&do_show=showoneentry&userid=:userid',
+                'capability' => 'mod/feedback:viewreports',
+            ],
+            'lesson' => [
+                'url' => '/mod/lesson/report.php?id=:cmid&action=reportdetail&userid=:userid',
+                'capability' => 'mod/lesson:viewreports',
+            ],
+            'quiz' => [
+                'url' => '/mod/quiz/report.php?id=:cmid&mode=overview',
+                'capability' => 'mod/quiz:viewreports',
+            ],
+        ];
+
+        $data->courseid = $courseid;
+        $data->instanceid = $instance;
+        $data->userid = $userid;
+        $data->simple = $simple;
+        $data->useicons = $useicons;
+
+        if ($simple && $numactivities == 0) {
+            $data->novisibleactivities = true;
+            return $data;
+        }
+
+        $wrapafter = max(1, get_config('block_completion_progress', 'wrapafter') ?: defaults::WRAPAFTER);
+        if ($longbars == 'wrap' && $numactivities > $wrapafter) {
+            $data->barwrap = true;
+            $data->cellsperrow = ceil($numactivities / max(1, ceil($numactivities / $wrapafter)));
+            $displaynow = false;
+        } else if ($longbars == 'scroll') {
+            $data->barscroll = true;
+        } else {
+            $longbars = 'squeeze';
+            $data->barsqueeze = true;
+        }
+
+        // Determine where to put the NOW indicator.
+        $nowpos = -1;
+        if ($orderby == 'orderbytime' && $longbars != 'wrap' && $displaynow && !$simple) {
+            $data->displaynow = true;
+
+            $nowpos = 0;
+            while ($nowpos < $numactivities && $now > $activities[$nowpos]->expected && $activities[$nowpos]->expected != 0) {
+                $nowpos++;
+            }
+        }
+
+        if ($showpercentage && !$simple) {
+            $data->progresspercentage = $this->get_percentage() . '%';
+        }
+
+        // Determine links to activities.
+        for ($i = 0; $i < $numactivities; $i++) {
+            if (
+                $userid != $USER->id &&
+                array_key_exists($activities[$i]->type, $alternatelinks) &&
+                has_capability($alternatelinks[$activities[$i]->type]['capability'], $activities[$i]->context)
+            ) {
+                $substitutions = [
+                    '/:courseid/' => $courseid,
+                    '/:eventid/'  => $activities[$i]->instance,
+                    '/:cmid/'     => $activities[$i]->id,
+                    '/:userid/'   => $userid,
+                ];
+                $link = $alternatelinks[$activities[$i]->type]['url'];
+                $link = preg_replace(array_keys($substitutions), array_values($substitutions), $link);
+                $activities[$i]->link = $CFG->wwwroot . $link;
+            } else {
+                $activities[$i]->link = $activities[$i]->url;
+            }
+        }
+
+        $data->cells = [];
+
+        // Determine the bar cells and information blocks.
+        $counter = 1;
+        foreach ($activities as $activity) {
+            $complete = $completions[$activity->id] ?? null;
+
+            // A cell in the progress bar.
+            $cell = new stdClass();
+            $cell->activityid = $activity->id;
+
+            if ($complete === 'submitted') {
+                $cell->submittednotcomplete = true;
+            } else if ($complete == COMPLETION_COMPLETE || $complete == COMPLETION_COMPLETE_PASS) {
+                $cell->completed = true;
+            } else if (
+                $complete == COMPLETION_COMPLETE_FAIL ||
+                (!isset($config->orderby) || $config->orderby == 'orderbytime') &&
+                (isset($activity->expected) && $activity->expected > 0 && $activity->expected < $now)
+            ) {
+                $cell->notcompleted = true;
+            } else {
+                $cell->futurenotcompleted = true;
+            }
+            if (empty($activity->link)) {
+                $cell->haslink = 'false';
+            } else if (!empty($activity->available) || $simple) {
+                $cell->haslink = 'true';
+            } else if (!empty($activity->link)) {
+                $cell->haslink = 'not-allowed';
+            }
+
+            // Place the NOW indicator.
+            if ($nowpos == 0 && $counter == 1) {
+                $cell->firstnow = true;
+            } else if ($nowpos == $counter) {
+                if ($nowpos < $numactivities / 2) {
+                    $cell->firsthalfnow = true;
+                } else {
+                    $cell->lasthalfnow = true;
+                }
+            }
+
+            $cell->activityicon = $activity->icon->out(false);
+            $cell->activityname = $activity->name;
+            if (!empty($activity->link) && (!empty($activity->available) || $simple)) {
+                $cell->activitylink = $activity->link;
+                if (!empty($activity->onclick)) {
+                    $cell->activityonclick = $activity->onclick;
+                }
+            }
+            if ($complete == COMPLETION_COMPLETE) {
+                $cell->infocomplete = true;
+                $cell->infoicon = 'tick';
+            } else if ($complete == COMPLETION_COMPLETE_PASS) {
+                $cell->infopassed = true;
+                $cell->infoicon = 'tick';
+            } else if ($complete == COMPLETION_COMPLETE_FAIL) {
+                $cell->infofailed = true;
+                $cell->infoicon = 'cross';
+            } else if ($complete === 'submitted') {
+                $cell->infosubmitted = true;
+                $cell->infoicon = 'cross';
+            } else {
+                $cell->infoincomplete = true;
+                $cell->infoicon = 'cross';
+            }
+            if ($activity->expected != 0) {
+                $cell->activityexpected = $activity->expected;
+            }
+
+            $data->cells[] = $cell;
+
+            $counter++;
+        }
+
+        return $data;
     }
 }
