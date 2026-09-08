@@ -25,6 +25,7 @@ Git-форк Moodle 5.1 для LMS академии. Репозиторий де
 | `14733fd` | Bulk-load и bulk-insert в `block_completion_progress`, `compute_overview_percentages` и `load_completions` | Сортировка по прогрессу на overview занимала 100+ секунд и ловила 524. После патча ~3 секунды |
 | `12e2425` + `4b1acef` | Перенос обоих hunks `14733fd` на апстрим `block_completion_progress` 2026083100 (обновлён на проде 06.09.2026; апстрим N+1 так и не починил) | При следующем обновлении блока портировать снова — актуальный патченный код лежит в `blocks/completion_progress` этого репо |
 | `666bbe5` | `aspect-ratio: 16/9` для iframe Google Drive в Boost SCSS и `mobileapp.css` | Жёсткий `height=480` ужимал 16:9 на мобильном, контролы плеера перекрывали видео |
+| `d0cefa8` | Контриб-плагин `mod_journal` 5.1.3 («Рабочая тетрадь»), каталог `public/public/mod/journal` | Дневник курса — заметки учеников (первый: курс 238, cmid 13432). Апстрим elearningsoftware/moodle-mod_journal v5.1.3. После апгрейда Moodle проверить, что каталог жив; дефолты: оценка 0, notify teachers выкл |
 
 Компромисс патча `14733fd` осознанный: процент прохождения больше не учитывает
 per-user availability, скрытые активности попадают в знаменатель. Для сводного отчёта
