@@ -1,0 +1,227 @@
+// ============================================================================
+// Дизайн-система «Гостиной Рава» как классы + шрифт Montserrat.
+// Палитра: голубой #52B0D8 · тёмно-синий #3C5D90 · фиолетовый #A42BB9
+//          ссылки #00789F · серый #7A7A7A · подложка #F4F9FD
+//          рамка #D9E8F2 · внутренний разделитель #EFF7FA
+// Контент со старыми inline-стилями продолжает работать; классы — для нового.
+// ============================================================================
+
+// --- Шрифт: self-hosted Montserrat (те же файлы, что подключает /kab/fonts.css) ---
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 300; font-display: swap; src: url("/kab/fonts/Montserrat-Light.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 400; font-display: swap; src: url("/kab/fonts/Montserrat-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 500; font-display: swap; src: url("/kab/fonts/Montserrat-Medium.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 600; font-display: swap; src: url("/kab/fonts/Montserrat-SemiBold.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 700; font-display: swap; src: url("/kab/fonts/Montserrat-Bold.woff2") format("woff2"); }
+
+// --- Переменные системы ---
+$kab-blue:    #52B0D8;
+$kab-navy:    #3C5D90;
+$kab-purple:  #A42BB9;
+$kab-link:    #00789F;
+$kab-gray:    #7A7A7A;
+$kab-tint:    #F4F9FD;
+$kab-border:  #D9E8F2;
+$kab-divider: #EFF7FA;
+
+// --- Контейнер контентной страницы ---
+.kab-page {
+  max-width: 760px;
+  margin: 0 auto;
+  font-size: 16.5px;
+  line-height: 1.65;
+  color: #222;
+}
+
+// --- Кикер (заголовок капсом) ---
+.kab-kicker {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: $kab-purple;
+  margin: 0 0 10px;
+}
+
+// --- Заголовок раздела ---
+.kab-h {
+  font-weight: 700;
+  font-size: 18px;
+  color: $kab-navy;
+  letter-spacing: -.2px;
+  margin: 26px 0 12px;
+}
+
+// --- Вводка / цитата ---
+.kab-quote {
+  background: $kab-tint;
+  border-left: 3px solid $kab-blue;
+  border-radius: 0 10px 10px 0;
+  padding: 16px 20px;
+  margin: 0 0 14px;
+
+  &.kab-quote--purple {
+    border-left-color: $kab-purple;
+  }
+}
+
+// --- Карточка со строками ---
+.kab-card {
+  border: 1px solid $kab-border;
+  border-radius: 12px;
+  background: #fff;
+  padding: 6px 18px;
+  margin: 0 0 12px;
+}
+
+.kab-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid $kab-divider;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+// Маркер-точка (в строке карточки): важное / обычное / факультативное.
+.kab-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: $kab-blue;
+  margin-top: 9px;
+
+  &.kab-dot--navy   { background: $kab-navy; }
+  &.kab-dot--purple { background: $kab-purple; }
+}
+
+// Кружок-номер (шаг, вопрос) и кружок-галочка.
+.kab-num {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid $kab-blue;
+  color: $kab-navy;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.kab-check {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: $kab-blue;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+// --- Заголовок-шаг с номерным кружком ---
+.kab-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 26px 0 12px;
+
+  .kab-step-num {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: $kab-blue;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .kab-step-title {
+    font-weight: 700;
+    font-size: 18px;
+    color: $kab-navy;
+    letter-spacing: -.2px;
+  }
+}
+
+// --- Серая приписка ---
+.kab-note {
+  font-size: 13.5px;
+  color: $kab-gray;
+  line-height: 1.6;
+}
+
+// --- Ссылка ---
+a.kab-link {
+  color: $kab-link;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0, 120, 159, .35);
+  text-decoration: none;
+
+  &:hover {
+    color: darken($kab-link, 8%);
+    text-decoration: none;
+  }
+}
+
+// --- Кнопки ---
+a.kab-btn {
+  display: inline-block;
+  background: $kab-purple;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 13px 30px;
+  border-radius: 8px;
+  text-decoration: none;
+  box-shadow: 0 8px 18px -8px rgba(164, 43, 185, .7);
+
+  &:hover {
+    color: #fff;
+    background: darken($kab-purple, 6%);
+    text-decoration: none;
+  }
+
+  &.kab-btn--outline {
+    background: #fff;
+    color: $kab-navy;
+    padding: 12px 24px;
+    border: 1.5px solid $kab-blue;
+    box-shadow: none;
+
+    &:hover {
+      color: $kab-navy;
+      background: $kab-tint;
+    }
+  }
+}
+
+// --- Разделитель-секция внутри лейбла ---
+.kab-divider {
+  border-top: 1px solid $kab-border;
+  padding-top: 16px;
+  margin-top: 6px;
+}
+
+// --- Прогресс-бар block_myoverview (шаблон темы) ---
+.block_myoverview .dashboard-progress-bar {
+  .progress {
+    overflow: hidden;
+
+    .progress-bar {
+      transition: width 0.3s ease;
+    }
+  }
+}
