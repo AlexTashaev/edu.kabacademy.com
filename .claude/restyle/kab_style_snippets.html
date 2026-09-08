@@ -21,7 +21,8 @@
 
 <!-- ======================= ВАРИАНТ 1: КЛАССЫ ======================= -->
 
-<!-- Контейнер контентной страницы (mod_page); для лейблов/intro не нужен -->
+<!-- Контейнер контентной страницы (mod_page) — kab-page (760px по центру).
+     Для лейблов, intro модулей и summary секций — kab-text (без ограничения ширины). -->
 <div class="kab-page">
 
   <!-- Кикер (заголовок капсом) -->
@@ -40,8 +41,34 @@
     <div class="kab-row"><div class="kab-check">✓</div><div>Сделанный шаг (у последней строки рамка убирается сама).</div></div>
   </div>
 
-  <!-- Заголовок-шаг с номерным кружком -->
+  <!-- Заголовок-шаг с номерным кружком; вариант с цветной точкой-уровнем:
+       <div class="kab-step"><div class="kab-dot kab-dot--navy"></div><div class="kab-step-title">Важное</div></div> -->
   <div class="kab-step"><div class="kab-step-num">1</div><div class="kab-step-title">Название шага</div></div>
+
+  <!-- Списки и текст: обычные <p> и <b> внутри kab-page/kab-text уже стилизованы
+       (отступы, жирный — синим). Список: -->
+  <ul class="kab-list">
+    <li>Пункт списка.</li>
+    <li>Ещё пункт.</li>
+  </ul>
+
+  <!-- Таблица (в kab-card). ВАЖНО: класс table-reboot обязателен — он выводит
+       таблицу из-под табличного «ребута» Moodle (иначе рамки со всех сторон). -->
+  <div class="kab-card">
+    <table class="kab-table table-reboot">
+      <tbody>
+        <tr><td>Недели 1–3</td><td>Описание отрезка</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Сворачиваемый блок -->
+  <details class="kab-details">
+    <summary>Заголовок</summary>
+    <ul class="kab-list">
+      <li>Содержимое.</li>
+    </ul>
+  </details>
 
   <!-- Серая приписка -->
   <div class="kab-note">Необязательная приписка мелким серым.</div>
