@@ -81,16 +81,19 @@ $kab-divider: #EFF7FA;
 }
 
 // --- Таблица (класть внутрь .kab-card) ---
-.kab-table {
+// Специфичность повышена сознательно: контентный CSS Moodle рисует таблицам
+// рамки со всех сторон — здесь они сбрасываются до одних горизонтальных линий.
+table.kab-table {
   border-collapse: collapse;
   width: 100%;
 
-  td {
+  tr > td {
     padding: 10px 0;
+    border: 0;
     border-bottom: 1px solid $kab-divider;
   }
 
-  td:first-child {
+  tr > td:first-child {
     padding-right: 14px;
     white-space: nowrap;
     vertical-align: top;
@@ -98,7 +101,7 @@ $kab-divider: #EFF7FA;
     font-weight: 700;
   }
 
-  tr:last-child td {
+  tr:last-child > td {
     border-bottom: 0;
   }
 }
