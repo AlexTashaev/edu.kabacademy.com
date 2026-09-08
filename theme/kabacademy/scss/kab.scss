@@ -297,6 +297,26 @@ a.kab-btn {
   margin-top: 6px;
 }
 
+// --- Сворачиваемый блок (как вопросы в гостиной) ---
+.kab-details {
+  border: 1px solid $kab-border;
+  border-radius: 10px;
+  background: #fff;
+  padding: 13px 18px;
+  margin: 0 0 14px;
+
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 15.5px;
+    color: $kab-navy;
+  }
+
+  > :not(summary):first-of-type {
+    margin-top: 12px;
+  }
+}
+
 // --- Прогресс-бар block_myoverview (шаблон темы) ---
 .block_myoverview .dashboard-progress-bar {
   .progress {
