@@ -42,3 +42,8 @@ $THEME->addblockposition = BLOCK_ADDBLOCK_POSITION_FLATNAV;
 $THEME->iconsystem = \core\output\icon_system::FONTAWESOME;
 $THEME->haseditswitch = true;
 $THEME->usescourseindex = true;
+// Как в Boost: имя активности уже есть в шапке страницы (context header),
+// без этого флага core/activity_header печатает его вторым <h2>.
+$THEME->activityheaderconfig = [
+    'notitle' => true,
+];
