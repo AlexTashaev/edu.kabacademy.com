@@ -1,4 +1,7 @@
-<div class="kab-page">
+START TRANSACTION;
+CREATE TABLE IF NOT EXISTS _kab_bk_howitworks (id INT AUTO_INCREMENT PRIMARY KEY, ts INT, content LONGTEXT);
+INSERT INTO _kab_bk_howitworks (ts, content) SELECT UNIX_TIMESTAMP(), content FROM mdl_page WHERE id=2474;
+UPDATE mdl_page SET content='<div class="kab-page">
 <div class="kab-quote">Здесь всё, что нужно знать до начала: как устроена учебная неделя, сколько времени понадобится, куда ведёт курс, что от вас требуется и как подключиться к вебинару. Раскрывайте разделы по очереди — прочитать достаточно один раз.</div>
 
 <details class="kab-details" open>
@@ -121,4 +124,9 @@
 <p style="text-align:center"><img src="https://edu.kabacademy.com/kab/img/zoom-chat.png" alt="Панель чата Zoom с полем ввода сообщения для всех" width="354" height="246" class="img-fluid"></p>
 <p>Подробная справка — <a class="kab-link" href="https://support.zoom.com/hc/ru/getting-started-with-meetings?id=zoom_meetings_guide" target="_blank" rel="noopener">на сайте Zoom</a>.</p>
 </details>
-</div>
+</div>', revision=revision+1, timemodified=UNIX_TIMESTAMP() WHERE id=2474;
+DELETE FROM mdl_files WHERE contextid=152818 AND component='mod_page' AND filearea='content';
+UPDATE mdl_course SET cacherev=UNIX_TIMESTAMP() WHERE id=238;
+COMMIT;
+SELECT id, name, revision, LENGTH(content) len FROM mdl_page WHERE id=2474;
+SELECT COUNT(*) files_left FROM mdl_files WHERE contextid=152818;
