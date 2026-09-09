@@ -21,7 +21,8 @@ html = (HERE / 'page.html').read_text(encoding='utf-8').strip()
 
 sql = [
     'START TRANSACTION;',
-    f'CREATE TABLE IF NOT EXISTS _kab_bk_howitworks (id INT AUTO_INCREMENT PRIMARY KEY, ts INT, content LONGTEXT);',
+    # DEFAULT CHARSET обязателен: у базы дефолт latin1, иначе бэкап падает на кириллице.
+    f'CREATE TABLE IF NOT EXISTS _kab_bk_howitworks (id INT AUTO_INCREMENT PRIMARY KEY, ts INT, content LONGTEXT) DEFAULT CHARSET=utf8mb4;',
     f'INSERT INTO _kab_bk_howitworks (ts, content) SELECT UNIX_TIMESTAMP(), content FROM mdl_page WHERE id={PAGE_ID};',
     f'UPDATE mdl_page SET content={q(html)}, revision=revision+1, timemodified=UNIX_TIMESTAMP() WHERE id={PAGE_ID};',
     # Скриншоты больше не хранятся в Moodle: убираем записи первой версии.

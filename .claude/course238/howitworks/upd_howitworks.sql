@@ -1,5 +1,5 @@
 START TRANSACTION;
-CREATE TABLE IF NOT EXISTS _kab_bk_howitworks (id INT AUTO_INCREMENT PRIMARY KEY, ts INT, content LONGTEXT);
+CREATE TABLE IF NOT EXISTS _kab_bk_howitworks (id INT AUTO_INCREMENT PRIMARY KEY, ts INT, content LONGTEXT) DEFAULT CHARSET=utf8mb4;
 INSERT INTO _kab_bk_howitworks (ts, content) SELECT UNIX_TIMESTAMP(), content FROM mdl_page WHERE id=2474;
 UPDATE mdl_page SET content='<div class="kab-page">
 <div class="kab-quote">Здесь всё, что нужно знать до начала: как устроена учебная неделя, сколько времени понадобится, куда ведёт курс, что от вас требуется и как подключиться к вебинару. Раскрывайте разделы по очереди — прочитать достаточно один раз.</div>
