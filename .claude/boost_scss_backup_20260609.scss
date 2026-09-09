@@ -1,0 +1,314 @@
+/* TOP BAR AND SIDE BAR */
+#page-wrapper {
+  .navbar {
+    max-height: 65px;
+    height: 65px;
+    background-color: #79B2DF !important;
+    background-image: url(https://kabacademy.com/wp-content/uploads/mdl-top-bgr.jpg);
+    background-repeat: no-repeat;
+    background-position: 30px 0;
+
+    .site-name {
+      color: white;
+    }
+
+    .logo img {
+      max-height: 65px;
+    }
+
+    .nav-item[data-key="home"] {
+      display: none;
+    }
+
+    .nav-item {
+      .usermenu {
+        margin-left: 20px;
+      }
+
+      .icon {
+        color: white;
+        font-size: 22px;
+      }
+    }
+
+    .dropdown {
+      &:focus {
+        outline: none;
+      }
+
+      > a {
+        outline: none;
+      }
+    }
+
+    .dropdown-menu {
+      .icon {
+        color: #6493af;
+      }
+    }
+
+    .btn.nav-link.float-sm-left {
+      background: #79b2df !important;
+      border-color: transparent;
+
+      &:focus {
+        outline: 0 !important;
+      }
+
+      .icon {
+        font-size: 26px;
+        color: #014e7a;
+      }
+    }
+  }
+}
+
+
+/* COURSES */
+
+.card-deck.dashboard-card-deck {
+  .dashboard-card {
+    border: 0;
+
+    .dashboard-card-img {
+      border-radius: 0;
+    }
+
+    .course-info-container {
+      background: #EFF7FA;
+
+      .categoryname {
+        text-transform: uppercase;
+        color: #52B0D8;
+        font-size: .8rem;
+      }
+
+      .multiline {
+        font-size: 1.3rem;
+        font-weight: 200;
+      }
+
+      .dropdown {
+        button {
+          &:hover {
+            background-color: #aad7ec !important;
+
+            .fa-ellipsis {
+              color: #014E7A !important;
+            }
+          }
+
+        }
+
+
+      }
+    }
+
+    .card-footer {
+      position: relative;
+      padding: 0;
+      background: #EFF7FA;
+
+      .progress {
+        background-color: #A4CDE9 !important;
+        height: 1.8rem;
+        border-radius: 0;
+        border: 0 !important;
+
+        .progress-bar {
+          background-color: #52B0D8;
+        }
+      }
+
+      .small {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        top: 0;
+        color: white;
+        line-height: 1.8rem;
+      }
+    }
+  }
+}
+
+.card {
+  .card-text {
+    a {
+      color: #3C5D90;
+      font-weight: 600;
+      font-size: .8rem;
+    }
+  }
+}
+
+// TITLE
+
+.card-title {
+  color: #A42BB9;
+  font-weight: 200;
+}
+
+// COURSE INSIDE
+
+#page-wrapper #page {
+  background: #F4F9FD;
+
+  #page-header {
+    .breadcrumb {
+      background-color: white;
+
+      .breadcrumb-item a {
+        color: #3C5D90;
+        font-weight: 600;
+      }
+    }
+
+    .page-header-headings {
+      color: #3C5D90;
+
+      h1 {
+        font-weight: 300;
+        font-style: 2.3rem;
+      }
+    }
+  }
+
+  #page-content {
+    // COURSE INSIDE
+    .topics {
+      .section {
+        .sectionname a {
+          color: #000;
+          font-weight: 200;
+        }
+
+        .badge-info {
+          color: #fff;
+          background-color: #3BA9DC;
+          text-transform: uppercase;
+          font-size: 0.5rem;
+          border-radius: 0;
+          padding: 5px 15px;
+        }
+
+        &:first-child {
+          background-color: #F5FCFF;
+        }
+
+        .activity {
+          .availabilityinfo {
+            font-weight: 100;
+            font-size: .9rem;
+
+            a {
+              color: #3C5D90;
+              font-weight: 600;
+              text-decoration: underline;
+            }
+          }
+
+          .instancename {
+            color: #3C5D90;
+            font-weight: 600;
+            text-decoration: underline;
+          }
+        }
+      }
+    }
+
+    // PROFILE
+    .userprofile {
+      .node_category {
+        background: #F5FCFF;
+        border-radius: 0;
+        border: 0;
+
+        h3 {
+          color: #52B0D8;
+          font-size: .9rem;
+        }
+      }
+
+      ul li {
+        a {
+          color: #3C5D90;
+          font-weight: 600;
+        }
+
+        dt {
+          color: #A42BB9;
+          font-weight: 400;
+        }
+
+        dd {
+          font-size: .9rem;
+        }
+      }
+    }
+
+    #region-main {
+      .form-check-label {
+        white-space: normal !important;
+      }
+    }
+
+    .activity {
+      .dimmed_text {
+        opacity: .5;
+      }
+
+      .conditionalhidden {
+        .instancename {
+          opacity: .5;
+        }
+      }
+
+      .isrestricted {
+        opacity: .5;
+      }
+    }
+  }
+
+  // SIDEBAR
+  #block-region-side-pre {
+    a {
+      color: #3C5D90;
+      font-weight: 600;
+      font-size: .8rem;
+    }
+  }
+}
+
+// Plugins
+#fitem_id_h5peditor .form-inline.felement .form-control-static {
+  width: 100%;
+}
+
+
+
+.aalink.focus, #page-footer a:not([class]).focus, .arrow_link.focus, a:not([class]).focus, .activityinstance>a.focus, .aalink:focus, #page-footer a:not([class]):focus, .arrow_link:focus, a:not([class]):focus, .activityinstance>a:focus{
+    outline: none !important;
+    background: none !important;
+    -webkit-box-shadow: none !important;
+    box-shadow: none !important;
+}
+ .btn:focus, .btn.focus{
+    outline: none !important;
+    -webkit-box-shadow: none !important;
+    box-shadow: none !important;
+}
+.aabtn.focus, .btn-link.focus, .nav-link.focus, .atto_link_button.focus, [role="button"].focus, .list-group-item-action.focus, input[type="checkbox"].focus, input[type="radio"].focus, input[type="file"].focus, input[type="image"].focus, .sr-only-focusable.focus, a.dropdown-toggle.focus, .modal-dialog[tabindex="0"].focus, .moodle-dialogue-base .closebutton.focus, button.close.focus, .form-autocomplete-selection.focus, .aabtn:focus, .btn-link:focus, .nav-link:focus, .atto_link_button:focus, [role="button"]:focus, .list-group-item-action:focus, input[type="checkbox"]:focus, input[type="radio"]:focus, input[type="file"]:focus, input[type="image"]:focus, .sr-only-focusable:focus, a.dropdown-toggle:focus, .modal-dialog[tabindex="0"]:focus, .moodle-dialogue-base .closebutton:focus, button.close:focus, .form-autocomplete-selection:focus {
+    -webkit-box-shadow: none !important;
+    box-shadow: none !important;
+}
+
+.dropdown-item:active a, .dropdown-item:hover a, .dropdown-item:focus a, .dropdown-item:focus-within a, .dropdown-item:active, .dropdown-item:hover, .dropdown-item:focus, .dropdown-item:focus-within {
+    color: inherit !important;
+}
+a { color: #196cb3; }
+#participantsform .no-overflow {overflow: auto}
+.calendar_event_course {background-color: #d6f8cd;}
+
+
+
