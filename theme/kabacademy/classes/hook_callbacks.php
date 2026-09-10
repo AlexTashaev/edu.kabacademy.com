@@ -39,6 +39,11 @@ class hook_callbacks {
      * @param before_footer_html_generation $hook
      */
     public static function before_footer_html_generation(before_footer_html_generation $hook): void {
+        global $PAGE;
+        // Plugin hooks fire site-wide; only act on pages rendered by this theme.
+        if (!isset($PAGE->theme) || $PAGE->theme->name !== 'kabacademy') {
+            return;
+        }
         $js = <<<'JS'
 (function () {
     function openHashTarget() {
