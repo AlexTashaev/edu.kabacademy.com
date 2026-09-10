@@ -41,7 +41,9 @@ class hook_callbacks {
     public static function before_footer_html_generation(before_footer_html_generation $hook): void {
         global $PAGE;
         // Plugin hooks fire site-wide; only act on pages rendered by this theme.
-        if (!isset($PAGE->theme) || $PAGE->theme->name !== 'kabacademy') {
+        // ($PAGE->theme is a magic property: no isset() on it.)
+        $theme = $PAGE->theme;
+        if (!$theme || $theme->name !== 'kabacademy') {
             return;
         }
         $js = <<<'JS'
