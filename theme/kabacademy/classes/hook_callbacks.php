@@ -71,16 +71,18 @@ class hook_callbacks {
         }
         var navbar = document.querySelector('.navbar.fixed-top');
         var offset = (navbar ? navbar.offsetHeight : 0) + 12;
-        window.requestAnimationFrame(function () {
-            var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
-            window.scrollTo({top: top, behavior: 'smooth'});
-        });
+        // 'instant': the theme sets html {scroll-behavior: smooth} and a smooth
+        // scroll started during page load gets cancelled by later layout work.
+        var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+        window.scrollTo({top: top, behavior: 'instant'});
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', openHashTarget);
     } else {
         openHashTarget();
     }
+    // Re-align once everything (images) has loaded and shifted the layout.
+    window.addEventListener('load', openHashTarget);
     window.addEventListener('hashchange', openHashTarget);
 })();
 JS;
