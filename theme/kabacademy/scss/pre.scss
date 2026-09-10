@@ -1,0 +1,5 @@
+// Kabacademy pre-SCSS: variable overrides on top of Boost's pre-SCSS.
+// Appended after Boost's, so plain assignments here win.
+
+// Brand font for the whole page (same self-hosted Montserrat the content uses).
+$font-family-sans-serif: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";

@@ -1,0 +1,20 @@
+# --- Креды и сессионное Claude Code — никогда в git ---
+.claude/settings.json
+.claude/settings.local.json
+.claude/*.lock
+.claude/worktrees/
+
+# --- Выгрузки с ПДн ---
+.claude/**/*.tsv
+
+# --- Клоны исходников сторонних плагинов (код плагина коммитится в дерево Moodle) ---
+/modjournal/
+
+# --- Медиа и большие бинари ---
+*.mp3
+*.mp4
+*.wav
+*.mov
+
+# --- Временное ---
+.tmp/

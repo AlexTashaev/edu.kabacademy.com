@@ -17,6 +17,16 @@
 /**
  * Library functions for Kabacademy theme.
  *
+ * The theme is applied per course (course "forcetheme"), while the site keeps
+ * plain Boost whose branding lives in Boost's own settings (Raw SCSS etc. in
+ * the DB). A child theme does NOT see the parent's settings, so every SCSS
+ * callback below feeds Boost's callbacks with Boost's theme_config — the child
+ * always mirrors the live Boost branding — and appends its own additions from
+ * scss/pre.scss and scss/kab.scss.
+ *
+ * Note: changing Boost settings bumps only Boost's theme revision; run "Purge
+ * caches" so courses on this theme pick the change up too.
+ *
  * @package    theme_kabacademy
  * @copyright  2026 Kabacademy
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -25,13 +35,26 @@
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Returns the main SCSS content.
+ * Boost's theme_config, for mirroring its settings.
+ *
+ * @return theme_config
+ */
+function theme_kabacademy_boost_config() {
+    static $boost = null;
+    if ($boost === null) {
+        $boost = theme_config::load('boost');
+    }
+    return $boost;
+}
+
+/**
+ * Returns the main SCSS content (Boost preset, as configured in Boost).
  *
  * @param theme_config $theme The theme config object.
  * @return string SCSS content.
  */
 function theme_kabacademy_get_main_scss_content($theme) {
-    return theme_boost_get_main_scss_content($theme);
+    return theme_boost_get_main_scss_content(theme_kabacademy_boost_config());
 }
 
 /**
@@ -44,58 +67,23 @@ function theme_kabacademy_get_precompiled_css() {
 }
 
 /**
- * Get SCSS to prepend.
+ * Get SCSS to prepend: Boost's (brandcolor, Raw initial SCSS) + ours.
  *
  * @param theme_config $theme The theme config object.
  * @return string SCSS to prepend.
  */
 function theme_kabacademy_get_pre_scss($theme) {
-    return theme_boost_get_pre_scss($theme);
+    return theme_boost_get_pre_scss(theme_kabacademy_boost_config())
+        . "\n" . file_get_contents(__DIR__ . '/scss/pre.scss');
 }
 
 /**
- * Get extra SCSS.
+ * Get extra SCSS: Boost's (Raw SCSS from the DB — the site branding) + ours.
  *
  * @param theme_config $theme The theme config object.
  * @return string Extra SCSS.
  */
 function theme_kabacademy_get_extra_scss($theme) {
-    $scss = theme_boost_get_extra_scss($theme);
-
-    // Custom progress bar styles for block_myoverview.
-    $scss .= '
-    .block_myoverview .dashboard-progress-bar {
-        .progress {
-            overflow: hidden;
-
-            .progress-bar {
-                transition: width 0.3s ease;
-            }
-        }
-    }
-    ';
-
-    // Responsive Google Drive video embeds.
-    //
-    // Videos are embedded as <iframe src=".../preview" width="100%" height="480">.
-    // The fixed 480px height looks fine on desktop (wide container ~16:9) but on
-    // mobile the container shrinks to ~360px wide while the height stays 480px, so
-    // the 16:9 video collapses into a thin strip and the Google Drive player
-    // controls overlap it. Dropping the fixed height and enforcing a 16:9 ratio
-    // makes the player scale correctly at any width.
-    //
-    // Scoped to height="480" so PDF/Google Docs previews (embedded at other
-    // heights) are left untouched.
-    $scss .= \'
-    iframe[src*="drive.google.com"][height="480"] {
-        display: block;
-        width: 100% !important;
-        height: auto !important;
-        aspect-ratio: 16 / 9;
-        max-width: 100%;
-        border: 0;
-    }
-    \';
-
-    return $scss;
+    return theme_boost_get_extra_scss(theme_kabacademy_boost_config())
+        . "\n" . file_get_contents(__DIR__ . '/scss/kab.scss');
 }
