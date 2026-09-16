@@ -31,6 +31,24 @@ Git-форк Moodle 5.1 для LMS академии. Репозиторий де
 per-user availability, скрытые активности попадают в знаменатель. Для сводного отчёта
 по курсу это приемлемо — не «чинить» обратно, не разобравшись.
 
+### Как обновлять ядро (минорные и weekly-релизы)
+
+Последний апгрейд: **5.1.3+ (Build 20260306) → 5.1.7 (Build 20260914), 16.09.2026**, dev и prod.
+Ядро отличалось от апстрима только тремя файлами `2d7f538`; апстрим их не трогал —
+перенесены как есть. Простой prod ~25 с.
+
+1. На сервере скачать эталон текущей сборки (tar.gz коммита weekly release с codeload.github.com)
+   и новый релиз с download.moodle.org, сверить sha256.
+2. `tools/moodle-upgrade/build-staging.sh BASE NEW LIVE STAGING` — сам находит наши core-патчи
+   и дополнения; если апстрим поменял патченный файл, останавливается для ручного мержа.
+3. Сверить: дельта STAGING↔LIVE = дельта BASE↔NEW (кроме dotfiles). Дамп БД, tar кода.
+4. `rsync -rlptD --delete-after --delay-updates --checksum STAGING/ LIVE/`.
+5. CLI не работает, логин не нужен: curl на `http://127.0.0.1/admin/index.php` с заголовками
+   `Host: <сайт>` и `X-Forwarded-Proto: https`, шаги `confirmupgrade=1` → `confirmrelease=1` →
+   `confirmplugincheck=1`.
+6. Проверить версию в `mdl_config`, `mdl_upgrade_log`, md5 патченных файлов, error.log.
+   Удалить STAGING — в нём копии конфигов с секретами.
+
 **Диагностика N+1:** сэмплер `SELECT ... FROM information_schema.PROCESSLIST` каждые 0.3 с
 ловит паттерн точно; по логам — нет.
 
