@@ -1,11 +1,14 @@
 /**
- * Google Apps Script bound to the teachers' Google Doc.
- * Receives feedback responses from Moodle (local_kabfeedbackgdoc) and
- * inserts them into the document, newest first, with an empty
- * "Ответ преподавателя:" line under each question.
+ * Google Apps Script bound to the teachers' Google Sheet
+ * ("Задать вопрос преподавателю … (Moodle)").
+ * Receives feedback responses from Moodle (local_kabfeedbackgdoc) and appends
+ * one row per response in the same layout as the Google Forms "(Ответы)" sheets:
+ *
+ *   Отметка времени | Имя | Город | Буду участвовать в вебинаре | Мой вопрос |
+ *   Номер группы | Email | Ссылка в Moodle | Ответ преподавателя
  *
  * Setup (once):
- *   1. Open the Google Doc → Extensions → Apps Script.
+ *   1. Open the Google Sheet → Extensions → Apps Script.
  *   2. Replace the default Code.gs with this file, set SECRET below.
  *   3. Deploy → New deployment → type "Web app":
  *        Execute as: Me;  Who has access: Anyone.
@@ -18,9 +21,17 @@
  */
 
 var SECRET = 'CHANGE_ME';      // must equal the plugin's "Shared secret" setting
-var NEWEST_FIRST = true;       // insert new entries above older ones
-var ANSWER_LABEL = 'Ответ преподавателя:';
-var MAX_REMEMBERED_IDS = 500;  // dedupe window (completed ids already inserted)
+var SHEET_NAME = '';           // '' = first sheet of the spreadsheet
+var MAX_REMEMBERED_IDS = 1000; // dedupe window (completed ids already inserted)
+
+// Which feedback item goes to which column, matched by item name (case-insensitive regex).
+var COLUMN_RULES = [
+  { col: 'participate', re: /присутств|участв/i },
+  { col: 'question',    re: /вопрос/i }
+];
+
+var HEADER = ['Отметка времени', 'Имя', 'Город', 'Буду участвовать в вебинаре', 'Мой вопрос',
+              'Номер группы', 'Email', 'Ссылка в Moodle', 'Ответ преподавателя'];
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
@@ -36,7 +47,7 @@ function doPost(e) {
     if (alreadyInserted_(data.completedid)) {
       return respond({ ok: true, duplicate: true });
     }
-    insertEntry_(data);
+    appendRow_(data);
     remember_(data.completedid);
     return respond({ ok: true });
   } catch (err) {
@@ -57,66 +68,55 @@ function respond(obj) {
 
 // ---------------------------------------------------------------------------
 
-function insertEntry_(d) {
-  var body = DocumentApp.getActiveDocument().getBody();
-  var at = NEWEST_FIRST ? firstEntryIndex_(body) : body.getNumChildren();
-  var ins = new Inserter_(body, at);
-
-  var who = d.anonymous || !d.user ? 'Аноним' : d.user.fullname;
-  var h = ins.paragraph(d.datetime + ' — ' + who);
-  h.setHeading(DocumentApp.ParagraphHeading.HEADING2);
-
-  var meta = ins.paragraph('');
-  meta.appendText(d.feedback.name).setLinkUrl(d.feedback.url);
-  meta.appendText(' · ' + d.course.fullname);
-  if (d.user && d.user.email) {
-    meta.appendText(' · ');
-    meta.appendText(d.user.email).setLinkUrl('mailto:' + d.user.email);
+function sheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = SHEET_NAME ? ss.getSheetByName(SHEET_NAME) : ss.getSheets()[0];
+  if (!sh) { throw new Error('sheet not found: ' + SHEET_NAME); }
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(HEADER);
+    sh.getRange(1, 1, 1, HEADER.length).setFontWeight('bold');
+    sh.setFrozenRows(1);
   }
-  meta.appendText(' · ');
-  meta.appendText('ответ в Moodle').setLinkUrl(d.responseurl);
-  meta.editAsText().setFontSize(9).setForegroundColor('#666666');
+  return sh;
+}
 
+function appendRow_(d) {
+  var cols = { participate: [], question: [], other: [] };
   (d.answers || []).forEach(function (a) {
     if (!a.value) { return; }
-    var p = ins.paragraph('');
-    p.appendText(a.name + ': ').setBold(true);
-    p.appendText(a.value).setBold(false);
-  });
-
-  var ans = ins.paragraph('');
-  ans.appendText(ANSWER_LABEL + ' ').setBold(true).setForegroundColor('#1a73e8');
-  ans.appendText(' ').setBold(false).setForegroundColor('#000000');
-
-  ins.rule();
-}
-
-/** Index of the first HEADING2 paragraph (= newest existing entry), or end of body. */
-function firstEntryIndex_(body) {
-  var n = body.getNumChildren();
-  for (var i = 0; i < n; i++) {
-    var el = body.getChild(i);
-    if (el.getType() === DocumentApp.ElementType.PARAGRAPH &&
-        el.asParagraph().getHeading() === DocumentApp.ParagraphHeading.HEADING2) {
-      return i;
+    var target = 'other';
+    for (var i = 0; i < COLUMN_RULES.length; i++) {
+      if (COLUMN_RULES[i].re.test(a.name || '')) { target = COLUMN_RULES[i].col; break; }
     }
-  }
-  return n;
-}
+    cols[target].push(target === 'other' ? (a.name + ': ' + a.value) : a.value);
+  });
+  var question = cols.question.concat(cols.other).join('\n\n');
 
-/** Sequential inserter that keeps a running index so entries stay in order. */
-function Inserter_(body, index) {
-  this.body = body;
-  this.i = index;
+  var u = (!d.anonymous && d.user) ? d.user : null;
+  var when = d.timestamp ? new Date(d.timestamp * 1000) : new Date();
+
+  var row = [
+    when,                                        // Отметка времени
+    u ? u.fullname : 'Аноним',                   // Имя
+    u ? (u.city || '') : '',                     // Город
+    cols.participate.join(', '),                 // Буду участвовать в вебинаре
+    question,                                    // Мой вопрос
+    u ? (u.groups || []).join(', ') : '',        // Номер группы
+    u ? (u.email || '') : '',                    // Email
+    d.responseurl || '',                         // Ссылка в Moodle
+    ''                                           // Ответ преподавателя
+  ];
+
+  var sh = sheet_();
+  var r = sh.getLastRow() + 1;
+  sh.getRange(r, 1, 1, row.length).setValues([row]);
+  sh.getRange(r, 1).setNumberFormat('dd.MM.yyyy H:mm:ss');
+  if (d.responseurl) {
+    sh.getRange(r, 8).setRichTextValue(
+      SpreadsheetApp.newRichTextValue().setText('открыть').setLinkUrl(d.responseurl).build());
+  }
+  sh.getRange(r, 5, 1, 1).setWrap(true);
 }
-Inserter_.prototype.paragraph = function (text) {
-  var p = this.body.insertParagraph(this.i++, text);
-  p.setHeading(DocumentApp.ParagraphHeading.NORMAL);
-  return p;
-};
-Inserter_.prototype.rule = function () {
-  this.body.insertHorizontalRule(this.i++);
-};
 
 // ---------------------------------------------------------------------------
 // Dedupe: Moodle retries on failure, so the same completedid may arrive twice.
@@ -138,13 +138,13 @@ function remember_(id) {
   props.setProperty('seen', JSON.stringify(seen));
 }
 
-/** Run manually from the editor to check the layout without Moodle. */
+/** Run manually from the editor to check the layout without Moodle. Delete the row afterwards. */
 function testInsert() {
-  insertEntry_({
+  appendRow_({
     completedid: 0,
-    datetime: '23.09.2026 14:05',
+    timestamp: Math.floor(Date.now() / 1000),
     anonymous: false,
-    user: { fullname: 'Тест Тестов', email: 'test@example.com' },
+    user: { fullname: 'Тест Тестов', email: 'test@example.com', city: 'Хайфа', groups: ['11ж'] },
     course: { fullname: 'МАК · осень 2026' },
     feedback: { name: 'Вопрос по теме урока 1 к вебинару с преподавателями', url: 'https://edu.kabacademy.com/mod/feedback/view.php?id=13407' },
     responseurl: 'https://edu.kabacademy.com/mod/feedback/show_entries.php?id=13407',

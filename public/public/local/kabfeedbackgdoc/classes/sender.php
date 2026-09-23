@@ -135,11 +135,34 @@ class sender {
                 'id'       => (int)$user->id,
                 'fullname' => fullname($user),
                 'email'    => $user->email,
+                'city'     => (string)$user->city,
+                'groups'   => self::user_group_names((int)$course->id, (int)$user->id),
                 'url'      => (new \moodle_url('/user/view.php', ['id' => $user->id, 'course' => $course->id]))->out(false),
             ] : null,
             'responseurl' => $responseurl->out(false),
             'answers'     => $answers,
         ];
+    }
+
+    /**
+     * Names of the course groups the user belongs to (the "Номер группы" column).
+     *
+     * @param int $courseid
+     * @param int $userid
+     * @return string[]
+     */
+    public static function user_group_names(int $courseid, int $userid): array {
+        global $DB;
+        $sql = "SELECT g.id, g.name
+                  FROM {groups} g
+                  JOIN {groups_members} gm ON gm.groupid = g.id
+                 WHERE g.courseid = :courseid AND gm.userid = :userid
+              ORDER BY g.name";
+        $names = [];
+        foreach ($DB->get_records_sql($sql, ['courseid' => $courseid, 'userid' => $userid]) as $g) {
+            $names[] = format_string($g->name, true, ['context' => \context_course::instance($courseid)]);
+        }
+        return $names;
     }
 
     /**
