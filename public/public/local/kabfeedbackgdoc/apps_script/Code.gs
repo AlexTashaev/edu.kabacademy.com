@@ -21,6 +21,7 @@
  */
 
 var SECRET = 'CHANGE_ME';      // must equal the plugin's "Shared secret" setting
+var SPREADSHEET_ID = '';       // '' = the spreadsheet this script is bound to; set an id for a standalone script
 var SHEET_NAME = '';           // '' = first sheet of the spreadsheet
 var MAX_REMEMBERED_IDS = 1000; // dedupe window (completed ids already inserted)
 
@@ -69,7 +70,7 @@ function respond(obj) {
 // ---------------------------------------------------------------------------
 
 function sheet_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
   var sh = SHEET_NAME ? ss.getSheetByName(SHEET_NAME) : ss.getSheets()[0];
   if (!sh) { throw new Error('sheet not found: ' + SHEET_NAME); }
   if (sh.getLastRow() === 0) {
