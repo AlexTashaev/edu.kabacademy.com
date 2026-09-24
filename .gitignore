@@ -21,3 +21,5 @@
 
 # локальная конфигурация превью для Claude Code (пути машины)
 .claude/launch.json
+__pycache__/
+*.pyc
