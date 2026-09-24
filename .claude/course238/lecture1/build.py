@@ -53,14 +53,16 @@ def build(preview_dir: Path | None) -> None:
     updates = []
     preview_sections = []
     for page_id, title in PAGES.items():
-        # newline='' — не трогаем переводы строк оригинала (в БД контент с CRLF).
+        # Оригинал в orig/ хранится с CRLF (так было в БД), но клиент mysql при чтении файла
+        # выбрасывает CR даже внутри строковых литералов — на prod контент ложится с LF.
+        # Нормализуем к LF сразу, чтобы pages/ побайтно совпадали с тем, что в БД.
         src = (HERE / 'orig' / f'page-{page_id}.html').read_text(encoding='utf-8', newline='')
-        eol = '\r\n' if '\r\n' in src else '\n'
+        src = src.replace('\r\n', '\n')
         found = []
 
         def repl(m: re.Match) -> str:
             found.append(m.group(1))
-            return load_schema(m.group(1)).replace('\n', eol)
+            return load_schema(m.group(1))
 
         out = PLACEHOLDER.sub(repl, src)
         print(f'page {page_id}: схемы {found or "—"}, {len(src)} → {len(out)} chars')

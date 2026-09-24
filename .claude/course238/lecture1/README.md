@@ -25,7 +25,8 @@ Montserrat даёт тема). Плейсхолдеры «Клип» (3 шт.) �
   темы**: переживает TinyMCE, purifier и мобильное приложение; стрелки — CSS-треугольники,
   сосуд — `border-radius`. Одинарных кавычек в HTML быть не должно (SQL-литерал).
   Класс `kab-figure` — просто хук на будущее, стилей у него нет.
-- `orig/page-<id>.html` — контент страниц до вставки (CRLF как в БД).
+- `orig/page-<id>.html` — контент страниц до вставки (CRLF, как лежало в БД). Клиент mysql
+  при чтении файла выбрасывает CR даже внутри литералов, поэтому `pages/` и prod — с LF.
 - `build.py` — подставляет фрагменты вместо плейсхолдеров → `pages/`, `upd_lesson1960.sql`,
   `rollback_lesson1960.sql`; `--preview-dir DIR` пишет `preview.html` (в DIR нужны
   `fonts.css` + `fonts/Montserrat-*.woff2`, взять с `https://edu.kabacademy.com/kab/fonts/`).
