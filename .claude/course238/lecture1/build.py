@@ -33,6 +33,8 @@ PLACEHOLDER = re.compile(
     r'<p style="margin: 0;"><strong>Схема (\d)\.</strong>.*?</div>',
     re.S,
 )
+# Правило заказчика (24.09.2026): слово «Рав» в текстах не употреблять — «Михаэль Лайтман».
+RAV = re.compile(r'\bРав\b')
 
 
 def q(s: str) -> str:
@@ -65,9 +67,10 @@ def build(preview_dir: Path | None) -> None:
             return load_schema(m.group(1))
 
         out = PLACEHOLDER.sub(repl, src)
-        print(f'page {page_id}: схемы {found or "—"}, {len(src)} → {len(out)} chars')
+        out, nfix = RAV.subn('Михаэль Лайтман', out)
+        print(f'page {page_id}: схемы {found or "—"}, «Рав»→ {nfix}, {len(src)} → {len(out)} chars')
         (HERE / 'pages' / f'page-{page_id}.html').write_text(out, encoding='utf-8', newline='')
-        if found:
+        if out != src:
             updates.append(
                 f'UPDATE mdl_lesson_pages SET contents={q(out)}, timemodified=UNIX_TIMESTAMP() '
                 f'WHERE id={page_id} AND lessonid={LESSON_ID};'
