@@ -1,0 +1,191 @@
+-- Лекция 1 (lesson 1960, cmid 13413, курс 238): схемы 1–3 вместо плейсхолдеров дизайнера.
+-- Сгенерировано build.py; откат — rollback_lesson1960.sql.
+START TRANSACTION;
+CREATE TABLE IF NOT EXISTS _kab_bk20260924_lesson1960 DEFAULT CHARSET=utf8mb4 AS SELECT * FROM mdl_lesson_pages WHERE lessonid=1960;
+UPDATE mdl_lesson_pages SET contents='<h4>Что у вас уже есть</h4>
+<p>Вы пришли сюда с вопросом. Он может звучать по-разному — «в чём смысл», «почему при внешнем благополучии внутри пусто», «куда всё это движется», — но по сути он один, и вы носите его давно.</p>
+<p><strong>Этот вопрос — не сбой.</strong> Он не признак депрессии, кризиса среднего возраста или недостатка благодарности. Он признак того, что в вас включилось то, что и должно было включиться. Вся наука, к которой вы приступаете, начинается ровно с этого места.</p>
+<p><strong>Ответ на него нельзя получить в подарок.</strong> Его можно только выяснить самому. Каббала не даёт готовых ответов — она даёт метод исследования. Дальше работает тот, кто исследует.</p>
+<h4>Название</h4>
+<p>Слово <strong>каббала</strong> происходит от ивритского <em>лекабель</em> — «получать». Не «тайна», не «предание», не «скрытое знание». Название прямо говорит о предмете: это наука о получении.</p>
+<p>То, что продаётся под именем каббалы — красные нити, амулеты, гадания, — к этому предмету отношения не имеет. Почему подделки устроены именно так — в третьей главе.</p>
+<h4>Определение</h4>
+<p>Бааль Сулам определяет её так:</p>
+<blockquote>
+<p>Каббала есть не что иное, как полная и достаточная информация о порядке причинно-следственного нисхождения Высших сил, согласно постоянным и абсолютным законам, связанным между собой и направленным на достижение одной высочайшей цели, определяемой как раскрытие Творца творениям в этом мире.</p>
+</blockquote>
+<div class="kab-clip" style="border-left: 3px solid #4a90a4; background: #f2f8fa; padding: 12px 16px; margin: 20px 0;">
+<p style="margin: 0 0 10px;"><strong>🎬 Клип, 0:26.</strong> «Каббала за 20 секунд». Блогер просит объяснить, что такое каббала, и даёт минуту. Рав укладывается в двадцать секунд — короткое определение рядом с длинным.</p>
+<iframe src="https://drive.google.com/file/d/15RTwRlfHhLB5tJBbo2pxPYdcT66gPAid/preview" width="100%" height="480" allow="autoplay"></iframe>
+</div>
+<p>Разберём по частям.</p>
+<p><strong>«Порядок причинно-следственного нисхождения Высших сил».</strong> Есть источник, и от него идёт цепочка причин и следствий вниз, до нашего мира. Не хаос и не произвол — порядок. Наука каббала описывает именно этот порядок.</p>
+<p><strong>«Согласно постоянным и абсолютным законам».</strong> Законы не меняются и никого не выделяют. Значит, предмет <strong>изучаем</strong> — как изучаема физика. Вас не просят верить. Вас приглашают проверить.</p>
+<p>Чем именно проверять и почему прибор здесь только один — в третьей главе.</p>
+<p><strong>«Связанным между собой и направленным на достижение одной цели».</strong> У всего происходящего есть направление. То, что кажется вам случайным стечением обстоятельств, входит в общее движение.</p>
+<div class="kab-clip" style="border-left: 3px solid #4a90a4; background: #f2f8fa; padding: 12px 16px; margin: 20px 0;">
+<p style="margin: 0 0 10px;"><strong>🎬 Клип.</strong> «Портной режет ткань». Сын видит, как отец кромсает красивую материю, и по своему опыту уверен, что ничего не выйдет. «Так же и мы: наблюдаем только процесс — как нас режет и кромсает жизнь, — но не видим, что из этого получится».</p>
+<iframe src="https://drive.google.com/file/d/1v62fJMZl-jHvvNdrtzjTCMtSjGJSH4f4/preview" width="100%" height="480" allow="autoplay"></iframe>
+</div>
+<p><strong>«Раскрытие Творца творениям в этом мире».</strong> <strong>В этом мире</strong> — не после смерти, не в награду, не в следующей жизни. Здесь, при жизни, человеком, который сейчас читает этот текст. Если бы речь шла о посмертной награде, никакой науки бы не было: проверить нельзя, значит и изучать нечего.</p>
+<div class="kab-clip" style="border-left: 3px solid #4a90a4; background: #f2f8fa; padding: 12px 16px; margin: 20px 0;">
+<p style="margin: 0 0 10px;"><strong>🎬 Клип.</strong> Второе определение. Если формулировка Бааль Сулама показалась тяжёлой — Рав говорит об этом прямо: учёные втискивают в определение все свои знания, и потому, кроме них самих, никому ничего не понятно. И даёт своё: «наука каббала — это раскрытие наивысшей силы природы человеку, вследствие чего человек обретает ощущение вечности и совершенства».</p>
+<iframe src="https://drive.google.com/file/d/1IcClZUW-Ns0T38wcJJ8hgdnsw0eehxCK/preview" width="100%" height="480" allow="autoplay"></iframe>
+</div>
+<h4>Два слова, из которых состоит всё</h4>
+<p>В определении встретились <strong>Творец</strong> и <strong>творение</strong>. Это не поэтические фигуры, а рабочие термины.</p>
+<p><strong>Творец — это сила отдачи.</strong> Не персонаж, не старик на облаке, не тот, кто карает и награждает. Слово «Творец» в каббале обозначает свойство: желание дать, наполнить, отдать. Единственное такое свойство во всём мироздании.</p>
+<p><strong>Творение — это желание получать.</strong> Тоже не образ, а свойство. Всё, что существует, кроме силы отдачи, — это желание получить: камень «хочет» сохранять форму, растение — тянуться к свету, животное — выжить, человек — наполниться.</p>
+<p><strong>Этих двух свойств достаточно, чтобы получилось всё.</strong> Разнообразие берётся не из числа элементов, а из числа сочетаний между ними: в цифровой технике два состояния, ноль и единица, а из них — тексты, музыка, изображения, всё. Здесь так же: есть то, что наполняет, и то, что получает, и больше ничего не требуется.</p>
+<p>Отсюда: <strong>вы тоже целиком состоите из желания получать.</strong> Это описание материала, с которым предстоит работать. Ругать себя за то, что вы хотите получать, так же бессмысленно, как ругать камень за то, что он твёрдый.</p>
+<p>Вся дальнейшая методика — о том, что с этим желанием можно сделать.</p>
+<div class="kab-figure" style="border: 1px solid #D9E8F2; border-radius: 12px; background: #fff; padding: 20px 16px 12px; margin: 20px 0;">
+<div style="max-width: 400px; margin: 0 auto; text-align: center;">
+<div style="display: inline-block; background: #3C5D90; color: #fff; font-weight: 600; font-size: 14px; letter-spacing: .03em; padding: 8px 22px; border-radius: 999px;">Творец</div>
+<div style="font-size: 13.5px; font-weight: 600; color: #3C5D90; margin-top: 6px;">сила отдачи</div>
+<div style="display: flex; align-items: stretch; justify-content: center; gap: 16px; height: 96px; margin-top: 8px;">
+<div style="width: 118px;"></div>
+<div style="display: flex; flex-direction: column; align-items: center;">
+<div style="width: 4px; flex: 1; border-radius: 2px; background: linear-gradient(to bottom, rgba(82,176,216,.12), #52B0D8);"></div>
+<div style="width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 16px solid #52B0D8;"></div>
+</div>
+<div style="width: 118px; align-self: center; text-align: left; font-size: 13.5px; line-height: 1.3; color: #7A7A7A;">свет —<br>наслаждение</div>
+</div>
+<div style="width: 176px; height: 92px; margin: 0 auto; border: 2.5px solid #3C5D90; border-top: 0; border-radius: 0 0 96px 96px; background: linear-gradient(to bottom, rgba(82,176,216,.10), rgba(82,176,216,.42)); display: flex; align-items: center; justify-content: center;">
+<div style="font-size: 13.5px; font-weight: 600; line-height: 1.3; color: #3C5D90;">желание<br>получать</div>
+</div>
+<div style="display: inline-block; background: #fff; color: #3C5D90; border: 1.5px solid #52B0D8; font-weight: 600; font-size: 14px; letter-spacing: .03em; padding: 8px 22px; border-radius: 999px; margin-top: 14px;">Творение</div>
+<div style="font-size: 13.5px; font-weight: 600; color: #3C5D90; margin-top: 6px;">желание получать — сосуд, кли</div>
+</div>
+<div style="border-top: 1px solid #EFF7FA; margin-top: 18px; padding-top: 12px; font-size: 13.5px; line-height: 1.6; color: #7A7A7A;"><span style="font-weight: 700; color: #3C5D90;">Схема 1.</span> Желание получать и свет, который его наполняет. Ёмкость сосуда — величина желания; наслаждение — количество света, которое в него входит. Больше в мироздании ничего нет: всё остальное — сочетания этих двух.</div>
+</div>
+<h4>Почему по части можно судить о целом</h4>
+<p><strong>Закон общего и частного:</strong> то, что есть в общем, есть и в частном, а по частному можно судить об общем. Один и тот же порядок повторяется на всех уровнях — в мироздании целиком, в истории человечества, в жизни одного человека.</p>
+<p>Практически это значит две вещи.</p>
+<p>Во-первых, вам не нужно охватить всю систему, чтобы начать. Можно начать с себя — и то, что вы обнаружите в себе, окажется устроено так же, как целое.</p>
+<p>Во-вторых, обратное тоже верно: разбираясь в общем устройстве, вы будете узнавать собственные состояния. Поэтому темы, которые поначалу кажутся отвлечёнными, через несколько недель начинают читаться как описание вашей внутренней жизни.</p>
+<p>Пользоваться этим законом начнём позже.</p>
+<h4>Чем каббала не является</h4>
+<p><strong>Не религия.</strong> Не требует веры, обрядов, принадлежности к народу или общине. Не предлагает менять образ жизни.</p>
+<p><strong>Не философия.</strong> Философия строит умозрительные конструкции. Каббала описывает только то, что было пережито исследователем на опыте — подробно об этом в третьей главе.</p>
+<p><strong>Не эзотерика и не магия.</strong> Никаких амулетов, заговоров, воздействий на других людей и предсказаний.</p>
+<p><strong>Не психология.</strong> Психология работает с тем, как человек устроен и как ему стало плохо. Каббала работает с тем, зачем он устроен именно так. Это разные слои, и они не конкурируют: если вы ходите к психологу, продолжайте.</p>
+<h4>Итог главы</h4>
+<ul>
+<li>Каббала — наука о получении, а не о тайнах.</li>
+<li>Она описывает порядок связей между силой отдачи и желанием получать, и этот порядок раскрывается человеку <strong>при жизни, в этом мире</strong>.</li>
+<li>Всё, что есть в общем, есть и в частном — поэтому исследование начинается с себя.</li>
+</ul>
+<p><strong>Вопрос для отклика.</strong> Какое из четырёх «не является» было для вас самым неожиданным — и почему?</p>', timemodified=UNIX_TIMESTAMP() WHERE id=17879 AND lessonid=1960;
+UPDATE mdl_lesson_pages SET contents='<h4>Откуда взялось желание</h4>
+<p>В первой главе установлено: всё, кроме силы отдачи, — это желание получать. Из этого вырастает следующий вопрос. Если в основе только одна сила и созданное ею желание, откуда тогда взялось всё остальное — миры, люди, характеры, обстоятельства, ваша конкретная жизнь с её конкретными сложностями?</p>
+<p><strong>Разнообразие не в источнике, а в порядке его проявления.</strong></p>
+<h4>Одна причина, множество следствий</h4>
+<p>Единственный закон действует на разных уровнях. На уровне неживой материи он выглядит как физика. На уровне растений — как рост к свету. На уровне животных — как инстинкт. На уровне человека — как желания, мысли и отношения.</p>
+<p>Закон один. Проявлений много, потому что много уровней, через которые он проходит.</p>
+<p>Каббала занимается именно этим: не перечислением проявлений, а <strong>порядком</strong>, в котором единая сила разворачивается в множество. Слово «порядок» из определения — здесь оно и работает.</p>
+<p>То, что вы воспринимаете как множество независимых сил, действующих на вашу жизнь — обстоятельства, люди, случайности, — согласно этой науке является одной силой, проявленной на разных уровнях. Проверить это утверждение можно только самому и не сегодня.</p>
+<div class="kab-clip" style="border-left: 3px solid #4a90a4; background: #f2f8fa; padding: 12px 16px; margin: 20px 0;">
+<p style="margin: 0 0 10px;"><strong>🎬 Клип.</strong> «Картина, вышитая крестиками». С лицевой стороны — отдельные фигуры; связи между ними видны только с изнанки: «посмотрите сзади на ниточки, протянутые между всеми частями картины». И в том же фрагменте — как понять, ваша ли это наука: если почувствуете желание раскрыть высший мир, она для вас; если нет — знания всё равно помогут по-другому относиться к миру.</p>
+<iframe src="https://drive.google.com/file/d/1tU5Rd2eup5-y_S9_ifi4UzLCLhzwXy7H/preview" width="100%" height="480" allow="autoplay"></iframe>
+</div>
+<h4>Путь сверху вниз</h4>
+<p>Первое движение — от источника вниз, до нашего мира.</p>
+<p>Сначала есть только сила отдачи и наслаждение, которое она несёт. Затем возникает то, что способно это получать, — желание. Дальше желание проходит несколько ступеней, на каждой из которых оно меняется: сначала полностью слито с источником и не отличает себя от него, затем начинает отделяться, затем ощущает себя отдельным, затем перестаёт чувствовать источник вовсе.</p>
+<p>Подробную механику этих ступеней вы разберёте в уроке 4.</p>
+<p><strong>Вниз всё это шло без участия желания.</strong> Оно не выбирало, не соглашалось и не сопротивлялось — оно разворачивалось по закону, как разворачивается семя. На этом отрезке нет ни свободы, ни заслуги.</p>
+<p>Нижняя точка этого пути — то состояние, в котором вы находитесь прямо сейчас: желание получать, не ощущающее своего источника.</p>
+<h4>Это не наказание</h4>
+<p>То, что вы не чувствуете источника, — <strong>не поломка и не наказание.</strong> Это условие, без которого невозможно то, что будет дальше.</p>
+<p>Существо, ощущающее силу, которая его наполняет, не может ей ничего противопоставить и ничего выбрать: оно просто получает. Чтобы появился кто-то, способный выбирать, его надо было отделить от источника и оставить в неощущении.</p>
+<p>Нижняя точка — не дно, а стартовая площадка. Она сделана специально.</p>
+<h4>Путь снизу вверх</h4>
+<p>Второе движение — обратно, по тем же ступеням.</p>
+<div class="kab-figure" style="border: 1px solid #D9E8F2; border-radius: 12px; background: #fff; padding: 20px 16px 12px; margin: 20px 0;">
+<div style="max-width: 560px; margin: 0 auto;">
+<div style="text-align: center; background: #3C5D90; color: #fff; border-radius: 10px; padding: 10px 14px; font-weight: 600; font-size: 14.5px; line-height: 1.3;">Сила отдачи — источник<div style="font-weight: 400; font-size: 12.5px; color: rgba(255,255,255,.85); margin-top: 3px;">и наслаждение, которое она несёт</div></div>
+<div style="display: flex; align-items: stretch; gap: 10px; margin: 10px 0;">
+<div style="width: 22px; flex: none; display: flex; flex-direction: column; align-items: center; padding: 2px 0;">
+<div style="width: 3px; flex: 1; border-radius: 2px; background: #52B0D8;"></div>
+<div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #52B0D8;"></div>
+</div>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+<div style="display: flex; align-items: flex-start; gap: 9px; padding: 8px 10px; border-radius: 10px; background: #F4F9FD;">
+<div style="flex: none; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #52B0D8; color: #3C5D90; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;">1</div>
+<div style="font-size: 13.5px; line-height: 1.4; color: #222;"><span style="font-weight: 600; color: #3C5D90;">Желание возникает.</span> Слито с источником, не отличает себя от него.</div>
+</div>
+<div style="display: flex; align-items: flex-start; gap: 9px; padding: 8px 10px; border-radius: 10px; background: #F4F9FD;">
+<div style="flex: none; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #52B0D8; color: #3C5D90; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;">2</div>
+<div style="font-size: 13.5px; line-height: 1.4; color: #222;"><span style="font-weight: 600; color: #3C5D90;">Начинает отделяться.</span> Впервые различает: есть источник — и есть оно само.</div>
+</div>
+<div style="display: flex; align-items: flex-start; gap: 9px; padding: 8px 10px; border-radius: 10px; background: #F4F9FD;">
+<div style="flex: none; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #52B0D8; color: #3C5D90; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;">3</div>
+<div style="font-size: 13.5px; line-height: 1.4; color: #222;"><span style="font-weight: 600; color: #3C5D90;">Ощущает себя отдельным.</span> Источник ещё чувствуется, но уже снаружи.</div>
+</div>
+<div style="display: flex; align-items: flex-start; gap: 9px; padding: 8px 10px; border-radius: 10px; background: #F4F9FD;">
+<div style="flex: none; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #52B0D8; color: #3C5D90; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;">4</div>
+<div style="font-size: 13.5px; line-height: 1.4; color: #222;"><span style="font-weight: 600; color: #3C5D90;">Перестаёт чувствовать источник.</span> Остаётся только желание получать.</div>
+</div>
+</div>
+<div style="width: 22px; flex: none; display: flex; flex-direction: column; align-items: center; padding: 2px 0;">
+<div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 12px solid #A42BB9;"></div>
+<div style="width: 3px; flex: 1; border-radius: 2px; background: #A42BB9;"></div>
+</div>
+</div>
+<div style="text-align: center; background: #F4F9FD; border: 1.5px solid #52B0D8; color: #3C5D90; border-radius: 10px; padding: 10px 14px; font-weight: 600; font-size: 14.5px; line-height: 1.3;">Наш мир<div style="font-weight: 400; font-size: 12.5px; color: #7A7A7A; margin-top: 3px;">желание получать, не ощущающее источника — точка, в которой вы сейчас. Здесь идёт развитие желаний (схема 3), и отсюда начинается подъём.</div></div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 12px; font-size: 12.5px; line-height: 1.45; color: #222;">
+<div style="flex: 1 1 200px;"><span style="font-weight: 700; color: #52B0D8;">↓ Сверху вниз.</span> Без участия желания, по закону — как разворачивается семя. Ни свободы, ни заслуги.</div>
+<div style="flex: 1 1 200px;"><span style="font-weight: 700; color: #A42BB9;">↑ Снизу вверх.</span> По тем же ступеням, но только самим человеком — добровольно, с осознанием, своим усилием.</div>
+</div>
+</div>
+<div style="border-top: 1px solid #EFF7FA; margin-top: 18px; padding-top: 12px; font-size: 13.5px; line-height: 1.6; color: #7A7A7A;"><span style="font-weight: 700; color: #3C5D90;">Схема 2.</span> Нисхождение сверху вниз, развитие в нашем мире, подъём снизу вверх по тем же ступеням. Вниз всё шло без нас; вверх идёт только нами.</div>
+</div>
+<p>Главное отличие: <strong>вниз шло без нас, вверх идёт только нами.</strong></p>
+<p>Каждую ступень человек проходит сам — добровольно, с осознанием, своим усилием. Никакой автоматики здесь нет. Поэтому в каббале так много говорится о том, что никто не может сделать эту работу за другого: не из суровости, а потому что работа, сделанная за вас, не даёт того результата, ради которого всё устроено.</p>
+<p>Расти вы начали без своего согласия, а взрослеть — только сами. Первое произошло с вами, второе делаете вы.</p>
+<h4>Что двигает человека вверх</h4>
+<p>Если вверх идёт только добровольно, что заставляет человека сдвинуться?</p>
+<p>Развитие желаний. Оно идёт по ступеням, и эти ступени принято изображать пирамидой.</p>
+<p><strong>Наполненное желание исчезает.</strong> Не уменьшается, а исчезает вместе с наслаждением. Голодный, который поел, больше не наслаждается едой. Тот, кто добился должности, через месяц её не чувствует. Это не изъян характера, а устройство желания получать: наслаждение существует только в промежутке между нехваткой и наполнением.</p>
+<p>Отсюда следствие: чтобы наслаждаться дальше, нужно желание <strong>больше</strong> предыдущего. И человечество проходит эту лестницу по порядку — телесные желания, богатство, почёт и власть, знание. Каждая следующая ступень качественно иная, а не просто «то же самое, но больше».</p>
+<div class="kab-figure" style="border: 1px solid #D9E8F2; border-radius: 12px; background: #fff; padding: 20px 16px 12px; margin: 20px 0;">
+<div style="max-width: 540px; margin: 0 auto;">
+<div style="width: 56%; min-width: 200px; margin: 0 auto 8px; padding: 10px 12px; text-align: center; border: 1.5px dashed #A42BB9; border-radius: 10px; background: #fff;">
+<div style="font-weight: 700; font-size: 14.5px; line-height: 1.3; color: #A42BB9;">Вопрос о смысле</div>
+<div style="font-size: 12.5px; line-height: 1.35; color: #7A7A7A; margin-top: 3px;">желание, которое не закрывается ничем из перечисленного. Сегодня — у сотен миллионов</div>
+</div>
+<div style="width: 66%; min-width: 216px; margin: 0 auto 6px; padding: 10px 12px; text-align: center; border-radius: 10px; background: #E3F1F8; color: #3C5D90;">
+<div style="font-weight: 700; font-size: 14.5px; line-height: 1.3;">4 · Знание</div>
+<div style="font-size: 12.5px; line-height: 1.35; color: #5A7396; margin-top: 2px;">Новое время, XV–XX века</div>
+</div>
+<div style="width: 77%; min-width: 232px; margin: 0 auto 6px; padding: 10px 12px; text-align: center; border-radius: 10px; background: #B9DDEC; color: #3C5D90;">
+<div style="font-weight: 700; font-size: 14.5px; line-height: 1.3;">3 · Почёт и власть</div>
+<div style="font-size: 12.5px; line-height: 1.35; color: #4A6690; margin-top: 2px;">Средневековье, V–XV века</div>
+</div>
+<div style="width: 88%; min-width: 248px; margin: 0 auto 6px; padding: 10px 12px; text-align: center; border-radius: 10px; background: #52B0D8; color: #fff;">
+<div style="font-weight: 700; font-size: 14.5px; line-height: 1.3;">2 · Богатство</div>
+<div style="font-size: 12.5px; line-height: 1.35; color: rgba(255,255,255,.88); margin-top: 2px;">Древние цивилизации, IV тысячелетие до н. э. — V век</div>
+</div>
+<div style="width: 100%; margin: 0 auto; padding: 10px 12px; text-align: center; border-radius: 10px; background: #3C5D90; color: #fff;">
+<div style="font-weight: 700; font-size: 14.5px; line-height: 1.3;">1 · Телесные желания</div>
+<div style="font-size: 12.5px; line-height: 1.35; color: rgba(255,255,255,.85); margin-top: 2px;">Первобытность: пища, кров, семья</div>
+</div>
+</div>
+<div style="border-top: 1px solid #EFF7FA; margin-top: 18px; padding-top: 12px; font-size: 13.5px; line-height: 1.6; color: #7A7A7A;"><span style="font-weight: 700; color: #3C5D90;">Схема 3.</span> Лестница желаний: четыре ступени, которые человечество прошло по порядку, и над ними — желание, которое не закрывается ничем из перечисленного. Каждая следующая ступень — качественно иное желание, а не «то же, но больше». Здесь лестница показана снаружи, как история; в уроке 2 та же пирамида будет показана изнутри.</div>
+</div>
+<p>А за знанием обнаруживается желание, которое не закрывается ничем из перечисленного. То самое, с которым вы сюда пришли.</p>
+<h4>Почему это происходит именно сейчас</h4>
+<p>Пирамида работает не только в отдельной жизни, но и в истории. Человечество прошло её ступени за тысячи лет и в последние десятилетия дошло до верха: материальные возможности выросли беспрецедентно, а ощущение осмысленности — нет.</p>
+<p>Поэтому вопрос о смысле, который раньше возникал у единиц, сегодня возникает у сотен миллионов. Не потому, что люди стали хуже или слабее, а потому что лестница пройдена.</p>
+<p>Почему при этом наука так долго оставалась закрытой — тема третьей главы.</p>
+<h4>Итог главы</h4>
+<ul>
+<li>Разнообразие мира — не множество сил, а один порядок, проявленный на разных уровнях.</li>
+<li>Вниз творение шло без своего участия; вверх человек идёт только сам. Поэтому за него нельзя сделать эту работу.</li>
+<li>Наполненное желание исчезает — отсюда лестница желаний и её верхняя ступень, вопрос о смысле.</li>
+<li>Массовость этого вопроса сегодня — признак того, что лестница пройдена.</li>
+</ul>
+<p><strong>Вопрос для отклика.</strong> Вспомните желание, которого вы когда-то очень сильно хотели и добились. Что осталось от того наслаждения через полгода?</p>', timemodified=UNIX_TIMESTAMP() WHERE id=17880 AND lessonid=1960;
+UPDATE mdl_lesson SET timemodified=UNIX_TIMESTAMP() WHERE id=1960;
+COMMIT;
+SELECT id, title, LENGTH(contents) len, (LENGTH(contents)-LENGTH(REPLACE(contents,'kab-figure','')))/LENGTH('kab-figure') figures, (LENGTH(contents)-LENGTH(REPLACE(contents,'заказ дизайнеру','')))/LENGTH('заказ дизайнеру') todo FROM mdl_lesson_pages WHERE lessonid=1960 ORDER BY id;
