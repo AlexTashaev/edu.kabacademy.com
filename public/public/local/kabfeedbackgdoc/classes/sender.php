@@ -32,19 +32,66 @@ require_once($CFG->libdir . '/filelib.php');
 class sender {
 
     /**
-     * Whether a feedback cmid is in the configured watch list.
+     * Parse a comma/space separated list of ints.
+     *
+     * @param string $configured
+     * @return int[]
+     */
+    protected static function id_list(string $configured): array {
+        $configured = trim($configured);
+        if ($configured === '') {
+            return [];
+        }
+        return array_values(array_filter(array_map('intval', preg_split('/[\s,;]+/', $configured))));
+    }
+
+    /**
+     * Whether a feedback cmid is in the configured watch list (cmids setting only).
      *
      * @param int $cmid
      * @param string $configured comma-separated cmids; empty = all
      * @return bool
      */
     public static function cmid_is_watched(int $cmid, string $configured): bool {
-        $configured = trim($configured);
-        if ($configured === '') {
+        $ids = self::id_list($configured);
+        return empty($ids) || in_array($cmid, $ids, true);
+    }
+
+    /**
+     * Whether a feedback activity should be forwarded, given all three filters.
+     *
+     * All filters are AND-ed; an empty filter matches everything:
+     *  - cmids: explicit course module ids;
+     *  - courseids: every feedback in these courses;
+     *  - namepattern: case-insensitive regex against the activity name (e.g. "вопрос").
+     *
+     * @param int $cmid
+     * @param \stdClass $config plugin config
+     * @return bool
+     */
+    public static function is_watched(int $cmid, \stdClass $config): bool {
+        if (!self::cmid_is_watched($cmid, (string)($config->cmids ?? ''))) {
+            return false;
+        }
+        $courseids = self::id_list((string)($config->courseids ?? ''));
+        $pattern = trim((string)($config->namepattern ?? ''));
+        if (empty($courseids) && $pattern === '') {
             return true;
         }
-        $ids = array_filter(array_map('intval', preg_split('/[\s,;]+/', $configured)));
-        return in_array($cmid, $ids, true);
+        $cm = get_coursemodule_from_id('feedback', $cmid);
+        if (!$cm) {
+            return false;
+        }
+        if (!empty($courseids) && !in_array((int)$cm->course, $courseids, true)) {
+            return false;
+        }
+        if ($pattern !== '') {
+            $re = '/' . str_replace('/', '\/', $pattern) . '/iu';
+            if (@preg_match($re, $cm->name) !== 1) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -168,9 +215,10 @@ class sender {
     /**
      * POST the payload to the configured Apps Script web app.
      *
-     * Apps Script answers a POST with a 302 to script.googleusercontent.com;
-     * Moodle's curl wrapper follows redirects by default, and the redirected
-     * GET returns whatever doPost() produced.
+     * Apps Script answers a POST with a 302 to script.googleusercontent.com,
+     * which only accepts GET. Moodle's curl wrapper, when it has to emulate
+     * redirects (open_basedir), re-issues the POST and gets a 405, so we do
+     * not follow at all: POST once, then GET the Location ourselves.
      *
      * @param array $payload
      * @return array ['ok' => bool, 'code' => int, 'body' => string]
@@ -188,15 +236,42 @@ class sender {
         $curl = new \curl();
         $curl->setHeader(['Content-Type: application/json', 'Accept: application/json']);
         $body = $curl->post($url, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), [
-            'CURLOPT_FOLLOWLOCATION' => 1,
-            'CURLOPT_MAXREDIRS'      => 5,
+            'CURLOPT_FOLLOWLOCATION' => 0,
             'CURLOPT_CONNECTTIMEOUT' => 10,
             'CURLOPT_TIMEOUT'        => 30,
         ]);
-        $code = (int)($curl->get_info()['http_code'] ?? 0);
+        $info = $curl->get_info();
+        $code = (int)($info['http_code'] ?? 0);
         $body = is_string($body) ? $body : '';
         if ($curl->get_errno()) {
             return ['ok' => false, 'code' => $code, 'body' => 'curl error: ' . $curl->error];
+        }
+
+        for ($hop = 0; $hop < 5 && $code >= 300 && $code < 400; $hop++) {
+            $location = (string)($info['redirect_url'] ?? '');
+            if ($location === '') {
+                $raw = $curl->get_raw_response();
+                $raw = is_array($raw) ? implode("\n", $raw) : (string)$raw;
+                if (preg_match('/^Location:\s*(\S+)/mi', $raw, $m)) {
+                    $location = $m[1];
+                }
+            }
+            if ($location === '') {
+                break;
+            }
+            $curl = new \curl();
+            $curl->setHeader(['Accept: application/json']);
+            $body = $curl->get($location, [], [
+                'CURLOPT_FOLLOWLOCATION' => 0,
+                'CURLOPT_CONNECTTIMEOUT' => 10,
+                'CURLOPT_TIMEOUT'        => 30,
+            ]);
+            $info = $curl->get_info();
+            $code = (int)($info['http_code'] ?? 0);
+            $body = is_string($body) ? $body : '';
+            if ($curl->get_errno()) {
+                return ['ok' => false, 'code' => $code, 'body' => 'curl error: ' . $curl->error];
+            }
         }
 
         $ok = ($code >= 200 && $code < 300);

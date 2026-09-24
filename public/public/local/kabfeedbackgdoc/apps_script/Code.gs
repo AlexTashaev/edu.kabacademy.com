@@ -33,7 +33,7 @@ var COLUMN_RULES = [
 ];
 
 var HEADER = ['Отметка времени', 'Имя', 'Город', 'Буду участвовать в вебинаре', 'Мой вопрос',
-              'Номер группы', 'Email', 'Ссылка в Moodle', 'Ответ преподавателя'];
+              'Номер группы', 'Email', 'Ссылка в Moodle', 'Форма', 'Ответ преподавателя'];
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
@@ -46,11 +46,15 @@ function doPost(e) {
     if (data.event !== 'feedback_response') {
       return respond({ ok: false, error: 'unknown event' });
     }
-    if (alreadyInserted_(data.completedid)) {
+    // Moodle overwrites a non-anonymous response on re-submission (same completedid,
+    // new timestamp), so the dedupe key must include the timestamp: an edited answer
+    // becomes a new row, a cron retry of the same delivery does not.
+    var key = String(data.completedid) + ':' + String(data.timestamp);
+    if (alreadyInserted_(key)) {
       return respond({ ok: true, duplicate: true });
     }
     appendRow_(data);
-    remember_(data.completedid);
+    remember_(key);
     return respond({ ok: true });
   } catch (err) {
     return respond({ ok: false, error: String(err) });
@@ -77,9 +81,9 @@ function sheet_() {
   }
   var sh = SHEET_NAME ? ss.getSheetByName(SHEET_NAME) : ss.getSheets()[0];
   if (!sh) { throw new Error('sheet not found: ' + SHEET_NAME); }
-  if (sh.getLastRow() === 0) {
-    sh.appendRow(HEADER);
-    sh.getRange(1, 1, 1, HEADER.length).setFontWeight('bold');
+  if (sh.getLastRow() <= 1) {
+    // Empty sheet (or header only): (re)write the header so column layout matches this script.
+    sh.getRange(1, 1, 1, HEADER.length).setValues([HEADER]).setFontWeight('bold');
     sh.setFrozenRows(1);
   }
   return sh;
@@ -109,6 +113,7 @@ function appendRow_(d) {
     u ? (u.groups || []).join(', ') : '',        // Номер группы
     u ? (u.email || '') : '',                    // Email
     d.responseurl || '',                         // Ссылка в Moodle
+    (d.feedback && d.feedback.name) || '',       // Форма (which weekly activity)
     ''                                           // Ответ преподавателя
   ];
 
@@ -126,17 +131,17 @@ function appendRow_(d) {
 // ---------------------------------------------------------------------------
 // Dedupe: Moodle retries on failure, so the same completedid may arrive twice.
 
-function alreadyInserted_(id) {
-  if (!id) { return false; }
+function alreadyInserted_(key) {
+  if (!key || key.indexOf('0:') === 0) { return false; } // completedid 0 = test payloads, never deduped
   var seen = JSON.parse(PropertiesService.getScriptProperties().getProperty('seen') || '[]');
-  return seen.indexOf(Number(id)) !== -1;
+  return seen.indexOf(key) !== -1;
 }
 
-function remember_(id) {
-  if (!id) { return; }
+function remember_(key) {
+  if (!key || key.indexOf('0:') === 0) { return; }
   var props = PropertiesService.getScriptProperties();
   var seen = JSON.parse(props.getProperty('seen') || '[]');
-  seen.push(Number(id));
+  seen.push(key);
   if (seen.length > MAX_REMEMBERED_IDS) {
     seen = seen.slice(seen.length - MAX_REMEMBERED_IDS);
   }

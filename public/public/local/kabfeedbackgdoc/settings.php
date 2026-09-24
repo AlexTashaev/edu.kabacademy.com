@@ -51,6 +51,22 @@ if ($hassiteconfig) {
     ));
 
     $settings->add(new admin_setting_configtext(
+        'local_kabfeedbackgdoc/courseids',
+        get_string('courseids', 'local_kabfeedbackgdoc'),
+        get_string('courseids_desc', 'local_kabfeedbackgdoc'),
+        '',
+        PARAM_TEXT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'local_kabfeedbackgdoc/namepattern',
+        get_string('namepattern', 'local_kabfeedbackgdoc'),
+        get_string('namepattern_desc', 'local_kabfeedbackgdoc'),
+        '',
+        PARAM_RAW_TRIMMED
+    ));
+
+    $settings->add(new admin_setting_configtext(
         'local_kabfeedbackgdoc/cmids',
         get_string('cmids', 'local_kabfeedbackgdoc'),
         get_string('cmids_desc', 'local_kabfeedbackgdoc'),
