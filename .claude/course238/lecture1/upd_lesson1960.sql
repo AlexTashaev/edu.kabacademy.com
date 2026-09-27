@@ -27,10 +27,10 @@ UPDATE mdl_lesson_pages SET contents='<h4>Откуда взялось желан
 <p>Второе движение — обратно, по тем же ступеням.</p>
 <div class="kab-figure" style="border: 1px solid #D9E8F2; border-radius: 12px; background: #fff; padding: 20px 16px 12px; margin: 20px 0;">
 <picture>
-<source media="(max-width: 767px)" srcset="https://edu.kabacademy.com/kab/img/l1/schema2-m.svg?v=1" width="400" height="558">
-<img src="https://edu.kabacademy.com/kab/img/l1/schema2.svg?v=1" width="760" height="400" alt="Схема 2. Три оси развития: нисхождение от источника сверху вниз, развитие в нашем мире, подъём снизу вверх по тем же ступеням" style="display: block; width: auto; max-width: 100%; height: auto; margin: 0 auto;">
+<source media="(max-width: 767px)" srcset="https://edu.kabacademy.com/kab/img/l1/schema2-m.svg?v=2" width="400" height="736">
+<img src="https://edu.kabacademy.com/kab/img/l1/schema2.svg?v=2" width="800" height="506" alt="Схема 2. Замысел творения: нисхождение в материальный мир через пять миров, развитие материального мира и подъём по духовным ступеням" style="display: block; width: auto; max-width: 100%; height: auto; margin: 0 auto;">
 </picture>
-<div style="border-top: 1px solid #EFF7FA; margin-top: 18px; padding-top: 12px; font-size: 13.5px; line-height: 1.6; color: #7A7A7A;"><span style="font-weight: 700; color: #3C5D90;">Схема 2.</span> Три оси развития: нисхождение сверху вниз, развитие в нашем мире, подъём снизу вверх по тем же ступеням. Вниз всё шло без нас; вверх идёт только нами. Сегодня это только контур — по этой карте идёт весь курс.</div>
+<div style="border-top: 1px solid #EFF7FA; margin-top: 18px; padding-top: 12px; font-size: 13.5px; line-height: 1.6; color: #7A7A7A;"><span style="font-weight: 700; color: #3C5D90;">Схема 2.</span> Замысел творения: нисхождение в материальный мир, развитие материального мира и подъём по духовным ступеням — тем же самым, по которым шло нисхождение. Вниз всё шло без нас; вверх идёт только нами.</div>
 </div>
 <p>Главное отличие: <strong>вниз шло без нас, вверх идёт только нами.</strong></p>
 <p>Каждую ступень человек проходит сам — добровольно, с осознанием, своим усилием. Никакой автоматики здесь нет. Поэтому в каббале так много говорится о том, что никто не может сделать эту работу за другого: не из суровости, а потому что работа, сделанная за вас, не даёт того результата, ради которого всё устроено.</p>
@@ -42,10 +42,10 @@ UPDATE mdl_lesson_pages SET contents='<h4>Откуда взялось желан
 <p>Отсюда следствие: чтобы наслаждаться дальше, нужно желание <strong>больше</strong> предыдущего. И человечество проходит эту лестницу по порядку — телесные желания, богатство, почёт и власть, знание. Каждая следующая ступень качественно иная, а не просто «то же самое, но больше».</p>
 <div class="kab-figure" style="border: 1px solid #D9E8F2; border-radius: 12px; background: #fff; padding: 20px 16px 12px; margin: 20px 0;">
 <picture>
-<source media="(max-width: 767px)" srcset="https://edu.kabacademy.com/kab/img/l1/schema3-m.svg?v=1" width="400" height="624">
-<img src="https://edu.kabacademy.com/kab/img/l1/schema3.svg?v=1" width="800" height="372" alt="Схема 3. Пирамида желаний: телесные желания, богатство, почёт и власть, знание и над ними вопрос о смысле" style="display: block; width: auto; max-width: 100%; height: auto; margin: 0 auto;">
+<source media="(max-width: 767px)" srcset="https://edu.kabacademy.com/kab/img/l1/schema3-m.svg?v=2" width="400" height="666">
+<img src="https://edu.kabacademy.com/kab/img/l1/schema3.svg?v=2" width="800" height="418" alt="Схема 3. Пирамида желаний: телесные желания, богатство, почёт и власть, знание и над ними вопрос о смысле; у каждой ступени — уровень желаний и эпоха" style="display: block; width: auto; max-width: 100%; height: auto; margin: 0 auto;">
 </picture>
-<div style="border-top: 1px solid #EFF7FA; margin-top: 18px; padding-top: 12px; font-size: 13.5px; line-height: 1.6; color: #7A7A7A;"><span style="font-weight: 700; color: #3C5D90;">Схема 3.</span> Пирамида желаний: четыре ступени, которые человечество прошло по порядку, и над ними — желание, которое не закрывается ничем из перечисленного. Жизнь одного человека, история человечества и эволюция природы идут по одной и той же лестнице. Здесь она показана снаружи, как история; в уроке 2 — изнутри.</div>
+<div style="border-top: 1px solid #EFF7FA; margin-top: 18px; padding-top: 12px; font-size: 13.5px; line-height: 1.6; color: #7A7A7A;"><span style="font-weight: 700; color: #3C5D90;">Схема 3.</span> Пирамида желаний: четыре ступени, которые человечество прошло по порядку, и над ними — желание, которое не закрывается ничем из перечисленного. Здесь пирамида показана снаружи, как история; в уроке 2 — изнутри.</div>
 </div>
 <p>А за знанием обнаруживается желание, которое не закрывается ничем из перечисленного. То самое, с которым вы сюда пришли.</p>
 <h4>Почему это происходит именно сейчас</h4>
@@ -59,6 +59,6 @@ UPDATE mdl_lesson_pages SET contents='<h4>Откуда взялось желан
 <li>Наполненное желание исчезает — отсюда лестница желаний и её верхняя ступень, вопрос о смысле.</li>
 <li>Массовость этого вопроса сегодня — признак того, что лестница пройдена.</li>
 </ul>
-<p><strong>Вопрос для отклика.</strong> Вспомните желание, которого вы когда-то очень сильно хотели и добились. Что осталось от того наслаждения через полгода?</p>', timemodified=UNIX_TIMESTAMP() WHERE id=17880 AND lessonid=1960 AND MD5(contents)='44ce9605a5a23470c4253fa8caf2d185';
+<p><strong>Вопрос для отклика.</strong> Вспомните желание, которого вы когда-то очень сильно хотели и добились. Что осталось от того наслаждения через полгода?</p>', timemodified=UNIX_TIMESTAMP() WHERE id=17880 AND lessonid=1960 AND MD5(contents)='bd0c4c91bc10432a661f38320a1cda31';
 SELECT 17880 page, ROW_COUNT() updated_rows;
 SELECT id, title, LENGTH(contents) len, MD5(contents) md5, (LENGTH(contents)-LENGTH(REPLACE(contents,'kab-figure','')))/LENGTH('kab-figure') figures FROM mdl_lesson_pages WHERE lessonid=1960 ORDER BY id;
