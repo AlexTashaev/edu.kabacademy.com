@@ -23,3 +23,6 @@
 .claude/launch.json
 __pycache__/
 *.pyc
+
+# шрифты для генератора схем (качаются с сайта)
+.claude/**/_fonts/
