@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light">
+<title>Схемы лекции 1 — предпросмотр</title>
+<!-- Предпросмотр анимированных схем 2 и 3 лекции 1 (курс 238, lesson 1960) для преподавателя.
+     В курс не входит: урок показывает неподвижные /kab/img/l1/schema*.svg, здесь — /kab/img/l1/anim/.
+     Параметры адреса: ?device=phone — вид телефона, ?anim=0 — без анимации. -->
+<link rel="stylesheet" href="/kab/fonts.css">
+<style>
+:root {
+  --navy: #3C5D90; --blue: #52B0D8; --purple: #A42BB9;
+  --gray: #7A7A7A; --border: #D9E8F2; --divider: #EFF7FA;
+  --ink: #1d2125; --page: #F4F6F8;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font-family: Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 15px; line-height: 1.55;
+}
+.wrap { max-width: 880px; margin: 0 auto; padding: 28px 16px 56px; }
+.kicker {
+  margin: 0 0 8px; font-size: 12px; font-weight: 600; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--purple);
+}
+h1 { margin: 0 0 10px; font-size: 26px; line-height: 1.2; font-weight: 700; color: var(--navy); letter-spacing: -.2px; }
+.lead { margin: 0 0 6px; font-size: 15.5px; max-width: 62ch; }
+.meta { margin: 0; font-size: 13.5px; color: var(--gray); }
+.bar {
+  position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+  margin: 16px 0 14px; padding: 10px 0; background: rgba(244, 246, 248, .94);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.seg { display: inline-flex; padding: 3px; background: #fff; border: 1px solid var(--border); border-radius: 999px; }
+.seg button {
+  font: inherit; font-size: 13.5px; font-weight: 600; color: var(--navy);
+  background: none; border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--navy); color: #fff; }
+.again {
+  font: inherit; font-size: 13.5px; font-weight: 600; color: #fff; background: var(--purple);
+  border: 0; border-radius: 8px; padding: 8px 16px; cursor: pointer;
+  box-shadow: 0 8px 18px -10px rgba(164, 43, 185, .8);
+}
+.again[disabled] { opacity: .4; cursor: default; box-shadow: none; }
+.sheet {
+  max-width: 830px; margin: 0 auto; padding: 24px 24px 28px; background: #fff;
+  border: 1px solid #E3E7EB; border-radius: 12px;
+}
+body.phone .sheet { max-width: 390px; padding: 16px 12px 22px; }
+.sheet h4 { margin: 26px 0 10px; font-size: 18.75px; line-height: 1.25; font-weight: 700; }
+.sheet h4:first-child { margin-top: 0; }
+.sheet p { margin: 0 0 14px; }
+.fig { margin: 20px 0; padding: 20px 16px 12px; background: #fff; border: 1px solid var(--border); border-radius: 12px; }
+.fig img { display: block; width: auto; max-width: 100%; height: auto; margin: 0 auto; }
+.fig figcaption {
+  margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--divider);
+  font-size: 13.5px; line-height: 1.6; color: var(--gray);
+}
+.fig figcaption b { color: var(--navy); }
+.foot { margin: 16px 0 0; font-size: 13px; color: var(--gray); text-align: center; }
+@media (max-width: 767px) {
+  .wrap { padding-top: 20px; }
+  h1 { font-size: 22px; }
+  .device { display: none; }
+  .sheet { padding: 16px 12px 22px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="kicker">Лекция 1 · глава 2 · предпросмотр</p>
+    <h1>Схемы 2 и 3 с анимацией</h1>
+    <p class="lead">Так схемы будут выглядеть в уроке «Суть науки каббала». Эта страница в курс не входит: ученики пока видят неподвижные схемы.</p>
+    <p class="meta">Анимация идёт по кругу: схема 2 — 27 секунд, схема 3 — 23 секунды.</p>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="Режим просмотра">
+    <div class="seg" role="group" aria-label="Анимация">
+      <button type="button" data-anim="1" aria-pressed="true">С анимацией</button>
+      <button type="button" data-anim="0" aria-pressed="false">Без анимации</button>
+    </div>
+    <div class="seg device" role="group" aria-label="Устройство">
+      <button type="button" data-phone="0" aria-pressed="true">Компьютер</button>
+      <button type="button" data-phone="1" aria-pressed="false">Телефон</button>
+    </div>
+    <button type="button" class="again">Показать сначала</button>
+  </div>
+
+  <article class="sheet">
+    <h4>Путь снизу вверх</h4>
+    <p>Второе движение — обратно, по тем же ступеням.</p>
+    <figure class="fig">
+      <picture>
+        <source media="(max-width: 767px)" srcset="/kab/img/l1/anim/schema2-m.svg?v=1" width="400" height="736">
+        <img data-fig="2" src="/kab/img/l1/anim/schema2.svg?v=1" width="800" height="506" alt="Схема 2. Замысел творения: нисхождение в материальный мир через пять миров, развитие материального мира и подъём по духовным ступеням">
+      </picture>
+      <figcaption><b>Схема 2.</b> Замысел творения: нисхождение в материальный мир, развитие материального мира и подъём по духовным ступеням — тем же самым, по которым шло нисхождение. Вниз всё шло без нас; вверх идёт только нами.</figcaption>
+    </figure>
+    <p>Главное отличие: <strong>вниз шло без нас, вверх идёт только нами.</strong></p>
+
+    <h4>Что двигает человека вверх</h4>
+    <p>Отсюда следствие: чтобы наслаждаться дальше, нужно желание <strong>больше</strong> предыдущего. И человечество проходит эту лестницу по порядку — телесные желания, богатство, почёт и власть, знание. Каждая следующая ступень качественно иная, а не просто «то же самое, но больше».</p>
+    <figure class="fig">
+      <picture>
+        <source media="(max-width: 767px)" srcset="/kab/img/l1/anim/schema3-m.svg?v=1" width="400" height="666">
+        <img data-fig="3" src="/kab/img/l1/anim/schema3.svg?v=1" width="800" height="418" alt="Схема 3. Пирамида желаний: телесные желания, богатство, почёт и власть, знание и над ними вопрос о смысле; у каждой ступени — уровень желаний и эпоха">
+      </picture>
+      <figcaption><b>Схема 3.</b> Пирамида желаний: четыре ступени, которые человечество прошло по порядку, и над ними — желание, которое не закрывается ничем из перечисленного. Здесь пирамида показана снаружи, как история; в уроке 2 — изнутри.</figcaption>
+    </figure>
+    <p>А за знанием обнаруживается желание, которое не закрывается ничем из перечисленного. То самое, с которым вы сюда пришли.</p>
+  </article>
+
+  <p class="foot">Фрагмент главы 2 «Два пути: сверху вниз и снизу вверх».</p>
+</div>
+
+<script>
+(function () {
+  var narrow = window.matchMedia('(max-width: 767px)');
+  var query = new URLSearchParams(location.search);
+  var state = { anim: query.get('anim') !== '0', phone: query.get('device') === 'phone', run: 0 };
+  var SIZES = { '2': { wide: [800, 506], narrow: [400, 736] }, '3': { wide: [800, 418], narrow: [400, 666] } };
+  var images = document.querySelectorAll('img[data-fig]');
+  var again = document.querySelector('.again');
+
+  // Картинку выбирает скрипт, <source> остаётся только для браузеров без скриптов.
+  document.querySelectorAll('.fig source').forEach(function (s) { s.parentNode.removeChild(s); });
+
+  function render() {
+    var phone = state.phone || narrow.matches;
+    images.forEach(function (img) {
+      var n = img.getAttribute('data-fig');
+      var size = SIZES[n][phone ? 'narrow' : 'wide'];
+      var file = 'schema' + n + (phone ? '-m' : '') + '.svg';
+      var url = state.anim ? '/kab/img/l1/anim/' + file + '?v=1' : '/kab/img/l1/' + file + '?v=2';
+      if (state.anim && state.run) url += '&run=' + state.run;
+      img.width = size[0];
+      img.height = size[1];
+      if (img.getAttribute('src') !== url) img.setAttribute('src', url);
+    });
+    document.body.classList.toggle('phone', state.phone && !narrow.matches);
+    document.querySelectorAll('[data-anim]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String((b.getAttribute('data-anim') === '1') === state.anim));
+    });
+    document.querySelectorAll('[data-phone]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String((b.getAttribute('data-phone') === '1') === state.phone));
+    });
+    again.disabled = !state.anim;
+  }
+
+  document.querySelectorAll('[data-anim]').forEach(function (b) {
+    b.addEventListener('click', function () { state.anim = b.getAttribute('data-anim') === '1'; render(); });
+  });
+  document.querySelectorAll('[data-phone]').forEach(function (b) {
+    b.addEventListener('click', function () { state.phone = b.getAttribute('data-phone') === '1'; render(); });
+  });
+  again.addEventListener('click', function () { state.run = Date.now(); render(); });
+  if (narrow.addEventListener) narrow.addEventListener('change', render);
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Анимированные варианты схем 2 и 3 (прототип, 27.09.2026). На prod не выложены.
+"""Анимированные варианты схем 2 и 3 (27.09.2026).
+
+Лежат на сервере отдельно от неподвижных: /kab/img/l1/anim/schema{2,3}{,-m}.svg. В урок не подключены —
+их показывает только страница предпросмотра для преподавателя /kab/preview/lecture1-schemes.html.
+Чтобы выложить в урок: в schemas/schema{2,3}.html поменять адреса картинок на anim/…, затем build.py.
 
 Анимация живёт внутри SVG (CSS @keyframes), поэтому работает в обычном <img>: без скриптов,
 в мобильном приложении, переживает редактор Moodle. Ограничения <img>: нет кликов и наведения,
@@ -12,7 +16,7 @@
 ступеням (пунктир связывает ступени двух осей).
 Сюжет схемы 3: ярусы встают снизу вверх, от каждого вправо выезжает полоса уровня.
 
-Запуск:  python make_svg_anim.py [--out DIR]   (по умолчанию DIR = svg/_anim, в git не лежит)
+Запуск:  python make_svg_anim.py [--out DIR]   (по умолчанию public/public/kab/img/l1/anim)
 """
 import argparse
 import sys
@@ -343,7 +347,7 @@ def schema3_narrow() -> ASvg:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--out', type=Path, default=Path(__file__).parent / '_anim')
+    ap.add_argument('--out', type=Path, default=M.OUT / 'anim')
     out = ap.parse_args().out
     out.mkdir(parents=True, exist_ok=True)
     for name, g in (('schema2', schema2_wide()), ('schema2-m', schema2_narrow()),

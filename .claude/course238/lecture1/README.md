@@ -91,6 +91,21 @@ ssh web-18 '/tmp/kab_moodle_sqlfile.sh /tmp/upd_lesson1960.sql'
 Превью: `python build.py --no-fetch --preview-dir DIR` (в DIR нужны `fonts.css`, `fonts/` и `l1/*.svg`),
 статик-сервер и скриншоты headless Edge; узкая колонка — `preview.html?w=360` при окне до 767px.
 
+## Анимация — на согласовании у преподавателя
+
+С 27.09.2026 есть анимированные варианты схем 2 и 3 (`svg/make_svg_anim.py`, CSS-кадры внутри SVG,
+работают в `<img>` без скриптов; при отключённой анимации виден готовый чертёж). Они лежат отдельно
+от неподвижных — `/kab/img/l1/anim/schema{2,3}{,-m}.svg` — и **в урок не подключены**.
+
+Показать преподавателю: https://edu.kabacademy.com/kab/preview/lecture1-schemes.html
+(статичная страница вне Moodle, без логина, `noindex`; переключатели «с анимацией / без» и
+«компьютер / телефон»; в адресе можно `?device=phone`, `?anim=0`). Исходник — `public/public/kab/preview/`.
+
+Выложить в урок после одобрения:
+1. в `schemas/schema{2,3}.html` заменить `/kab/img/l1/schema…svg?v=2` на `/kab/img/l1/anim/schema…svg?v=1`;
+2. `python build.py --only 2 3`, применить `upd_lesson1960.sql` (см. выше);
+3. страницу предпросмотра можно удалить.
+
 ## Осталось
 
 - Копия лекции 1 в боевом курсе 236 (lesson 1961 / cmid 13444) — без клипов и схем; перекопировать
