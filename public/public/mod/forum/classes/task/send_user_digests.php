@@ -580,6 +580,8 @@ class send_user_digests extends \core\task\adhoc_task {
             "Precedence: Bulk",
             'X-Auto-Response-Suppress: All',
             'Auto-Submitted: auto-generated',
+            // KAB patch: SendGrid category for forum digest stats.
+            'X-SMTPAPI: ' . json_encode(['category' => ['moodle-digest']]),
         );
 
         $eventdata = new \core\message\message();

@@ -506,6 +506,14 @@ class send_user_notifications extends \core\task\adhoc_task {
         $headers[] = "Thread-Topic: $threadtopic";
         $headers[] = "Thread-Index: " . substr($rootid, 1, 28);
 
+        // KAB patch: SendGrid categories for per-course and per-announcement stats.
+        // Discussion-level category only for news forums, so student threads don't flood the category list.
+        $categories = ['moodle-forum', 'course-' . $course->id];
+        if ($forum->type === 'news') {
+            $categories[] = 'news-' . $discussion->id;
+        }
+        $headers[] = 'X-SMTPAPI: ' . json_encode(['category' => $categories]);
+
         return $headers;
     }
 
