@@ -7,7 +7,7 @@
 <meta name="color-scheme" content="light">
 <title>Схемы лекции 1 — предпросмотр</title>
 <!-- Предпросмотр анимированных схем 2 и 3 лекции 1 (курс 238, lesson 1960) для преподавателя.
-     В курс не входит: урок показывает неподвижные /kab/img/l1/schema*.svg, здесь — /kab/img/l1/anim/.
+     С 28.09.2026 в уроке стоят анимированные /kab/img/l1/anim/; неподвижные /kab/img/l1/schema*.svg — для сравнения.
      Параметры адреса: ?device=phone — вид телефона, ?anim=0 — без анимации. -->
 <link rel="stylesheet" href="/kab/fonts.css">
 <style>
@@ -75,9 +75,9 @@ body.phone .sheet { max-width: 390px; padding: 16px 12px 22px; }
 <body>
 <div class="wrap">
   <header>
-    <p class="kicker">Лекция 1 · глава 2 · предпросмотр</p>
+    <p class="kicker">Лекция 1 · глава 2 · схемы</p>
     <h1>Схемы 2 и 3 с анимацией</h1>
-    <p class="lead">Так схемы будут выглядеть в уроке «Суть науки каббала». Эта страница в курс не входит: ученики пока видят неподвижные схемы.</p>
+    <p class="lead">Так схемы выглядят в уроке «Суть науки каббала». Здесь их можно сравнить с неподвижным вариантом и посмотреть, как они выглядят на телефоне.</p>
     <p class="meta">Анимация идёт по кругу: схема 2 — 27 секунд, схема 3 — 23 секунды.</p>
   </header>
 
@@ -98,8 +98,8 @@ body.phone .sheet { max-width: 390px; padding: 16px 12px 22px; }
     <p>Второе движение — обратно, по тем же ступеням.</p>
     <figure class="fig">
       <picture>
-        <source media="(max-width: 767px)" srcset="/kab/img/l1/anim/schema2-m.svg?v=1" width="400" height="736">
-        <img data-fig="2" src="/kab/img/l1/anim/schema2.svg?v=1" width="800" height="506" alt="Схема 2. Замысел творения: нисхождение в материальный мир через пять миров, развитие материального мира и подъём по духовным ступеням">
+        <source media="(max-width: 767px)" srcset="/kab/img/l1/anim/schema2-m.svg?v=2" width="400" height="786">
+        <img data-fig="2" src="/kab/img/l1/anim/schema2.svg?v=2" width="800" height="518" alt="Схема 2. Замысел творения: нисхождение в материальный мир через пять миров, развитие материального мира и подъём по духовным ступеням">
       </picture>
       <figcaption><b>Схема 2.</b> Замысел творения: нисхождение в материальный мир, развитие материального мира и подъём по духовным ступеням — тем же самым, по которым шло нисхождение. Вниз всё шло без нас; вверх идёт только нами.</figcaption>
     </figure>
@@ -109,8 +109,8 @@ body.phone .sheet { max-width: 390px; padding: 16px 12px 22px; }
     <p>Отсюда следствие: чтобы наслаждаться дальше, нужно желание <strong>больше</strong> предыдущего. И человечество проходит эту лестницу по порядку — телесные желания, богатство, почёт и власть, знание. Каждая следующая ступень качественно иная, а не просто «то же самое, но больше».</p>
     <figure class="fig">
       <picture>
-        <source media="(max-width: 767px)" srcset="/kab/img/l1/anim/schema3-m.svg?v=1" width="400" height="666">
-        <img data-fig="3" src="/kab/img/l1/anim/schema3.svg?v=1" width="800" height="418" alt="Схема 3. Пирамида желаний: телесные желания, богатство, почёт и власть, знание и над ними вопрос о смысле; у каждой ступени — уровень желаний и эпоха">
+        <source media="(max-width: 767px)" srcset="/kab/img/l1/anim/schema3-m.svg?v=2" width="400" height="666">
+        <img data-fig="3" src="/kab/img/l1/anim/schema3.svg?v=2" width="800" height="418" alt="Схема 3. Пирамида желаний: базовые желания, деньги и накопительство, почёт и власть, знание и над ними вопрос о смысле; у каждой ступени — уровень желаний и эпоха">
       </picture>
       <figcaption><b>Схема 3.</b> Пирамида желаний: четыре ступени, которые человечество прошло по порядку, и над ними — желание, которое не закрывается ничем из перечисленного. Здесь пирамида показана снаружи, как история; в уроке 2 — изнутри.</figcaption>
     </figure>
@@ -125,7 +125,7 @@ body.phone .sheet { max-width: 390px; padding: 16px 12px 22px; }
   var narrow = window.matchMedia('(max-width: 767px)');
   var query = new URLSearchParams(location.search);
   var state = { anim: query.get('anim') !== '0', phone: query.get('device') === 'phone', run: 0 };
-  var SIZES = { '2': { wide: [800, 506], narrow: [400, 736] }, '3': { wide: [800, 418], narrow: [400, 666] } };
+  var SIZES = { '2': { wide: [800, 518], narrow: [400, 786] }, '3': { wide: [800, 418], narrow: [400, 666] } };
   var images = document.querySelectorAll('img[data-fig]');
   var again = document.querySelector('.again');
 
@@ -138,7 +138,7 @@ body.phone .sheet { max-width: 390px; padding: 16px 12px 22px; }
       var n = img.getAttribute('data-fig');
       var size = SIZES[n][phone ? 'narrow' : 'wide'];
       var file = 'schema' + n + (phone ? '-m' : '') + '.svg';
-      var url = state.anim ? '/kab/img/l1/anim/' + file + '?v=1' : '/kab/img/l1/' + file + '?v=2';
+      var url = state.anim ? '/kab/img/l1/anim/' + file + '?v=2' : '/kab/img/l1/' + file + '?v=3';
       if (state.anim && state.run) url += '&run=' + state.run;
       img.width = size[0];
       img.height = size[1];

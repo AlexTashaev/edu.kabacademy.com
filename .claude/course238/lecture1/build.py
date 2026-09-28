@@ -1,29 +1,35 @@
 #!/usr/bin/env python3
-"""Схемы лекции «Лекция 1. Суть науки каббала» (lesson 1960, cmid 13413, курс 238).
+"""Схемы лекции «Лекция 1. Суть науки каббала» — в обоих курсах сразу.
 
-С 27.09.2026 сборка идёт ОТ СВЕЖЕГО КОНТЕНТА ИЗ БД, а не от снимка: страницы урока правят
-параллельно (клипы, редактор Moodle), поэтому скрипт
+  lesson 1960 (cmid 13413) — курс 238 «Новый курс …», рабочий: здесь лекцию собирали;
+  lesson 1962 (cmid 13459) — курс 236 «Классическая каббала. Часть первая (Осень 2026)», основной:
+                             студенты и модераторы. Главы перенесены из 238 владельцем 28.09.2026.
+
+Сборка идёт ОТ СВЕЖЕГО КОНТЕНТА ИЗ БД, а не от снимка: страницы урока правят параллельно
+(клипы, редактор Moodle), поэтому скрипт для каждого урока
   1) снимает текущий contents страниц с prod (ssh web-18, только SELECT),
   2) находит в нём блоки <div class="kab-figure"> и по подписи «Схема N.» заменяет те,
      для которых есть schemas/schema<N>.html (остальное на странице не трогает),
-  3) пишет pages/, upd_lesson1960.sql и rollback_lesson1960.sql.
+  3) пишет pages/<урок>/, upd_lesson<урок>.sql и rollback_lesson<урок>.sql.
 UPDATE защищён от гонки: выполняется только если MD5(contents) на prod тот же, что был при снятии.
 
 Что где:
   schemas/schema<N>.html  фрагмент схемы (1 — вёрстка на inline-стилях; 2 и 3 — <picture> с SVG)
-  svg/make_svg.py         генератор чертежей → public/public/kab/img/l1/*.svg (заливаются на сервер)
-  current/                контент страниц, снятый с prod последним запуском
-  pages/                  итоговый контент
+  svg/make_svg.py         генератор чертежей → public/public/kab/img/l1/*.svg (неподвижные)
+  svg/make_svg_anim.py    те же чертежи с анимацией → public/public/kab/img/l1/anim/*.svg (в уроке)
+  current/<урок>/         контент страниц, снятый с prod последним запуском
+  pages/<урок>/           итоговый контент
   orig/                   исторический снимок до первых схем (24.09.2026), в сборке не участвует
 
 Запуск:
-  python build.py                      # снять с prod, собрать
+  python build.py                      # оба урока: снять с prod, собрать
+  python build.py --lesson 1962        # только основной урок
   python build.py --no-fetch           # собрать из current/ без ssh
   python build.py --only 2 3           # заменить только эти схемы
-  python build.py --preview-dir DIR    # + preview.html (в DIR нужны fonts.css, fonts/ и l1/*.svg)
+  python build.py --preview-dir DIR    # + preview.html по первому уроку (в DIR нужны fonts.css, fonts/, l1/)
 Применить:
-  scp public/public/kab/img/l1/*.svg web-18:/sites/edu.kabacademy.com/public/public/kab/img/l1/
-  scp upd_lesson1960.sql web-18:/tmp/ && ssh web-18 '/tmp/kab_moodle_sqlfile.sh /tmp/upd_lesson1960.sql'
+  scp -r public/public/kab/img/l1 web-18:/sites/edu.kabacademy.com/public/public/kab/img/
+  scp upd_lesson1962.sql web-18:/tmp/ && ssh web-18 '/tmp/kab_moodle_sqlfile.sh /tmp/upd_lesson1962.sql'
 """
 import argparse
 import base64
@@ -34,11 +40,12 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).parent
-LESSON_ID = 1960
-PAGES = {
-    17879: 'Глава 1. Предмет: что изучает наука каббала',
-    17880: 'Глава 2. Два пути: сверху вниз и снизу вверх',
-    17881: 'Глава 3. Только реальное',
+TITLES = ('Глава 1. Предмет: что изучает наука каббала',
+          'Глава 2. Два пути: сверху вниз и снизу вверх',
+          'Глава 3. Только реальное')
+LESSONS = {
+    1960: {'course': 238, 'cmid': 13413, 'pages': dict(zip((17879, 17880, 17881), TITLES))},
+    1962: {'course': 236, 'cmid': 13459, 'pages': dict(zip((17888, 17889, 17890), TITLES))},
 }
 IMG_BASE = 'https://edu.kabacademy.com/kab/img/l1/'
 FIGURE_OPEN = '<div class="kab-figure"'
@@ -63,17 +70,19 @@ def load_schema(n: str) -> str | None:
     return html
 
 
-def fetch() -> None:
-    """Снять текущий contents страниц с prod (TO_BASE64 — побайтно точно)."""
-    (HERE / 'current').mkdir(exist_ok=True)
-    for page_id in PAGES:
-        sql = f'SELECT TO_BASE64(contents) FROM mdl_lesson_pages WHERE id={page_id} AND lessonid={LESSON_ID}'
+def fetch(lesson: int) -> None:
+    """Снять текущий contents страниц урока с prod (TO_BASE64 — побайтно точно)."""
+    d = HERE / 'current' / str(lesson)
+    d.mkdir(parents=True, exist_ok=True)
+    for page_id in LESSONS[lesson]['pages']:
+        sql = f'SELECT TO_BASE64(contents) FROM mdl_lesson_pages WHERE id={page_id} AND lessonid={lesson}'
         out = subprocess.run(['ssh', '-o', 'BatchMode=yes', 'web-18', f'/tmp/kab_moodle_sql2.sh "{sql}"'],
                              capture_output=True, text=True, encoding='utf-8', check=True).stdout
         body = out.split('\n', 1)[1].replace(BSN, '')
+        assert body.strip(), f'страница {page_id} урока {lesson} не найдена'
         data = base64.b64decode(re.sub(r'\s', '', body))
-        (HERE / 'current' / f'page-{page_id}.html').write_bytes(data)
-        print(f'fetched {page_id}: {len(data)} bytes, md5 {hashlib.md5(data).hexdigest()}')
+        (d / f'page-{page_id}.html').write_bytes(data)
+        print(f'  fetched {page_id}: {len(data)} bytes, md5 {hashlib.md5(data).hexdigest()}')
 
 
 def figure_blocks(html: str):
@@ -93,13 +102,13 @@ def figure_blocks(html: str):
     return blocks
 
 
-def build(only: set | None, preview_dir: Path | None) -> None:
-    (HERE / 'pages').mkdir(exist_ok=True)
-    stamp = time.strftime('%Y%m%d')
-    backup = f'_kab_bk{stamp}s_l1960_pages'          # s = schemas; у сессии клипов свои бэкапы без суффикса
+def build(lesson: int, only: set | None) -> list[str]:
+    cfg = LESSONS[lesson]
+    (HERE / 'pages' / str(lesson)).mkdir(parents=True, exist_ok=True)
+    backup = f'_kab_bk{time.strftime("%Y%m%d")}s_l{lesson}_pages'   # s = schemas; у сессии клипов свои бэкапы
     updates, preview = [], []
-    for page_id, title in PAGES.items():
-        raw = (HERE / 'current' / f'page-{page_id}.html').read_bytes()
+    for page_id, title in cfg['pages'].items():
+        raw = (HERE / 'current' / str(lesson) / f'page-{page_id}.html').read_bytes()
         src = raw.decode('utf-8')
         out, replaced = src, []
         for start, end, n in reversed(figure_blocks(src)):
@@ -109,43 +118,38 @@ def build(only: set | None, preview_dir: Path | None) -> None:
                 replaced.append(n)
         out, nfix = RAV.subn('Михаэль Лайтман', out)
         out = out.replace('\r\n', '\n')              # клиент mysql всё равно выбросит CR из литерала
-        print(f'page {page_id}: заменены схемы {sorted(replaced) or "—"}, «Рав»→ {nfix}, '
+        print(f'  page {page_id}: заменены схемы {sorted(replaced) or "—"}, «Рав»→ {nfix}, '
               f'{len(src)} → {len(out)} chars')
-        (HERE / 'pages' / f'page-{page_id}.html').write_text(out, encoding='utf-8', newline='')
+        (HERE / 'pages' / str(lesson) / f'page-{page_id}.html').write_text(out, encoding='utf-8', newline='')
         if replaced or nfix:
             updates.append(
                 f'UPDATE mdl_lesson_pages SET contents={q(out)}, timemodified=UNIX_TIMESTAMP() '
-                f"WHERE id={page_id} AND lessonid={LESSON_ID} AND MD5(contents)='{hashlib.md5(raw).hexdigest()}';\n"
+                f"WHERE id={page_id} AND lessonid={lesson} AND MD5(contents)='{hashlib.md5(raw).hexdigest()}';\n"
                 f"SELECT {page_id} page, ROW_COUNT() updated_rows;"
             )
         preview.append(f'<section><h2>{title}</h2>\n{out}\n</section>')
 
     sql = [
-        f'-- Лекция 1 (lesson {LESSON_ID}, cmid 13413, курс 238): обновление схем.',
+        f'-- Лекция 1 (lesson {lesson}, cmid {cfg["cmid"]}, курс {cfg["course"]}): обновление схем.',
         '-- Сгенерировано build.py от контента, снятого с prod; UPDATE сработает, только если',
         '-- страница с тех пор не менялась (MD5). updated_rows = 0 → пересобрать: python build.py',
         f'CREATE TABLE IF NOT EXISTS {backup} DEFAULT CHARSET=utf8mb4 '
-        f'AS SELECT * FROM mdl_lesson_pages WHERE lessonid={LESSON_ID};',
+        f'AS SELECT * FROM mdl_lesson_pages WHERE lessonid={lesson};',
         *updates,
         f'SELECT id, title, LENGTH(contents) len, MD5(contents) md5, '
         f"(LENGTH(contents)-LENGTH(REPLACE(contents,'kab-figure','')))/LENGTH('kab-figure') figures "
-        f'FROM mdl_lesson_pages WHERE lessonid={LESSON_ID} ORDER BY id;',
+        f'FROM mdl_lesson_pages WHERE lessonid={lesson} ORDER BY id;',
     ]
-    (HERE / 'upd_lesson1960.sql').write_text('\n'.join(sql) + '\n', encoding='utf-8', newline='\n')
+    (HERE / f'upd_lesson{lesson}.sql').write_text('\n'.join(sql) + '\n', encoding='utf-8', newline='\n')
     rollback = [
         f'-- Откат: contents страниц из {backup} (состояние перед этим обновлением схем).',
         f'UPDATE mdl_lesson_pages p JOIN {backup} b ON b.id=p.id '
-        f'SET p.contents=b.contents, p.timemodified=b.timemodified WHERE p.lessonid={LESSON_ID};',
-        f'SELECT id, title, LENGTH(contents) len FROM mdl_lesson_pages WHERE lessonid={LESSON_ID} ORDER BY id;',
+        f'SET p.contents=b.contents, p.timemodified=b.timemodified WHERE p.lessonid={lesson};',
+        f'SELECT id, title, LENGTH(contents) len FROM mdl_lesson_pages WHERE lessonid={lesson} ORDER BY id;',
     ]
-    (HERE / 'rollback_lesson1960.sql').write_text('\n'.join(rollback) + '\n', encoding='utf-8', newline='\n')
-    print(f'SQL: {len(updates)} UPDATE, бэкап {backup}')
-
-    if preview_dir:
-        preview_dir.mkdir(parents=True, exist_ok=True)
-        html = PREVIEW_SHELL.replace('{{SECTIONS}}', '\n'.join(preview)).replace(IMG_BASE, 'l1/')
-        (preview_dir / 'preview.html').write_text(html, encoding='utf-8', newline='\n')
-        print('preview:', preview_dir / 'preview.html')
+    (HERE / f'rollback_lesson{lesson}.sql').write_text('\n'.join(rollback) + '\n', encoding='utf-8', newline='\n')
+    print(f'  SQL: {len(updates)} UPDATE → upd_lesson{lesson}.sql, бэкап {backup}')
+    return preview
 
 
 # Приближение обвязки Boost (font-size .9375rem, line-height 1.5, box-sizing) + Montserrat темы.
@@ -180,11 +184,21 @@ if (w) { var m = document.querySelector('main'); m.style.maxWidth = w + 'px'; m.
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
+    ap.add_argument('--lesson', type=int, nargs='*', default=list(LESSONS), choices=list(LESSONS))
     ap.add_argument('--no-fetch', action='store_true', help='не ходить на prod, собрать из current/')
     ap.add_argument('--only', nargs='*', default=None, help='номера схем для замены (по умолчанию все, что есть)')
     ap.add_argument('--preview-dir', type=Path, default=None,
-                    help='куда положить preview.html (рядом нужны fonts.css, fonts/ и l1/*.svg)')
+                    help='куда положить preview.html по первому уроку (рядом нужны fonts.css, fonts/ и l1/)')
     args = ap.parse_args()
-    if not args.no_fetch:
-        fetch()
-    build(set(args.only) if args.only is not None else None, args.preview_dir)
+    first_preview = None
+    for lesson in args.lesson:
+        print(f'lesson {lesson} (курс {LESSONS[lesson]["course"]}):')
+        if not args.no_fetch:
+            fetch(lesson)
+        sections = build(lesson, set(args.only) if args.only is not None else None)
+        first_preview = first_preview or sections
+    if args.preview_dir and first_preview:
+        args.preview_dir.mkdir(parents=True, exist_ok=True)
+        html = PREVIEW_SHELL.replace('{{SECTIONS}}', '\n'.join(first_preview)).replace(IMG_BASE, 'l1/')
+        (args.preview_dir / 'preview.html').write_text(html, encoding='utf-8', newline='\n')
+        print('preview:', args.preview_dir / 'preview.html')

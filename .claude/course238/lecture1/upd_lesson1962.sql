@@ -1,7 +1,7 @@
--- Лекция 1 (lesson 1960, cmid 13413, курс 238): обновление схем.
+-- Лекция 1 (lesson 1962, cmid 13459, курс 236): обновление схем.
 -- Сгенерировано build.py от контента, снятого с prod; UPDATE сработает, только если
 -- страница с тех пор не менялась (MD5). updated_rows = 0 → пересобрать: python build.py
-CREATE TABLE IF NOT EXISTS _kab_bk20260928s_l1960_pages DEFAULT CHARSET=utf8mb4 AS SELECT * FROM mdl_lesson_pages WHERE lessonid=1960;
+CREATE TABLE IF NOT EXISTS _kab_bk20260928s_l1962_pages DEFAULT CHARSET=utf8mb4 AS SELECT * FROM mdl_lesson_pages WHERE lessonid=1962;
 UPDATE mdl_lesson_pages SET contents='<h4>Откуда взялось желание</h4>
 <p>В первой главе установлено: всё, кроме силы отдачи, — это желание получать. Из этого вырастает следующий вопрос. Если в основе только одна сила и созданное ею желание, откуда тогда взялось всё остальное — миры, люди, характеры, обстоятельства, ваша конкретная жизнь с её конкретными сложностями?</p>
 <p><strong>Разнообразие не в источнике, а в порядке его проявления.</strong></p>
@@ -59,6 +59,6 @@ UPDATE mdl_lesson_pages SET contents='<h4>Откуда взялось желан
 <li>Наполненное желание исчезает — отсюда лестница желаний и её верхняя ступень, вопрос о смысле.</li>
 <li>Массовость этого вопроса сегодня — признак того, что лестница пройдена.</li>
 </ul>
-<p><strong>Вопрос для отклика.</strong> Вспомните желание, которого вы когда-то очень сильно хотели и добились. Что осталось от того наслаждения через полгода?</p>', timemodified=UNIX_TIMESTAMP() WHERE id=17880 AND lessonid=1960 AND MD5(contents)='98e3380b2ec3bba5e7a845f23a413fec';
-SELECT 17880 page, ROW_COUNT() updated_rows;
-SELECT id, title, LENGTH(contents) len, MD5(contents) md5, (LENGTH(contents)-LENGTH(REPLACE(contents,'kab-figure','')))/LENGTH('kab-figure') figures FROM mdl_lesson_pages WHERE lessonid=1960 ORDER BY id;
+', timemodified=UNIX_TIMESTAMP() WHERE id=17889 AND lessonid=1962 AND MD5(contents)='b8e19497059373cc052fa8509045e254';
+SELECT 17889 page, ROW_COUNT() updated_rows;
+SELECT id, title, LENGTH(contents) len, MD5(contents) md5, (LENGTH(contents)-LENGTH(REPLACE(contents,'kab-figure','')))/LENGTH('kab-figure') figures FROM mdl_lesson_pages WHERE lessonid=1962 ORDER BY id;
