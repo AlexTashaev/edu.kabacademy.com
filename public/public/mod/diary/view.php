@@ -188,8 +188,12 @@ if (prompts::diary_available($diary)) {
         // Show the current prompt.
         echo '<span class="diary-intro-highlight">' . $diary->intro . '</span>';
     }
-    echo get_string('tcount', 'diary', $tcount);
-    echo get_string('promptinfo', 'diary', ['past' => $past, 'current' => $current, 'future' => $future]);
+    // KAB patch: prompt counters are service info for teachers only. Students never see them,
+    // and nobody sees them while the diary has no prompts.
+    if ($tcount > 0 && $entriesmanager) {
+        echo get_string('tcount', 'diary', $tcount);
+        echo get_string('promptinfo', 'diary', ['past' => $past, 'current' => $current, 'future' => $future]);
+    }
     if ((int)$current === 0) {
         if ($diary->mincharacterlimit > 0) {
             echo '<br>' . get_string('mincharacterlimit_desc', 'diary', (int)$diary->mincharacterlimit);
