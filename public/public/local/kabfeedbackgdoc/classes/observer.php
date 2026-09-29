@@ -41,7 +41,7 @@ class observer {
                 return true;
             }
             $cmid = (int)($event->other['cmid'] ?? 0);
-            if (!sender::is_watched($cmid, $config)) {
+            if (sender::target_for($cmid, $config) === null) {
                 return true;
             }
 

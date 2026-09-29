@@ -28,6 +28,19 @@ if ($hassiteconfig) {
     $settings = new admin_settingpage('local_kabfeedbackgdoc', get_string('pluginname', 'local_kabfeedbackgdoc'));
     $ADMIN->add('localplugins', $settings);
 
+    $statusurl = new moodle_url('/local/kabfeedbackgdoc/index.php');
+    $ADMIN->add('localplugins', new admin_externalpage(
+        'local_kabfeedbackgdoc_status',
+        get_string('statuspage', 'local_kabfeedbackgdoc'),
+        $statusurl
+    ));
+
+    $settings->add(new admin_setting_heading(
+        'local_kabfeedbackgdoc/statuslink',
+        '',
+        get_string('statuslink', 'local_kabfeedbackgdoc', $statusurl->out())
+    ));
+
     $settings->add(new admin_setting_configcheckbox(
         'local_kabfeedbackgdoc/enabled',
         get_string('enabled', 'local_kabfeedbackgdoc'),
@@ -72,5 +85,24 @@ if ($hassiteconfig) {
         get_string('cmids_desc', 'local_kabfeedbackgdoc'),
         '',
         PARAM_TEXT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'local_kabfeedbackgdoc/defaulttarget',
+        get_string('defaulttarget', 'local_kabfeedbackgdoc'),
+        get_string('defaulttarget_desc', 'local_kabfeedbackgdoc'),
+        '',
+        PARAM_RAW_TRIMMED,
+        80
+    ));
+
+    $settings->add(new admin_setting_configtextarea(
+        'local_kabfeedbackgdoc/routes',
+        get_string('routes', 'local_kabfeedbackgdoc'),
+        get_string('routes_desc', 'local_kabfeedbackgdoc'),
+        '',
+        PARAM_RAW,
+        100,
+        5
     ));
 }
