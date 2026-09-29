@@ -379,9 +379,11 @@ class sender {
      * redirects (open_basedir), re-issues the POST and gets a 405, so we do
      * not follow at all: POST once, then GET the Location ourselves.
      *
-     * Only a JSON answer with "ok": true counts as delivered. A broken script or
-     * a deployment that lost its "Anyone" access answers with an HTML page and
-     * HTTP 200 - that must be retried, not taken for success.
+     * Only a JSON answer with "ok": true and the number of rows written counts as
+     * delivered. A broken script or a deployment that lost its "Anyone" access
+     * answers with an HTML page and HTTP 200, and a redirect chain that ends at the
+     * web app itself answers with the ping of doGet() - both must be retried, not
+     * taken for success. A retry is harmless: the script skips the rows it has.
      *
      * @param array|null $payload null = GET (ping)
      * @param int $timeout seconds
@@ -440,7 +442,10 @@ class sender {
         $decoded = json_decode($body, true);
         $json = is_array($decoded) ? $decoded : null;
         $ok = ($code >= 200 && $code < 300) && $json !== null && !empty($json['ok']);
-        if ($json === null && $code >= 200 && $code < 300) {
+        if ($ok && $payload !== null && !array_key_exists('written', $json)) {
+            $ok = false;
+            $body = 'not the answer of doPost(): ' . $body;
+        } else if ($json === null && $code >= 200 && $code < 300) {
             $body = 'not JSON: ' . trim(strip_tags($body));
         }
         return ['ok' => $ok, 'code' => $code, 'body' => mb_substr(trim($body), 0, 300), 'json' => $json];
