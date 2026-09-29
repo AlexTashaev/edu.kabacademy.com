@@ -42,7 +42,7 @@ var TARGET_TITLE_MARK = '(Moodle)'; // a spreadsheet must carry this in its titl
 var NOTE_PREFIX = 'moodle:';
 var NOTE_HINT = '\nСлужебная метка: по ней скрипт находит колонку. Заголовок можно переименовать, колонку — двигать.';
 var DATE_FORMAT = 'dd.MM.yyyy H:mm:ss';
-var TEXT_FORMAT = '@';         // "plain text": the cell keeps what it is given, see writeRows_()
+var TEXT_FORMAT = '@';         // "plain text" number format, see literal_()
 var MAX_CELL = 49000;          // Sheets refuses cells over 50 000 characters
 
 // "questions" layout: which feedback item goes to which column, matched by item name.
@@ -213,7 +213,7 @@ function ensureColumns_(sh, defs) {
         sh.insertColumnsAfter(sh.getMaxColumns(), col - sh.getMaxColumns());
       }
       sh.getRange(1, col).setNumberFormat(TEXT_FORMAT)
-        .setRichTextValue(SpreadsheetApp.newRichTextValue().setText(def.title).build())
+        .setRichTextValue(richText_({ value: def.title }))
         .setFontWeight('bold').setWrap(true).setVerticalAlignment('top');
       if (def.width) { sh.setColumnWidth(col, def.width); }
       if (def.hidden) { sh.hideColumns(col); }
@@ -325,20 +325,31 @@ function genericCells_(d, key) {
   return cells;
 }
 
-/** Rich text, because a cell may carry a link. It does not make the text literal, see writeRows_(). */
+/**
+ * Sheets parses what a script writes the way it parses typing, whatever the call
+ * and the cell format: "+79991234567" turns into a number or into "=+79991234567",
+ * "=HYPERLINK(…)" from a student into a live formula, "12:30" into a time,
+ * "2631:1790336304" into a duration. The one thing that keeps an answer exactly as
+ * typed is the leading apostrophe, Sheets' own "this is text" mark: it is not shown
+ * and not part of the value. Checked on a live spreadsheet, 17 kinds of input.
+ */
+function literal_(text) {
+  return text === '' ? '' : "'" + text;
+}
+
+/** Rich text, because a cell may carry a link; the text of a link is ours and needs no mark. */
 function richText_(cell) {
   var text = (cell && cell.value !== null && cell.value !== undefined) ? String(cell.value) : '';
   if (text.length > MAX_CELL) { text = text.substring(0, MAX_CELL) + '…'; }
-  var builder = SpreadsheetApp.newRichTextValue().setText(text);
-  if (cell && cell.link && text) { builder.setLinkUrl(cell.link); }
-  return builder.build();
+  if (cell && cell.link && text) {
+    return SpreadsheetApp.newRichTextValue().setText(text).setLinkUrl(cell.link).build();
+  }
+  return SpreadsheetApp.newRichTextValue().setText(literal_(text)).build();
 }
 
 /**
- * Text cells get the "plain text" format BEFORE the value. Sheets parses whatever
- * it is given the way it parses typing, rich text included: "+79991234567" becomes
- * a number and loses its plus, "=HYPERLINK(…)" from a student becomes a live
- * formula, "12:30" a time. Only a plain text cell keeps the answer as typed.
+ * Text cells also get the "plain text" format, so that a phone number corrected by
+ * hand stays text.
  */
 function writeRows_(sh, cols, rows) {
   if (!rows.length) { return 0; }

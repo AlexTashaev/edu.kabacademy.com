@@ -64,14 +64,14 @@ class Sheet {
 }
 
 /**
- * What Sheets makes of a value, as seen in a real run of version 5: text is parsed
- * like typing (rich text too) unless the cell has the plain text format.
+ * What Sheets makes of a string, as seen on a live spreadsheet: it is parsed like
+ * typing, whatever the call and the cell format. Only the leading apostrophe keeps
+ * it as it is; the apostrophe itself is not part of the value.
  */
-function entered(v, cell) {
-  if (typeof v !== 'string' || cell.format === '@') { return v; }
-  if (/^=/.test(v)) { return '#FORMULA ' + v; }
-  if (/^[+-]?\d+([.,]\d+)?$/.test(v)) { return '#NUMBER ' + Number(v.replace(',', '.')); }
-  if (/^\d+:\d+(:\d+)?$/.test(v)) { return '#DURATION ' + v; }
+function entered(v) {
+  if (typeof v !== 'string') { return v; }
+  if (v.startsWith("'")) { return v.slice(1); }
+  if (/^[=+]/.test(v) || /^[+-]?[0-9]+([.,][0-9]+)?$/.test(v) || /^[0-9]+:[0-9]+(:[0-9]+)?$/.test(v)) { return '#PARSED ' + v; }
   return v;
 }
 
@@ -97,15 +97,15 @@ class Range {
   getDisplayValues() { return this.grid((cell) => (cell.value instanceof Date ? cell.value.toISOString() : String(cell.value))); }
   getNotes() { return this.grid((cell) => cell.note || ''); }
   setNote(note) { return this.each((cell) => { cell.note = note; }); }
-  setValue(v) { return this.each((cell) => { cell.value = entered(v, cell); cell.rich = false; }); }
-  setValues(values) { this.fits(values); return this.each((cell, i, j) => { cell.value = entered(values[i][j], cell); cell.rich = false; }); }
+  setValue(v) { return this.each((cell) => { cell.value = entered(v); cell.rich = false; }); }
+  setValues(values) { this.fits(values); return this.each((cell, i, j) => { cell.value = entered(values[i][j]); cell.rich = false; }); }
   setRichTextValue(rt) { return this.setRichTextValues([[rt]]); }
   setRichTextValues(values) {
     this.fits(values);
     return this.each((cell, i, j) => {
       const rt = values[i][j];
       if (!rt || rt.kind !== 'rich') { throw new Error('not a RichTextValue'); }
-      cell.value = entered(rt.text, cell); cell.link = rt.link; cell.rich = true;
+      cell.value = entered(rt.text); cell.link = rt.link; cell.rich = true;
     });
   }
   setNumberFormat(f) { return this.each((cell) => { cell.format = f; }); }
@@ -235,7 +235,7 @@ check('batch delivered', post({ event: 'feedback_batch', responses: [
   signup(2617, 'Анна', '+972501234567'),
   signup(2618, 'Белла', '=HYPERLINK("http://x")'),
   signup(2617, 'Анна', '+972501234567'),
-  signup(2619, 'Вера', '-', [{ itemid: 155, name: 'Дополнительная информация', type: 'textfield', value: 'нет' }]),
+  signup(2619, 'Вера', '-', [{ itemid: 155, name: 'Дополнительная информация', type: 'textfield', value: "'в кавычках' и 12:30" }]),
 ] }), { ok: true, written: 3, duplicates: 1, tables: [books.groups.name] });
 check('generic header', g.row(1), ['Отметка времени', 'Имя в Moodle', 'Email', 'Ваше имя', 'Пол',
   'Номер телефона в WhatsApp в международном формате +(код) номер', 'Дополнительная информация',
@@ -243,7 +243,8 @@ check('generic header', g.row(1), ['Отметка времени', 'Имя в M
 check('generic rows keep the order', [g.peek(2, 4).value, g.peek(3, 4).value, g.peek(4, 4).value], ['Анна', 'Белла', 'Вера']);
 check('phones and formulas stay text', [g.peek(2, 6).value, g.peek(2, 6).rich, g.peek(3, 6).value, g.peek(3, 6).rich],
   ['+972501234567', true, '=HYPERLINK("http://x")', true]);
-check('missing item is empty', [g.peek(2, 7).value, g.peek(4, 7).value], ['', 'нет']);
+check('missing item is empty, apostrophe survives', [g.peek(2, 7).value, g.peek(4, 7).value], ['', "'в кавычках' и 12:30"]);
+check('text cells are plain text', [g.peek(2, 6).format, g.peek(2, 10).format, g.peek(1, 6).format], ['@', '@', '@']);
 check('generic key hidden', [[...g.hidden], g.peek(4, 10).value], [[10], 'r2619t1790002619']);
 check('resend of everything adds nothing', post({ event: 'feedback_batch', responses: [
   signup(2617, 'Анна', '+972501234567'), signup(2618, 'Белла', 'x'), signup(2619, 'Вера', '-'),
