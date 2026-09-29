@@ -62,6 +62,7 @@ $string['pingfail'] = 'The script does not answer as expected: {$a}';
 $string['queue'] = 'Delivery queue';
 $string['queuestate'] = 'Tasks in the queue: {$a->pending}, failing (waiting for a retry): {$a->failing}.';
 $string['recent'] = 'Recent deliveries';
+$string['recentnote'] = 'A failed delivery is not a lost response: the task retries by itself, and the script never writes a row the table already has. "try 2" or "try 3" means Google did not answer the first time, which happens. The one sign of trouble is failing tasks that stay in the queue for more than an hour.';
 $string['fail'] = 'Failed';
 $string['taskname'] = 'Send feedback response to Google Sheet';
 $string['taskresend'] = 'Send all responses of a form to Google Sheet again';

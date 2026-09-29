@@ -40,6 +40,9 @@ class sender {
     /** Responses per request when a whole form is re-sent. */
     public const BATCH_SIZE = 50;
 
+    /** How many times a delivery is asked for before the task gives up until cron retries it. */
+    public const TRIES = 3;
+
     /**
      * Parse a comma/space separated list of ints.
      *
@@ -341,21 +344,21 @@ class sender {
      * Deliver one response.
      *
      * @param array $payload from build_payload()
-     * @return array ['ok' => bool, 'code' => int, 'body' => string, 'json' => array|null]
+     * @return array ['ok' => bool, 'code' => int, 'body' => string, 'json' => array|null, 'tries' => int]
      */
     public static function post(array $payload): array {
-        return self::request($payload, 30);
+        return self::deliver($payload, 90);
     }
 
     /**
      * Deliver several responses with one request; the script appends them in the given order.
      *
      * @param array[] $payloads from build_payload()
-     * @return array ['ok' => bool, 'code' => int, 'body' => string, 'json' => array|null]
+     * @return array ['ok' => bool, 'code' => int, 'body' => string, 'json' => array|null, 'tries' => int]
      */
     public static function post_batch(array $payloads): array {
         global $CFG;
-        return self::request([
+        return self::deliver([
             'event'     => 'feedback_batch',
             'site'      => $CFG->wwwroot,
             'responses' => array_values($payloads),
@@ -368,11 +371,40 @@ class sender {
      * @return array ['ok' => bool, 'code' => int, 'body' => string, 'json' => array|null]
      */
     public static function ping(): array {
-        return self::request(null, 30);
+        return self::request(null, 90);
     }
 
     /**
-     * Talk to the configured Apps Script web app.
+     * POST to the script, asking again when the answer got lost on the way.
+     *
+     * Google answers a share of the requests (about one in eight, measured from this
+     * server) 8 to 30 seconds late and from the wrong place: the redirect chain ends
+     * with the ping of doGet() or with a 404 of the content host, although doPost()
+     * has run and the rows are written. Asking again is safe, the script skips the
+     * rows it already has. What the script itself refused ("error" in its answer) is
+     * not asked again here: the task fails and cron retries it later.
+     *
+     * @param array $payload
+     * @param int $timeout seconds per request
+     * @return array ['ok' => bool, 'code' => int, 'body' => string, 'json' => array|null, 'tries' => int]
+     */
+    protected static function deliver(array $payload, int $timeout): array {
+        $tries = 0;
+        do {
+            $tries++;
+            $result = self::request($payload, $timeout);
+            $refused = is_array($result['json']) && array_key_exists('error', $result['json']);
+        } while (!$result['ok'] && !$refused && empty($result['unconfigured']) && $tries < self::TRIES);
+
+        $result['tries'] = $tries;
+        if ($tries > 1) {
+            $result['body'] .= " (try {$tries})";
+        }
+        return $result;
+    }
+
+    /**
+     * Talk to the configured Apps Script web app, once.
      *
      * Apps Script answers a POST with a 302 to script.googleusercontent.com,
      * which only accepts GET. Moodle's curl wrapper, when it has to emulate
@@ -382,8 +414,7 @@ class sender {
      * Only a JSON answer with "ok": true and the number of rows written counts as
      * delivered. A broken script or a deployment that lost its "Anyone" access
      * answers with an HTML page and HTTP 200, and a redirect chain that ends at the
-     * web app itself answers with the ping of doGet() - both must be retried, not
-     * taken for success. A retry is harmless: the script skips the rows it has.
+     * web app itself answers with the ping of doGet() - neither is a delivery.
      *
      * @param array|null $payload null = GET (ping)
      * @param int $timeout seconds
@@ -393,7 +424,8 @@ class sender {
         $config = get_config('local_kabfeedbackgdoc');
         $url = trim((string)($config->webhookurl ?? ''));
         if ($url === '') {
-            return ['ok' => false, 'code' => 0, 'body' => 'webhookurl not configured', 'json' => null];
+            return ['ok' => false, 'code' => 0, 'body' => 'webhookurl not configured', 'json' => null,
+                'unconfigured' => true];
         }
         $options = [
             'CURLOPT_FOLLOWLOCATION' => 0,
@@ -445,8 +477,8 @@ class sender {
         if ($ok && $payload !== null && !array_key_exists('written', $json)) {
             $ok = false;
             $body = 'not the answer of doPost(): ' . $body;
-        } else if ($json === null && $code >= 200 && $code < 300) {
-            $body = 'not JSON: ' . trim(strip_tags($body));
+        } else if ($json === null) {
+            $body = 'not JSON: ' . trim(preg_replace('/\s+/', ' ', strip_tags($body)));
         }
         return ['ok' => $ok, 'code' => $code, 'body' => mb_substr(trim($body), 0, 300), 'json' => $json];
     }

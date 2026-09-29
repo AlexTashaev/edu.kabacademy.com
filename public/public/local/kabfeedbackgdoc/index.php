@@ -185,6 +185,7 @@ if ($logs) {
         ];
     }
     echo html_writer::table($recent);
+    echo html_writer::tag('p', get_string('recentnote', $component), ['class' => 'text-muted']);
 }
 
 echo $OUTPUT->footer();
