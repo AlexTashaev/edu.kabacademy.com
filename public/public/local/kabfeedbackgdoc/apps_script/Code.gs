@@ -42,6 +42,7 @@ var TARGET_TITLE_MARK = '(Moodle)'; // a spreadsheet must carry this in its titl
 var NOTE_PREFIX = 'moodle:';
 var NOTE_HINT = '\nСлужебная метка: по ней скрипт находит колонку. Заголовок можно переименовать, колонку — двигать.';
 var DATE_FORMAT = 'dd.MM.yyyy H:mm:ss';
+var TEXT_FORMAT = '@';         // "plain text": the cell keeps what it is given, see writeRows_()
 var MAX_CELL = 49000;          // Sheets refuses cells over 50 000 characters
 
 // "questions" layout: which feedback item goes to which column, matched by item name.
@@ -111,7 +112,7 @@ function respond(obj) {
 /**
  * Append the responses (in the given order) to their tables.
  * Moodle retries failed deliveries and "resend" repeats old ones, so every row
- * carries a key (completedid:timestamp) and known keys are skipped. The timestamp
+ * carries a key (completed id + timestamp) and known keys are skipped. The timestamp
  * is part of the key because a non-anonymous re-submission edits the same
  * feedback_completed record: an edited answer must become a new row.
  */
@@ -137,9 +138,9 @@ function handle_(responses) {
     var seen = keys_(sh, cols.key);
     var rows = [];
     group.items.forEach(function (d) {
-      var key = String(d.completedid) + ':' + String(d.timestamp);
+      var key = key_(d);
       if (Number(d.completedid)) { // completedid 0 = test payloads, never deduped
-        if (seen[key] || legacy[key]) { result.duplicates++; return; }
+        if (seen[key] || legacy[String(d.completedid) + ':' + String(d.timestamp)]) { result.duplicates++; return; }
         seen[key] = true;
       }
       rows.push(group.generic ? genericCells_(d, key) : questionCells_(d, key));
@@ -150,6 +151,14 @@ function handle_(responses) {
   });
   if (responses.length === 1 && result.duplicates === 1) { result.duplicate = true; }
   return result;
+}
+
+/**
+ * Key of a row, e.g. "r2631t1790336304". Letters on purpose: Sheets reads
+ * "2631:1790336304" as a duration and stores something else.
+ */
+function key_(d) {
+  return 'r' + String(d.completedid) + 't' + String(d.timestamp);
 }
 
 function sheet_(spreadsheetId, sheetName) {
@@ -203,7 +212,7 @@ function ensureColumns_(sh, defs) {
       if (col > sh.getMaxColumns()) {
         sh.insertColumnsAfter(sh.getMaxColumns(), col - sh.getMaxColumns());
       }
-      sh.getRange(1, col)
+      sh.getRange(1, col).setNumberFormat(TEXT_FORMAT)
         .setRichTextValue(SpreadsheetApp.newRichTextValue().setText(def.title).build())
         .setFontWeight('bold').setWrap(true).setVerticalAlignment('top');
       if (def.width) { sh.setColumnWidth(col, def.width); }
@@ -316,10 +325,7 @@ function genericCells_(d, key) {
   return cells;
 }
 
-/**
- * Text goes in as rich text: a plain setValues() would parse an answer that starts
- * with "=", "+" or "-" as a formula or a number ("+79991234567" loses its plus).
- */
+/** Rich text, because a cell may carry a link. It does not make the text literal, see writeRows_(). */
 function richText_(cell) {
   var text = (cell && cell.value !== null && cell.value !== undefined) ? String(cell.value) : '';
   if (text.length > MAX_CELL) { text = text.substring(0, MAX_CELL) + '…'; }
@@ -328,6 +334,12 @@ function richText_(cell) {
   return builder.build();
 }
 
+/**
+ * Text cells get the "plain text" format BEFORE the value. Sheets parses whatever
+ * it is given the way it parses typing, rich text included: "+79991234567" becomes
+ * a number and loses its plus, "=HYPERLINK(…)" from a student becomes a live
+ * formula, "12:30" a time. Only a plain text cell keeps the answer as typed.
+ */
 function writeRows_(sh, cols, rows) {
   if (!rows.length) { return 0; }
   var first = sh.getLastRow() + 1;
@@ -374,7 +386,7 @@ function writeRows_(sh, cols, rows) {
     if (run.kind === 'date') {
       range.setNumberFormat(DATE_FORMAT).setValues(values);
     } else {
-      range.setRichTextValues(values);
+      range.setNumberFormat(TEXT_FORMAT).setRichTextValues(values);
     }
   });
   Object.keys(wraps).forEach(function (col) {

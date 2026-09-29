@@ -63,6 +63,18 @@ class Sheet {
   }
 }
 
+/**
+ * What Sheets makes of a value, as seen in a real run of version 5: text is parsed
+ * like typing (rich text too) unless the cell has the plain text format.
+ */
+function entered(v, cell) {
+  if (typeof v !== 'string' || cell.format === '@') { return v; }
+  if (/^=/.test(v)) { return '#FORMULA ' + v; }
+  if (/^[+-]?\d+([.,]\d+)?$/.test(v)) { return '#NUMBER ' + Number(v.replace(',', '.')); }
+  if (/^\d+:\d+(:\d+)?$/.test(v)) { return '#DURATION ' + v; }
+  return v;
+}
+
 class Range {
   constructor(sh, r, c, nr, nc) { Object.assign(this, { sh, r, c, nr, nc }); }
   each(fn) {
@@ -85,15 +97,15 @@ class Range {
   getDisplayValues() { return this.grid((cell) => (cell.value instanceof Date ? cell.value.toISOString() : String(cell.value))); }
   getNotes() { return this.grid((cell) => cell.note || ''); }
   setNote(note) { return this.each((cell) => { cell.note = note; }); }
-  setValue(v) { return this.each((cell) => { cell.value = v; cell.rich = false; }); }
-  setValues(values) { this.fits(values); return this.each((cell, i, j) => { cell.value = values[i][j]; cell.rich = false; }); }
+  setValue(v) { return this.each((cell) => { cell.value = entered(v, cell); cell.rich = false; }); }
+  setValues(values) { this.fits(values); return this.each((cell, i, j) => { cell.value = entered(values[i][j], cell); cell.rich = false; }); }
   setRichTextValue(rt) { return this.setRichTextValues([[rt]]); }
   setRichTextValues(values) {
     this.fits(values);
     return this.each((cell, i, j) => {
       const rt = values[i][j];
       if (!rt || rt.kind !== 'rich') { throw new Error('not a RichTextValue'); }
-      cell.value = rt.text; cell.link = rt.link; cell.rich = true;
+      cell.value = entered(rt.text, cell); cell.link = rt.link; cell.rich = true;
     });
   }
   setNumberFormat(f) { return this.each((cell) => { cell.format = f; }); }
@@ -191,7 +203,7 @@ check('unknown event', post({ event: 'x' }), { ok: false, error: 'unknown event'
 check('question delivered', post(question(3000, 1790500000, '- почему так?\n=1+1')),
   { ok: true, written: 1, duplicates: 0, tables: [books.questions.name] });
 check('question row', q.row(10).slice(1), ['Мария М', 'Ptz', 'в 8:00 изр', '- почему так?\n=1+1', '11ж', 'm@example.com',
-  'открыть', 'Вопрос по теме урока 1 к вебинару с преподавателями', '', '3000:1790500000']);
+  'открыть', 'Вопрос по теме урока 1 к вебинару с преподавателями', '', 'r3000t1790500000']);
 // The Date comes from the script's own realm, so instanceof would not see it from here.
 check('question time is a date', [Object.prototype.toString.call(q.peek(10, 1).value), q.peek(10, 1).value.getTime(),
   q.peek(10, 1).format], ['[object Date]', 1790500000000, 'dd.MM.yyyy H:mm:ss']);
@@ -212,7 +224,7 @@ q.insertColumnBefore(5, 'Кто отвечает');
 q.cell(1, 6).value = 'Вопрос';
 check('after the table was rearranged', post(question(3001, 1790600000, 'после перестановки')).written, 1);
 check('row follows the notes', [q.peek(14, 5).value, q.peek(14, 6).value, q.peek(14, 12).value, q.getLastColumn()],
-  ['', 'после перестановки', '3001:1790600000', 12]);
+  ['', 'после перестановки', 'r3001t1790600000', 12]);
 
 q.maxRows = 14;
 check('grid grows when full', [post(question(3002, 1790700000, 'ещё')).written, q.getLastRow(), q.maxRows > 15], [1, 15, true]);
@@ -232,7 +244,7 @@ check('generic rows keep the order', [g.peek(2, 4).value, g.peek(3, 4).value, g.
 check('phones and formulas stay text', [g.peek(2, 6).value, g.peek(2, 6).rich, g.peek(3, 6).value, g.peek(3, 6).rich],
   ['+972501234567', true, '=HYPERLINK("http://x")', true]);
 check('missing item is empty', [g.peek(2, 7).value, g.peek(4, 7).value], ['', 'нет']);
-check('generic key hidden', [[...g.hidden], g.peek(4, 10).value], [[10], '2619:1790002619']);
+check('generic key hidden', [[...g.hidden], g.peek(4, 10).value], [[10], 'r2619t1790002619']);
 check('resend of everything adds nothing', post({ event: 'feedback_batch', responses: [
   signup(2617, 'Анна', '+972501234567'), signup(2618, 'Белла', 'x'), signup(2619, 'Вера', '-'),
 ] }), { ok: true, written: 0, duplicates: 3, tables: [books.groups.name] });
@@ -242,7 +254,7 @@ g.insertColumnBefore(1, 'Группа WhatsApp');
 check('single after rename and insert', post(signup(2620, 'Галя', '+79991234567',
   [{ itemid: 999, name: 'Новый пункт формы', type: 'textfield', value: 'да' }])).written, 1);
 check('new item gets a column at the end', [g.peek(1, 12).value, g.peek(5, 12).value, g.peek(5, 7).value, g.peek(5, 1).value,
-  g.peek(5, 11).value], ['Новый пункт формы', 'да', '+79991234567', '', '2620:1790002620']);
+  g.peek(5, 11).value], ['Новый пункт формы', 'да', '+79991234567', '', 'r2620t1790002620']);
 
 const wide = [];
 for (let i = 0; i < 30; i++) { wide.push({ itemid: 5000 + i, name: 'Пункт ' + i, type: 'textfield', value: String(i) }); }
