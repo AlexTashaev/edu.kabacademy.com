@@ -1,7 +1,7 @@
 /**
  * Runs Code.gs against an in-memory stand-in for the Spreadsheet service:
  *   node test_local.js
- * Covers the logic (columns, dedupe, batches, text safety), not Google itself.
+ * Covers the logic (columns, dedupe, batches, text safety, time tabs), not Google itself.
  */
 'use strict';
 const fs = require('fs');
@@ -27,6 +27,8 @@ class Sheet {
     }
     return max;
   }
+  getName() { return this.name; }
+  setName(n) { this.name = n; return this; }
   getLastRow() { return this.used(0); }
   getLastColumn() { return this.used(1); }
   getMaxRows() { return this.maxRows; }
@@ -38,6 +40,16 @@ class Sheet {
   getFrozenRows() { return this.frozen; }
   setFrozenRows(n) { this.frozen = n; }
   getParent() { return this.parent; }
+  deleteRow(row) {
+    const moved = new Map();
+    for (const [k, v] of this.cells) {
+      const [r, c] = k.split(',').map(Number);
+      if (r === row) { continue; }
+      moved.set((r > row ? r - 1 : r) + ',' + c, v);
+    }
+    this.cells = moved;
+    this.maxRows--;
+  }
   getRange(r, c, nr = 1, nc = 1) {
     if (r < 1 || c < 1 || nr < 1 || nc < 1 || r + nr - 1 > this.maxRows || c + nc - 1 > this.maxCols) {
       throw new Error(`range out of bounds: ${r},${c},${nr},${nc} (grid ${this.maxRows}x${this.maxCols})`);
@@ -94,7 +106,11 @@ class Range {
       throw new Error(`data ${values.length}x${values[0] && values[0].length} does not match range ${this.nr}x${this.nc}`);
     }
   }
+  getValues() { return this.grid((cell) => cell.value); }
   getDisplayValues() { return this.grid((cell) => (cell.value instanceof Date ? cell.value.toISOString() : String(cell.value))); }
+  getRichTextValues() {
+    return this.grid((cell) => ({ getText: () => String(cell.value), getLinkUrl: () => cell.link || null }));
+  }
   getNotes() { return this.grid((cell) => cell.note || ''); }
   setNote(note) { return this.each((cell) => { cell.note = note; }); }
   setValue(v) { return this.each((cell) => { cell.value = entered(v); cell.rich = false; }); }
@@ -115,17 +131,22 @@ class Range {
 }
 
 class Spreadsheet {
-  constructor(name) { this.name = name; this.tz = 'America/Los_Angeles'; this.sheets = [new Sheet(this, 'Лист1')]; }
+  constructor(name, first = 'Лист1') { this.name = name; this.tz = 'America/Los_Angeles'; this.sheets = [new Sheet(this, first)]; }
   getName() { return this.name; }
   getSpreadsheetTimeZone() { return this.tz; }
   setSpreadsheetTimeZone(tz) { this.tz = tz; }
-  getSheets() { return this.sheets; }
+  getSheets() { return this.sheets.slice(); }
   getSheetByName(n) { return this.sheets.find((s) => s.name === n) || null; }
-  insertSheet(n) { const s = new Sheet(this, n); this.sheets.push(s); return s; }
+  insertSheet(n, index) {
+    const s = new Sheet(this, n);
+    this.sheets.splice(index === undefined ? this.sheets.length : index, 0, s);
+    return s;
+  }
+  tabs() { return this.sheets.map((s) => s.name); }
 }
 
 const books = {
-  questions: new Spreadsheet('Задать вопрос преподавателю ОК Осень 2026 (Moodle)'),
+  questions: new Spreadsheet('Задать вопрос преподавателю ОК Осень 2026 (Moodle)', 'Untitled'),
   groups: new Spreadsheet('Учебные группы Осень 2026 (Moodle)'),
   foreign: new Spreadsheet('Студенты Осень 2026'),
 };
@@ -153,6 +174,8 @@ vm.createContext(sandbox);
 let code = fs.readFileSync(path.join(__dirname, 'Code.gs'), 'utf8');
 code = code.replace("var SECRET = 'CHANGE_ME'", "var SECRET = 's3'").replace("var SPREADSHEET_ID = ''", "var SPREADSHEET_ID = 'questions'");
 vm.runInContext(code, sandbox);
+// Dates the script will meet in cells must come from its own realm: it checks them with instanceof.
+const SDate = vm.runInContext('Date', sandbox);
 
 let fails = 0;
 function check(what, got, want) {
@@ -163,14 +186,14 @@ function check(what, got, want) {
 function post(body) {
   return JSON.parse(sandbox.doPost({ postData: { contents: JSON.stringify(Object.assign({ secret: 's3' }, body)) } }).text);
 }
-function question(completedid, timestamp, text, extra) {
+function question(completedid, timestamp, text, slot = 'в 8:00 изр', extra) {
   return Object.assign({
     event: 'feedback_response', completedid, timestamp, anonymous: false,
     user: { fullname: 'Мария М', email: 'm@example.com', city: 'Ptz', groups: ['11ж'] },
     feedback: { name: 'Вопрос по теме урока 1 к вебинару с преподавателями' },
     responseurl: 'https://edu.kabacademy.com/mod/feedback/show_entries.php?id=13448&showcompleted=' + completedid,
     answers: [
-      { itemid: 165, name: 'Буду присутствовать на вебинаре', type: 'multichoice', value: 'в 8:00 изр' },
+      { itemid: 165, name: 'Буду присутствовать на вебинаре', type: 'multichoice', value: slot },
       { itemid: 164, name: 'Ваш вопрос по теме урока 1', type: 'textarea', value: text },
     ],
   }, extra || {});
@@ -189,45 +212,91 @@ function signup(completedid, name, phone, more) {
     ].concat(more || []),
   };
 }
+const QHEAD = ['Отметка времени', 'Имя', 'Город', 'Буду участвовать в вебинаре', 'Мой вопрос', 'Номер группы', 'Email',
+  'Ссылка в Moodle', 'Форма', 'Ответ преподавателя', 'ID ответа'];
 
-// --- the teachers' table as it is today: header without notes, eight test rows -----------------
-const q = books.questions.sheets[0];
-['Отметка времени', 'Имя', 'Город', 'Буду участвовать в вебинаре', 'Мой вопрос', 'Номер группы', 'Email',
-  'Ссылка в Moodle', 'Форма', 'Ответ преподавателя'].forEach((t, i) => { q.cell(1, i + 1).value = t; });
-for (let r = 2; r <= 9; r++) { q.cell(r, 1).value = new Date(); q.cell(r, 2).value = 'Мария'; }
+// --- the teachers' table as it was before time tabs: one tab, header with notes, rows of all times ---
+const qs = books.questions;
+const u = qs.sheets[0];
+QHEAD.forEach((t, i) => { u.cell(1, i + 1).value = t; });
+['time', 'name', 'city', 'participate', 'question', 'groups', 'email', 'url', 'form', 'answer', 'key']
+  .forEach((id, i) => { u.cell(1, i + 1).note = 'moodle:' + id + '\nСлужебная метка'; });
+u.hidden.add(11);
+[['в 8:00 изр', 'r2900t1790900000', ''], ['в 20:00 изр', 'r2901t1790900001', 'Ответ: да'], ['в 17:00 изр', 'r2902t1790900002', ''],
+  ['в 20:00 изр', 'r2903t1790900003', ''], ['когда-нибудь', 'r2904t1790900004', '']].forEach((x, i) => {
+  const r = i + 2;
+  u.cell(r, 1).value = new SDate(1790900000000 + i * 1000);
+  u.cell(r, 2).value = 'Студент ' + i; u.cell(r, 4).value = x[0]; u.cell(r, 5).value = 'вопрос ' + i;
+  u.cell(r, 8).value = 'открыть'; u.cell(r, 8).link = 'https://edu.kabacademy.com/mod/feedback/show_entries.php?showcompleted=' + (2900 + i);
+  u.cell(r, 9).value = 'Вопрос по теме урока 1'; u.cell(r, 10).value = x[2]; u.cell(r, 11).value = x[1];
+});
 
-check('ping', JSON.parse(sandbox.doGet().text), { ok: true, ping: 'local_kabfeedbackgdoc', version: 5 });
+check('ping', JSON.parse(sandbox.doGet().text), { ok: true, ping: 'local_kabfeedbackgdoc', version: 6 });
 check('wrong secret', post({ secret: 'nope', event: 'feedback_response' }), { ok: false, error: 'forbidden' });
 check('unknown event', post({ event: 'x' }), { ok: false, error: 'unknown event' });
 
-check('question delivered', post(question(3000, 1790500000, '- почему так?\n=1+1')),
-  { ok: true, written: 1, duplicates: 0, tables: [books.questions.name] });
-check('question row', q.row(10).slice(1), ['Мария М', 'Ptz', 'в 8:00 изр', '- почему так?\n=1+1', '11ж', 'm@example.com',
+// --- time tabs ---------------------------------------------------------------------------------
+check('question goes to the tab of its webinar time', post(question(3000, 1790500000, '- почему так?\n=1+1')),
+  { ok: true, written: 1, duplicates: 0, tables: [qs.name] });
+check('time tab created first, header with notes, key hidden', [qs.tabs(), qs.getSheetByName('8:00').row(1),
+  [...qs.getSheetByName('8:00').hidden], qs.getSheetByName('8:00').peek(1, 5).note.split('\n')[0]],
+  [['8:00', 'Untitled'], QHEAD, [11], 'moodle:question']);
+const t8 = qs.getSheetByName('8:00');
+check('question row', t8.row(2).slice(1), ['Мария М', 'Ptz', 'в 8:00 изр', '- почему так?\n=1+1', '11ж', 'm@example.com',
   'открыть', 'Вопрос по теме урока 1 к вебинару с преподавателями', '', 'r3000t1790500000']);
 // The Date comes from the script's own realm, so instanceof would not see it from here.
-check('question time is a date', [Object.prototype.toString.call(q.peek(10, 1).value), q.peek(10, 1).value.getTime(),
-  q.peek(10, 1).format], ['[object Date]', 1790500000000, 'dd.MM.yyyy H:mm:ss']);
-check('question text is literal', [q.peek(10, 5).rich, q.peek(10, 5).wrap], [true, true]);
-check('question link', q.peek(10, 8).link, 'https://edu.kabacademy.com/mod/feedback/show_entries.php?id=13448&showcompleted=3000');
-check('old header adopted, key column appended hidden', [q.getLastColumn(), [...q.hidden], q.peek(1, 11).value,
-  q.peek(1, 5).note.split('\n')[0], q.peek(1, 11).note.split('\n')[0]], [11, [11], 'ID ответа', 'moodle:question', 'moodle:key']);
-check('timezone fixed', books.questions.tz, 'Asia/Jerusalem');
+check('question time is a date', [Object.prototype.toString.call(t8.peek(2, 1).value), t8.peek(2, 1).value.getTime(),
+  t8.peek(2, 1).format], ['[object Date]', 1790500000000, 'dd.MM.yyyy H:mm:ss']);
+check('question text is literal', [t8.peek(2, 5).rich, t8.peek(2, 5).wrap, t8.peek(2, 5).format], [true, true, '@']);
+check('question link', t8.peek(2, 8).link, 'https://edu.kabacademy.com/mod/feedback/show_entries.php?id=13448&showcompleted=3000');
+check('old tab untouched', u.getLastRow(), 6);
+check('timezone fixed', qs.tz, 'Asia/Jerusalem');
+
+check('tabs stay in clock order whatever comes first', [
+  post(question(3001, 1790500001, 'вечером', 'в 20:00 изр')).written,
+  post(question(3002, 1790500002, 'днём', 'в 17:00 изр')).written,
+  qs.tabs()], [1, 1, ['8:00', '17:00', '20:00', 'Untitled']]);
+// --- moving what landed in the single tab before time tabs existed ------------------------------
+const moved = sandbox.moveRowsByTime();
+check('rows moved by their time, teacher answer kept', [moved, qs.tabs(), qs.getSheetByName('20:00').getLastRow(),
+  qs.getSheetByName('20:00').row(3).slice(1), qs.getSheetByName('20:00').peek(3, 8).link],
+  [{ '8:00': 1, '20:00': 2, '17:00': 1, left: 1 }, ['8:00', '17:00', '20:00', 'Без времени'], 4,
+    ['Студент 1', '', 'в 20:00 изр', 'вопрос 1', '', '', 'открыть', 'Вопрос по теме урока 1', 'Ответ: да', 'r2901t1790900001'],
+    'https://edu.kabacademy.com/mod/feedback/show_entries.php?showcompleted=2901']);
+check('the row without a time stays, the rest of the old tab is gone', [u.getName(), u.getLastRow(), u.row(2).slice(1, 5)],
+  ['Без времени', 2, ['Студент 4', '', 'когда-нибудь', 'вопрос 4']]);
+check('moved rows are known to the dedupe', post(question(2901, 1790900001, 'x', 'в 20:00 изр')).duplicate, true);
+check('running it again moves nothing', sandbox.moveRowsByTime(), { left: 1 });
+
+check('a time written differently still finds its tab', [post(question(3003, 1790500003, 'x', 'В 08:00 (изр.)')).written,
+  t8.getLastRow(), qs.tabs().length], [1, 4, 4]);
+check('no time in the answer: the renamed fallback tab', [post(question(3004, 1790500004, 'x', 'не знаю')).written,
+  qs.tabs(), u.peek(3, 4).value], [1, ['8:00', '17:00', '20:00', 'Без времени'], 'не знаю']);
+check('no participate answer at all: fallback tab', [post({ event: 'feedback_response', completedid: 3005, timestamp: 1790500005,
+  anonymous: true, feedback: { name: 'Вопрос к вебинару следующей недели' }, answers: [{ itemid: 1, name: 'Ваш вопрос', value: 'q' }] }).written,
+  u.getLastRow(), u.peek(4, 5).value], [1, 4, 'q']);
+check('explicit tab from Moodle wins over the time', [post(question(3006, 1790500006, 'x', 'в 8:00 изр',
+  { target: { spreadsheet: 'questions', sheet: 'Архив', layout: 'questions' } })).written, qs.tabs().slice(-1)[0],
+  qs.getSheetByName('Архив').peek(2, 5).value], [1, 'Архив', 'x']);
+
 check('cron retry is a duplicate', post(question(3000, 1790500000, 'x')),
-  { ok: true, written: 0, duplicates: 1, tables: [books.questions.name], duplicate: true });
+  { ok: true, written: 0, duplicates: 1, tables: [qs.name], duplicate: true });
 check('edited answer is a new row', post(question(3000, 1790500999, 'ещё вопрос')).written, 1);
+check('edited answer with another time goes to that tab', [post(question(3000, 1790501000, 'ещё', 'в 17:00 изр')).written,
+  qs.getSheetByName('17:00').getLastRow()], [1, 4]);
 check('key remembered by v4 is a duplicate', post(question(2631, 1790336304, 'x')).duplicate, true);
 check('test payload is never a duplicate', [post(question(0, 1, 'a')).written, post(question(0, 1, 'a')).written], [1, 1]);
-check('rows so far', q.getLastRow(), 13);
+check('rows in 8:00 so far', t8.getLastRow(), 7);
 
 // A teacher inserts a column of their own and renames ours.
-q.insertColumnBefore(5, 'Кто отвечает');
-q.cell(1, 6).value = 'Вопрос';
-check('after the table was rearranged', post(question(3001, 1790600000, 'после перестановки')).written, 1);
-check('row follows the notes', [q.peek(14, 5).value, q.peek(14, 6).value, q.peek(14, 12).value, q.getLastColumn()],
-  ['', 'после перестановки', 'r3001t1790600000', 12]);
+t8.insertColumnBefore(5, 'Кто отвечает');
+t8.cell(1, 6).value = 'Вопрос';
+check('after the table was rearranged', post(question(3007, 1790600000, 'после перестановки')).written, 1);
+check('row follows the notes', [t8.peek(8, 5).value, t8.peek(8, 6).value, t8.peek(8, 12).value, t8.getLastColumn()],
+  ['', 'после перестановки', 'r3007t1790600000', 12]);
 
-q.maxRows = 14;
-check('grid grows when full', [post(question(3002, 1790700000, 'ещё')).written, q.getLastRow(), q.maxRows > 15], [1, 15, true]);
+t8.maxRows = 8;
+check('grid grows when full', [post(question(3008, 1790700000, 'ещё')).written, t8.getLastRow(), t8.maxRows > 9], [1, 9, true]);
 
 // --- a form with a table of its own -----------------------------------------------------------
 const g = books.groups.sheets[0];
@@ -240,6 +309,7 @@ check('batch delivered', post({ event: 'feedback_batch', responses: [
 check('generic header', g.row(1), ['Отметка времени', 'Имя в Moodle', 'Email', 'Ваше имя', 'Пол',
   'Номер телефона в WhatsApp в международном формате +(код) номер', 'Дополнительная информация',
   'Группа в Moodle', 'Ссылка в Moodle', 'ID ответа']);
+check('generic has no time tabs', books.groups.tabs(), ['Лист1']);
 check('generic rows keep the order', [g.peek(2, 4).value, g.peek(3, 4).value, g.peek(4, 4).value], ['Анна', 'Белла', 'Вера']);
 check('phones and formulas stay text', [g.peek(2, 6).value, g.peek(2, 6).rich, g.peek(3, 6).value, g.peek(3, 6).rich],
   ['+972501234567', true, '=HYPERLINK("http://x")', true]);
@@ -262,8 +332,8 @@ for (let i = 0; i < 30; i++) { wide.push({ itemid: 5000 + i, name: 'Пункт '
 check('more columns than the grid has', [post(signup(2621, 'Дина', '1', wide)).written, g.maxCols >= 42, g.peek(6, 42).value], [1, true, '29']);
 
 check('mixed batch goes to both tables', post({ event: 'feedback_batch', responses: [
-  signup(2622, 'Ева', '2'), question(3003, 1790800000, 'вперемешку'),
-] }), { ok: true, written: 2, duplicates: 0, tables: [books.groups.name, books.questions.name] });
+  signup(2622, 'Ева', '2'), question(3009, 1790800000, 'вперемешку'),
+] }), { ok: true, written: 2, duplicates: 0, tables: [books.groups.name, qs.name] });
 
 // --- guards -----------------------------------------------------------------------------------
 const before = JSON.stringify([...books.foreign.sheets[0].cells]);
@@ -271,9 +341,9 @@ const refused = post(Object.assign(signup(1, 'x', 'y'), { target: { spreadsheet:
 check('table without the mark is refused and untouched', [refused.ok, /\(Moodle\)/.test(refused.error),
   JSON.stringify([...books.foreign.sheets[0].cells]) === before], [false, true, true]);
 check('unknown table', post(Object.assign(signup(1, 'x', 'y'), { target: { spreadsheet: 'nope', layout: 'generic' } })).ok, false);
-check('named tab is created', [post(Object.assign(signup(2623, 'Жанна', '3'),
+check('named tab is created after the others', [post(Object.assign(signup(2623, 'Жанна', '3'),
   { target: { spreadsheet: 'groups', sheet: 'Весна', layout: 'generic' } })).written,
-  books.groups.getSheetByName('Весна').peek(2, 4).value], [1, 'Жанна']);
+  books.groups.tabs(), books.groups.getSheetByName('Весна').peek(2, 4).value], [1, ['Лист1', 'Весна'], 'Жанна']);
 check('empty batch', post({ event: 'feedback_batch', responses: [] }), { ok: true, written: 0, duplicates: 0, tables: [] });
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

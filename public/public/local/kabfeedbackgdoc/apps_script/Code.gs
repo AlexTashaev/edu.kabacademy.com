@@ -37,8 +37,13 @@ var TIMEZONE = 'Asia/Jerusalem'; // spreadsheet time zone; new sheets default to
 
 // ---- settings end: everything below is replaced as a whole when the script is updated ----
 
-var VERSION = 5;
+var VERSION = 6;
 var TARGET_TITLE_MARK = '(Moodle)'; // a spreadsheet must carry this in its title to accept rows; '' = no check
+// "questions" layout: a tab per webinar time ("8:00", "17:00", "20:00"), taken from the
+// "Буду участвовать" answer, so that each webinar's teachers see their own questions.
+// Tabs are created on demand, in clock order, before the other tabs.
+var TIME_TABS = true;
+var NO_TIME_TAB = 'Без времени'; // where a question without a recognisable time goes
 var NOTE_PREFIX = 'moodle:';
 var NOTE_HINT = '\nСлужебная метка: по ней скрипт находит колонку. Заголовок можно переименовать, колонку — двигать.';
 var DATE_FORMAT = 'dd.MM.yyyy H:mm:ss';
@@ -121,9 +126,14 @@ function handle_(responses) {
   var order = [];
   responses.forEach(function (d) {
     var t = d.target || {};
-    var g = [t.spreadsheet || '', t.sheet || '', t.layout === 'generic' ? 'generic' : 'questions'].join('|');
+    var generic = t.layout === 'generic';
+    var sheet = t.sheet || '';
+    if (!generic && !sheet && TIME_TABS) {
+      sheet = timeTab_(d) || NO_TIME_TAB;
+    }
+    var g = [t.spreadsheet || '', sheet, generic ? 'generic' : 'questions'].join('|');
     if (!groups[g]) {
-      groups[g] = { spreadsheet: t.spreadsheet || '', sheet: t.sheet || '', generic: t.layout === 'generic', items: [] };
+      groups[g] = { spreadsheet: t.spreadsheet || '', sheet: sheet, generic: generic, items: [] };
       order.push(g);
     }
     groups[g].items.push(d);
@@ -161,6 +171,41 @@ function key_(d) {
   return 'r' + String(d.completedid) + 't' + String(d.timestamp);
 }
 
+/** Name of the time tab for a "participate" answer: "в 8:00 изр" → "8:00"; '' when there is no time in it. */
+function timeTabOf_(value) {
+  var m = /(\d{1,2}):(\d{2})/.exec(String(value || ''));
+  return m ? (parseInt(m[1], 10) + ':' + m[2]) : '';
+}
+
+/** Minutes since midnight for a time tab name, null for any other tab. */
+function tabMinutes_(name) {
+  var m = /^(\d{1,2}):(\d{2})$/.exec(String(name || ''));
+  return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+}
+
+/** Time tab of a response (questions layout): from its "participate" answer. */
+function timeTab_(d) {
+  var rule = COLUMN_RULES.filter(function (r) { return r.col === 'participate'; })[0];
+  var tab = '';
+  (d.answers || []).forEach(function (a) {
+    if (!tab && rule && rule.re.test(a.name || '')) { tab = timeTabOf_(a.value); }
+  });
+  return tab;
+}
+
+/** Where a new tab goes: time tabs first, in clock order; anything else after the existing tabs. */
+function tabIndex_(ss, name) {
+  var minutes = tabMinutes_(name);
+  var sheets = ss.getSheets();
+  if (minutes === null) { return sheets.length; }
+  var index = 0;
+  sheets.forEach(function (s) {
+    var m = tabMinutes_(s.getName());
+    if (m !== null && m < minutes) { index++; }
+  });
+  return index;
+}
+
 function sheet_(spreadsheetId, sheetName) {
   var id = spreadsheetId || SPREADSHEET_ID;
   var ss = id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet();
@@ -173,7 +218,7 @@ function sheet_(spreadsheetId, sheetName) {
   }
   var name = sheetName || (spreadsheetId ? '' : SHEET_NAME);
   var sh = name ? ss.getSheetByName(name) : ss.getSheets()[0];
-  if (!sh && name) { sh = ss.insertSheet(name); }
+  if (!sh && name) { sh = ss.insertSheet(name, tabIndex_(ss, name)); }
   if (!sh) { throw new Error('sheet not found'); }
   return sh;
 }
@@ -404,6 +449,56 @@ function writeRows_(sh, cols, rows) {
     sh.getRange(first, Number(col), rows.length, 1).setWrap(true);
   });
   return first;
+}
+
+// ---------------------------------------------------------------------------
+// Maintenance, run from the editor.
+
+/**
+ * After switching TIME_TABS on: moves the rows that landed in the former default
+ * tab (SHEET_NAME, or the first tab that is not a time tab) into the time tabs -
+ * every column, the teachers' answers included - and names that tab NO_TIME_TAB.
+ * Rows without a recognisable time stay. Safe to run again: it only moves what is there.
+ */
+function moveRowsByTime() {
+  var ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  var from = SHEET_NAME ? ss.getSheetByName(SHEET_NAME)
+    : ss.getSheets().filter(function (s) { return tabMinutes_(s.getName()) === null; })[0];
+  if (!from) { throw new Error('no tab to move rows from'); }
+  var cols = ensureColumns_(from, QUESTION_COLUMNS);
+  var moved = {};
+  var last = from.getLastRow();
+  if (last >= 2) {
+    var range = from.getRange(2, 1, last - 1, from.getLastColumn());
+    var values = range.getValues();
+    var rich = range.getRichTextValues();
+    var byTab = {};
+    var remove = [];
+    values.forEach(function (row, i) {
+      var tab = timeTabOf_(row[cols.participate - 1]);
+      if (!tab) { return; }
+      var cells = [];
+      Object.keys(cols).forEach(function (id) {
+        var c = cols[id] - 1;
+        var link = rich[i][c] ? rich[i][c].getLinkUrl() : null;
+        cells.push({ id: id, value: row[c], link: link || undefined, wrap: id === 'question' });
+      });
+      (byTab[tab] = byTab[tab] || []).push(cells);
+      remove.push(i + 2);
+    });
+    Object.keys(byTab).forEach(function (tab) {
+      var sh = sheet_(SPREADSHEET_ID, tab);
+      writeRows_(sh, ensureColumns_(sh, QUESTION_COLUMNS), byTab[tab]);
+      moved[tab] = byTab[tab].length;
+    });
+    remove.reverse().forEach(function (r) { from.deleteRow(r); });
+  }
+  if (from.getName() !== NO_TIME_TAB && !ss.getSheetByName(NO_TIME_TAB)) {
+    from.setName(NO_TIME_TAB);
+  }
+  moved.left = from.getLastRow() - 1;
+  Logger.log(JSON.stringify(moved));
+  return moved;
 }
 
 // ---------------------------------------------------------------------------
