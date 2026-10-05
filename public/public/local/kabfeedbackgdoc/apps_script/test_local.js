@@ -8,11 +8,13 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
+let sheetIds = 0;
 class Sheet {
   constructor(parent, name) {
-    this.parent = parent; this.name = name; this.cells = new Map();
+    this.parent = parent; this.name = name; this.cells = new Map(); this.id = ++sheetIds;
     this.maxRows = 1000; this.maxCols = 26; this.frozen = 0; this.hidden = new Set(); this.widths = {};
   }
+  getSheetId() { return this.id; }
   cell(r, c) {
     const k = r + ',' + c;
     if (!this.cells.has(k)) { this.cells.set(k, { value: '', note: '' }); }
@@ -36,6 +38,7 @@ class Sheet {
   insertRowsAfter(after, n) { this.maxRows += n; }
   insertColumnsAfter(after, n) { this.maxCols += n; }
   hideColumns(c) { this.hidden.add(c); }
+  showColumns(c) { this.hidden.delete(c); }
   setColumnWidth(c, w) { this.widths[c] = w; }
   getFrozenRows() { return this.frozen; }
   setFrozenRows(n) { this.frozen = n; }
@@ -56,7 +59,7 @@ class Sheet {
     }
     return new Range(this, r, c, nr, nc);
   }
-  /** Test helper: what a person does when they insert a column of their own. */
+  /** Sheets API when called without a title; with one, what a person does when they insert a column of their own. */
   insertColumnBefore(col, title) {
     const moved = new Map();
     for (const [k, v] of this.cells) {
@@ -66,7 +69,8 @@ class Sheet {
     this.cells = moved;
     this.hidden = new Set([...this.hidden].map((c) => (c >= col ? c + 1 : c)));
     this.maxCols++;
-    this.cell(1, col).value = title;
+    if (title !== undefined) { this.cell(1, col).value = title; }
+    return this;
   }
   row(r) {
     const out = [];
@@ -127,6 +131,8 @@ class Range {
   setNumberFormat(f) { return this.each((cell) => { cell.format = f; }); }
   setFontWeight(w) { return this.each((cell) => { cell.bold = (w === 'bold'); }); }
   setWrap(w) { return this.each((cell) => { cell.wrap = w; }); }
+  setBackground(c) { return this.each((cell) => { cell.bg = c; }); }
+  setFontColor(c) { return this.each((cell) => { cell.color = c; }); }
   setVerticalAlignment() { return this; }
 }
 
@@ -212,8 +218,10 @@ function signup(completedid, name, phone, more) {
     ].concat(more || []),
   };
 }
+// Header of the teachers' table as v6 made it (QHEAD) and as v7 makes it (QHEAD7).
 const QHEAD = ['Отметка времени', 'Имя', 'Город', 'Буду участвовать в вебинаре', 'Мой вопрос', 'Номер группы', 'Email',
   'Ссылка в Moodle', 'Форма', 'Ответ преподавателя', 'ID ответа'];
+const QHEAD7 = QHEAD.slice(0, 9).concat(['Повторная отправка'], QHEAD.slice(9));
 
 // --- the teachers' table as it was before time tabs: one tab, header with notes, rows of all times ---
 const qs = books.questions;
@@ -231,7 +239,7 @@ u.hidden.add(11);
   u.cell(r, 9).value = 'Вопрос по теме урока 1'; u.cell(r, 10).value = x[2]; u.cell(r, 11).value = x[1];
 });
 
-check('ping', JSON.parse(sandbox.doGet().text), { ok: true, ping: 'local_kabfeedbackgdoc', version: 6 });
+check('ping', JSON.parse(sandbox.doGet().text), { ok: true, ping: 'local_kabfeedbackgdoc', version: 7 });
 check('wrong secret', post({ secret: 'nope', event: 'feedback_response' }), { ok: false, error: 'forbidden' });
 check('unknown event', post({ event: 'x' }), { ok: false, error: 'unknown event' });
 
@@ -240,10 +248,10 @@ check('question goes to the tab of its webinar time', post(question(3000, 179050
   { ok: true, written: 1, duplicates: 0, tables: [qs.name] });
 check('time tab created first, header with notes, key hidden', [qs.tabs(), qs.getSheetByName('8:00').row(1),
   [...qs.getSheetByName('8:00').hidden], qs.getSheetByName('8:00').peek(1, 5).note.split('\n')[0]],
-  [['8:00', 'Untitled'], QHEAD, [11], 'moodle:question']);
+  [['8:00', 'Untitled'], QHEAD7, [12], 'moodle:question']);
 const t8 = qs.getSheetByName('8:00');
 check('question row', t8.row(2).slice(1), ['Мария М', 'Ptz', 'в 8:00 изр', '- почему так?\n=1+1', '11ж', 'm@example.com',
-  'открыть', 'Вопрос по теме урока 1 к вебинару с преподавателями', '', 'r3000t1790500000']);
+  'открыть', 'Вопрос по теме урока 1 к вебинару с преподавателями', '', '', 'r3000t1790500000']);
 // The Date comes from the script's own realm, so instanceof would not see it from here.
 check('question time is a date', [Object.prototype.toString.call(t8.peek(2, 1).value), t8.peek(2, 1).value.getTime(),
   t8.peek(2, 1).format], ['[object Date]', 1790500000000, 'dd.MM.yyyy H:mm:ss']);
@@ -261,10 +269,13 @@ const moved = sandbox.moveRowsByTime();
 check('rows moved by their time, teacher answer kept', [moved, qs.tabs(), qs.getSheetByName('20:00').getLastRow(),
   qs.getSheetByName('20:00').row(3).slice(1), qs.getSheetByName('20:00').peek(3, 8).link],
   [{ '8:00': 1, '20:00': 2, '17:00': 1, left: 1 }, ['8:00', '17:00', '20:00', 'Без времени'], 4,
-    ['Студент 1', '', 'в 20:00 изр', 'вопрос 1', '', '', 'открыть', 'Вопрос по теме урока 1', 'Ответ: да', 'r2901t1790900001'],
+    ['Студент 1', '', 'в 20:00 изр', 'вопрос 1', '', '', 'открыть', 'Вопрос по теме урока 1', '', 'Ответ: да', 'r2901t1790900001'],
     'https://edu.kabacademy.com/mod/feedback/show_entries.php?showcompleted=2901']);
 check('the row without a time stays, the rest of the old tab is gone', [u.getName(), u.getLastRow(), u.row(2).slice(1, 5)],
   ['Без времени', 2, ['Студент 4', '', 'когда-нибудь', 'вопрос 4']]);
+check('v6 table: the new column went in front of the hidden key, the key moved with its rows',
+  [u.row(1), [...u.hidden], u.peek(2, 12).value, u.peek(2, 11).value, u.peek(1, 11).note.split('\n')[0]],
+  [QHEAD.slice(0, 10).concat(['Повторная отправка', 'ID ответа']), [12], 'r2904t1790900004', '', 'moodle:repeat']);
 check('moved rows are known to the dedupe', post(question(2901, 1790900001, 'x', 'в 20:00 изр')).duplicate, true);
 check('running it again moves nothing', sandbox.moveRowsByTime(), { left: 1 });
 
@@ -281,9 +292,23 @@ check('explicit tab from Moodle wins over the time', [post(question(3006, 179050
 
 check('cron retry is a duplicate', post(question(3000, 1790500000, 'x')),
   { ok: true, written: 0, duplicates: 1, tables: [qs.name], duplicate: true });
-check('edited answer is a new row', post(question(3000, 1790500999, 'ещё вопрос')).written, 1);
-check('edited answer with another time goes to that tab', [post(question(3000, 1790501000, 'ещё', 'в 17:00 изр')).written,
-  qs.getSheetByName('17:00').getLastRow()], [1, 4]);
+// --- re-submissions (the form allows multiple submissions, the student changed their mind) ---
+check('edited answer is a new row, marked as a repeat', post(question(3000, 1790500999, 'ещё вопрос')),
+  { ok: true, written: 1, duplicates: 0, tables: [qs.name], repeats: 1 });
+check('the new row names the previous one and what changed; the changed cell is highlighted',
+  [t8.peek(5, 10).value, t8.peek(5, 10).bg, t8.peek(5, 5).bg, t8.peek(5, 4).bg, t8.peek(5, 2).bg],
+  ['Повторная отправка, прежний ответ — строка 2. Изменилось: Мой вопрос', '#fff2cc', '#fff2cc', undefined, undefined]);
+check('the previous row is greyed out and points to the new one',
+  [t8.peek(2, 10).value, t8.peek(2, 1).bg, t8.peek(2, 5).color, t8.peek(2, 12).value, t8.peek(2, 5).value],
+  ['Устарел, новый ответ — строка 5', '#efefef', '#888888', 'r3000t1790500000', '- почему так?\n=1+1']);
+const t17 = qs.getSheetByName('17:00');
+check('edited answer with another time goes to that tab', [post(question(3000, 1790501000, 'ещё', 'в 17:00 изр')).repeats,
+  t17.getLastRow()], [1, 4]);
+check('the previous row is found on the other tab, both rows point across tabs',
+  [t17.peek(4, 10).value, t17.peek(4, 4).bg, t17.peek(4, 5).bg, t8.peek(5, 10).value, t8.peek(5, 1).bg],
+  ['Повторная отправка, прежний ответ — строка 5 на вкладке «8:00». Изменилось: Буду участвовать в вебинаре; Мой вопрос',
+    '#fff2cc', '#fff2cc', 'Устарел, новый ответ — строка 4 на вкладке «17:00»', '#efefef']);
+check('the oldest row keeps its own pointer', t8.peek(2, 10).value, 'Устарел, новый ответ — строка 5');
 check('key remembered by v4 is a duplicate', post(question(2631, 1790336304, 'x')).duplicate, true);
 check('test payload is never a duplicate', [post(question(0, 1, 'a')).written, post(question(0, 1, 'a')).written], [1, 1]);
 check('rows in 8:00 so far', t8.getLastRow(), 7);
@@ -292,8 +317,8 @@ check('rows in 8:00 so far', t8.getLastRow(), 7);
 t8.insertColumnBefore(5, 'Кто отвечает');
 t8.cell(1, 6).value = 'Вопрос';
 check('after the table was rearranged', post(question(3007, 1790600000, 'после перестановки')).written, 1);
-check('row follows the notes', [t8.peek(8, 5).value, t8.peek(8, 6).value, t8.peek(8, 12).value, t8.getLastColumn()],
-  ['', 'после перестановки', 'r3007t1790600000', 12]);
+check('row follows the notes', [t8.peek(8, 5).value, t8.peek(8, 6).value, t8.peek(8, 13).value, t8.getLastColumn()],
+  ['', 'после перестановки', 'r3007t1790600000', 13]);
 
 t8.maxRows = 8;
 check('grid grows when full', [post(question(3008, 1790700000, 'ещё')).written, t8.getLastRow(), t8.maxRows > 9], [1, 9, true]);
@@ -306,26 +331,27 @@ check('batch delivered', post({ event: 'feedback_batch', responses: [
   signup(2617, 'Анна', '+972501234567'),
   signup(2619, 'Вера', '-', [{ itemid: 155, name: 'Дополнительная информация', type: 'textfield', value: "'в кавычках' и 12:30" }]),
 ] }), { ok: true, written: 3, duplicates: 1, tables: [books.groups.name] });
-check('generic header', g.row(1), ['Отметка времени', 'Имя в Moodle', 'Email', 'Ваше имя', 'Пол',
+check('generic header', g.row(1), ['Отметка времени', 'Имя в Moodle', 'Email', 'Повторная отправка', 'Ваше имя', 'Пол',
   'Номер телефона в WhatsApp в международном формате +(код) номер', 'Дополнительная информация',
   'Группа в Moodle', 'Ссылка в Moodle', 'ID ответа']);
 check('generic has no time tabs', books.groups.tabs(), ['Лист1']);
-check('generic rows keep the order', [g.peek(2, 4).value, g.peek(3, 4).value, g.peek(4, 4).value], ['Анна', 'Белла', 'Вера']);
-check('phones and formulas stay text', [g.peek(2, 6).value, g.peek(2, 6).rich, g.peek(3, 6).value, g.peek(3, 6).rich],
+check('generic rows keep the order', [g.peek(2, 5).value, g.peek(3, 5).value, g.peek(4, 5).value], ['Анна', 'Белла', 'Вера']);
+check('phones and formulas stay text', [g.peek(2, 7).value, g.peek(2, 7).rich, g.peek(3, 7).value, g.peek(3, 7).rich],
   ['+972501234567', true, '=HYPERLINK("http://x")', true]);
-check('missing item is empty, apostrophe survives', [g.peek(2, 7).value, g.peek(4, 7).value], ['', "'в кавычках' и 12:30"]);
-check('text cells are plain text', [g.peek(2, 6).format, g.peek(2, 10).format, g.peek(1, 6).format], ['@', '@', '@']);
-check('generic key hidden', [[...g.hidden], g.peek(4, 10).value], [[10], 'r2619t1790002619']);
+check('missing item is empty, apostrophe survives', [g.peek(2, 8).value, g.peek(4, 8).value], ['', "'в кавычках' и 12:30"]);
+check('text cells are plain text', [g.peek(2, 7).format, g.peek(2, 11).format, g.peek(1, 7).format], ['@', '@', '@']);
+check('generic key hidden', [[...g.hidden], g.peek(4, 11).value], [[11], 'r2619t1790002619']);
+check('first answers carry no repeat mark', [g.peek(2, 4).value, g.peek(2, 4).bg, g.peek(2, 1).bg], ['', undefined, undefined]);
 check('resend of everything adds nothing', post({ event: 'feedback_batch', responses: [
   signup(2617, 'Анна', '+972501234567'), signup(2618, 'Белла', 'x'), signup(2619, 'Вера', '-'),
 ] }), { ok: true, written: 0, duplicates: 3, tables: [books.groups.name] });
 
-g.cell(1, 6).value = 'Телефон';
+g.cell(1, 7).value = 'Телефон';
 g.insertColumnBefore(1, 'Группа WhatsApp');
 check('single after rename and insert', post(signup(2620, 'Галя', '+79991234567',
   [{ itemid: 999, name: 'Новый пункт формы', type: 'textfield', value: 'да' }])).written, 1);
-check('new item gets a column at the end', [g.peek(1, 12).value, g.peek(5, 12).value, g.peek(5, 7).value, g.peek(5, 1).value,
-  g.peek(5, 11).value], ['Новый пункт формы', 'да', '+79991234567', '', 'r2620t1790002620']);
+check('new item gets a column in front of the hidden key', [g.peek(1, 12).value, g.peek(5, 12).value, g.peek(5, 8).value,
+  g.peek(5, 1).value, g.peek(5, 13).value, [...g.hidden]], ['Новый пункт формы', 'да', '+79991234567', '', 'r2620t1790002620', [13]]);
 
 const wide = [];
 for (let i = 0; i < 30; i++) { wide.push({ itemid: 5000 + i, name: 'Пункт ' + i, type: 'textfield', value: String(i) }); }
@@ -335,6 +361,38 @@ check('mixed batch goes to both tables', post({ event: 'feedback_batch', respons
   signup(2622, 'Ева', '2'), question(3009, 1790800000, 'вперемешку'),
 ] }), { ok: true, written: 2, duplicates: 0, tables: [books.groups.name, qs.name] });
 
+// --- re-submissions in a generic table ----------------------------------------------------------
+// Columns by now: 1 Группа WhatsApp (theirs), 2 time, 3 user, 4 email, 5 repeat, 6 name, 7 sex, 8 Телефон, 9 extra, …, 43 key.
+check('changed phone: new row 8 marked, old row 2 greyed',
+  [post(Object.assign(signup(2617, 'Анна', '+972500000000'), { timestamp: 1790010000 })).repeats,
+    g.peek(8, 5).value, g.peek(8, 8).bg, g.peek(8, 7).bg, g.peek(8, 5).bg,
+    g.peek(2, 5).value, g.peek(2, 1).bg, g.peek(2, 8).color, g.peek(2, 8).value],
+  [1, 'Повторная отправка, прежний ответ — строка 2. Изменилось: Телефон', '#fff2cc', undefined, '#fff2cc',
+    'Устарел, новый ответ — строка 8', '#efefef', '#888888', '+972501234567']);
+check('same answers again: marked, nothing highlighted but the mark',
+  [post(Object.assign(signup(2618, 'Белла', '=HYPERLINK("http://x")'), { timestamp: 1790010001 })).repeats,
+    g.peek(9, 5).value, g.peek(9, 8).bg, g.peek(9, 5).bg, g.peek(3, 5).value],
+  [1, 'Повторная отправка, прежний ответ — строка 3. Ответы те же', undefined, '#fff2cc', 'Устарел, новый ответ — строка 9']);
+check('third time: the previous row is the latest one, not the first',
+  [post(Object.assign(signup(2617, 'Анна', '+972500000001'), { timestamp: 1790020000 })).repeats,
+    g.peek(10, 5).value, g.peek(8, 5).value, g.peek(8, 1).bg, g.peek(2, 5).value],
+  [1, 'Повторная отправка, прежний ответ — строка 8. Изменилось: Телефон', 'Устарел, новый ответ — строка 10', '#efefef',
+    'Устарел, новый ответ — строка 8']);
+check('an item answered for the first time counts as a change',
+  [post(Object.assign(signup(2617, 'Анна', '+972500000001',
+    [{ itemid: 155, name: 'Дополнительная информация', type: 'textfield', value: 'хочу в группу' }]), { timestamp: 1790040000 })).repeats,
+    g.peek(11, 5).value, g.peek(11, 9).bg, g.peek(11, 8).bg],
+  [1, 'Повторная отправка, прежний ответ — строка 10. Изменилось: Дополнительная информация', '#fff2cc', undefined]);
+check('two submissions of one response in a batch: the second points at the first',
+  [post({ event: 'feedback_batch', responses: [signup(2630, 'Зоя', '1'),
+    Object.assign(signup(2630, 'Зоя', '2'), { timestamp: 1790030000 })] }),
+    g.peek(13, 5).value, g.peek(12, 5).value, g.peek(12, 1).bg, g.peek(12, 5).bg],
+  [{ ok: true, written: 2, duplicates: 0, tables: [books.groups.name], repeats: 1 },
+    'Повторная отправка, прежний ответ — строка 12. Изменилось: Телефон', 'Устарел, новый ответ — строка 13', '#efefef', '#efefef']);
+check('resend after all that adds nothing and marks nothing', [post({ event: 'feedback_batch', responses: [
+  signup(2617, 'Анна', 'x'), Object.assign(signup(2617, 'Анна', 'x'), { timestamp: 1790040000 }),
+] }), g.getLastRow()], [{ ok: true, written: 0, duplicates: 2, tables: [books.groups.name] }, 13]);
+
 // --- guards -----------------------------------------------------------------------------------
 const before = JSON.stringify([...books.foreign.sheets[0].cells]);
 const refused = post(Object.assign(signup(1, 'x', 'y'), { target: { spreadsheet: 'foreign', layout: 'generic' } }));
@@ -343,7 +401,7 @@ check('table without the mark is refused and untouched', [refused.ok, /\(Moodle\
 check('unknown table', post(Object.assign(signup(1, 'x', 'y'), { target: { spreadsheet: 'nope', layout: 'generic' } })).ok, false);
 check('named tab is created after the others', [post(Object.assign(signup(2623, 'Жанна', '3'),
   { target: { spreadsheet: 'groups', sheet: 'Весна', layout: 'generic' } })).written,
-  books.groups.tabs(), books.groups.getSheetByName('Весна').peek(2, 4).value], [1, ['Лист1', 'Весна'], 'Жанна']);
+  books.groups.tabs(), books.groups.getSheetByName('Весна').peek(2, 5).value], [1, ['Лист1', 'Весна'], 'Жанна']);
 check('empty batch', post({ event: 'feedback_batch', responses: [] }), { ok: true, written: 0, duplicates: 0, tables: [] });
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

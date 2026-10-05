@@ -18,6 +18,11 @@
  * Columns are found by a note on the header cell ("moodle:<id>"), not by position
  * or title: people may rename headers, move columns and add their own.
  *
+ * A re-submission (the form allows multiple submissions, the student changed their
+ * mind) is a new row, as any response. It is marked in the "Повторная отправка"
+ * column, the answers that differ from the previous row are highlighted, and the
+ * previous row is greyed out with a pointer to the new one. See markRepeat_().
+ *
  * Setup (once):
  *   1. script.google.com → New project, paste this file, set SECRET and SPREADSHEET_ID.
  *   2. Deploy → New deployment → type "Web app":
@@ -37,7 +42,7 @@ var TIMEZONE = 'Asia/Jerusalem'; // spreadsheet time zone; new sheets default to
 
 // ---- settings end: everything below is replaced as a whole when the script is updated ----
 
-var VERSION = 6;
+var VERSION = 7;
 var TARGET_TITLE_MARK = '(Moodle)'; // a spreadsheet must carry this in its title to accept rows; '' = no check
 // "questions" layout: a tab per webinar time ("8:00", "17:00", "20:00"), taken from the
 // "Буду участвовать" answer, so that each webinar's teachers see their own questions.
@@ -49,6 +54,9 @@ var NOTE_HINT = '\nСлужебная метка: по ней скрипт на�
 var DATE_FORMAT = 'dd.MM.yyyy H:mm:ss';
 var TEXT_FORMAT = '@';         // "plain text" number format, see literal_()
 var MAX_CELL = 49000;          // Sheets refuses cells over 50 000 characters
+var CHANGED_BG = '#fff2cc';    // a re-submitted answer that differs from the previous one
+var OLD_BG = '#efefef';        // the row a re-submission replaced
+var OLD_FG = '#888888';
 
 // "questions" layout: which feedback item goes to which column, matched by item name.
 var COLUMN_RULES = [
@@ -66,14 +74,16 @@ var QUESTION_COLUMNS = [
   { id: 'email',       title: 'Email' },
   { id: 'url',         title: 'Ссылка в Moodle' },
   { id: 'form',        title: 'Форма' },
+  { id: 'repeat',      title: 'Повторная отправка', width: 220 },
   { id: 'answer',      title: 'Ответ преподавателя' },
   { id: 'key',         title: 'ID ответа', hidden: true }
 ];
 
 var GENERIC_LEAD = [
-  { id: 'time',  title: 'Отметка времени', width: 140 },
-  { id: 'user',  title: 'Имя в Moodle', width: 180 },
-  { id: 'email', title: 'Email', width: 200 }
+  { id: 'time',   title: 'Отметка времени', width: 140 },
+  { id: 'user',   title: 'Имя в Moodle', width: 180 },
+  { id: 'email',  title: 'Email', width: 200 },
+  { id: 'repeat', title: 'Повторная отправка', width: 220 }
 ];
 var GENERIC_TAIL = [
   { id: 'groups', title: 'Группа в Moodle' },
@@ -119,7 +129,8 @@ function respond(obj) {
  * Moodle retries failed deliveries and "resend" repeats old ones, so every row
  * carries a key (completed id + timestamp) and known keys are skipped. The timestamp
  * is part of the key because a non-anonymous re-submission edits the same
- * feedback_completed record: an edited answer must become a new row.
+ * feedback_completed record: an edited answer must become a new row. Such a row
+ * (a completed id the table already has) is marked, see markRepeat_().
  */
 function handle_(responses) {
   var groups = {};
@@ -145,22 +156,147 @@ function handle_(responses) {
     var group = groups[g];
     var sh = sheet_(group.spreadsheet, group.sheet);
     var cols = ensureColumns_(sh, group.generic ? genericColumns_(group.items) : QUESTION_COLUMNS);
-    var seen = keys_(sh, cols.key);
+    // The previous row of a re-submitted question may sit on another time tab.
+    var index = index_(sh, cols, !group.generic);
     var rows = [];
+    var repeats = [];
     group.items.forEach(function (d) {
       var key = key_(d);
-      if (Number(d.completedid)) { // completedid 0 = test payloads, never deduped
-        if (seen[key] || legacy[String(d.completedid) + ':' + String(d.timestamp)]) { result.duplicates++; return; }
-        seen[key] = true;
+      var id = Number(d.completedid); // completedid 0 = test payloads, never deduped, never a repeat
+      if (id) {
+        if (index.seen[key] || legacy[String(d.completedid) + ':' + String(d.timestamp)]) { result.duplicates++; return; }
+        index.seen[key] = true;
       }
-      rows.push(group.generic ? genericCells_(d, key) : questionCells_(d, key));
+      var cells = group.generic ? genericCells_(d, key) : questionCells_(d, key);
+      var at = rows.length;
+      rows.push(cells);
+      if (id) {
+        var prev = latest_(index.byId[id]);
+        if (prev) { repeats.push({ at: at, cells: cells, prev: prev }); }
+        (index.byId[id] = index.byId[id] || []).push({ sheet: sh, at: at, cells: cells, ts: Number(d.timestamp) || 0 });
+      }
     });
-    writeRows_(sh, cols, rows);
+    var first = writeRows_(sh, cols, rows);
+    repeats.forEach(function (r) {
+      markRepeat_(sh, cols, first + r.at, r.cells, r.prev, first);
+    });
     result.written += rows.length;
+    if (repeats.length) { result.repeats = (result.repeats || 0) + repeats.length; }
     result.tables.push(sh.getParent().getName());
   });
   if (responses.length === 1 && result.duplicates === 1) { result.duplicate = true; }
   return result;
+}
+
+/**
+ * Rows the table already has: every key (dedupe) and, per completed id, where
+ * its rows are (repeats). With allTabs, every tab of the spreadsheet that has a
+ * key column is read: the questions table keeps a tab per webinar time, and a
+ * student who changed the time changed tabs with it.
+ */
+function index_(sh, cols, allTabs) {
+  var index = { seen: {}, byId: {} };
+  var sheets = allTabs ? sh.getParent().getSheets() : [sh];
+  sheets.forEach(function (s) {
+    var col = sameSheet_(s, sh) ? cols.key : keyCol_(s);
+    var last = s.getLastRow();
+    if (!col || last < 2) { return; }
+    s.getRange(2, col, last - 1, 1).getDisplayValues().forEach(function (r, i) {
+      var key = String(r[0] || '').trim();
+      if (!key) { return; }
+      index.seen[key] = true;
+      var m = /^r(\d+)t(\d+)$/.exec(key);
+      if (m) {
+        (index.byId[m[1]] = index.byId[m[1]] || []).push({ sheet: s, row: i + 2, ts: Number(m[2]) });
+      }
+    });
+  });
+  return index;
+}
+
+/** The key column of a tab, found by its header note; 0 when the tab has none. */
+function keyCol_(s) {
+  var width = s.getLastColumn();
+  if (width < 1) { return 0; }
+  var notes = s.getRange(1, 1, 1, width).getNotes()[0];
+  for (var i = 0; i < notes.length; i++) {
+    if (noteId_(notes[i]) === 'key') { return i + 1; }
+  }
+  return 0;
+}
+
+/** Apps Script hands out a new Sheet object on every call, so identity is by id. */
+function sameSheet_(a, b) {
+  return a.getSheetId() === b.getSheetId();
+}
+
+/** The most recent of a response's rows: the latest timestamp, the last row on a tie. */
+function latest_(entries) {
+  var best = null;
+  (entries || []).forEach(function (e) {
+    if (!best || e.ts >= best.ts) { best = e; }
+  });
+  return best;
+}
+
+/** Whether a column holds an answer of the student (what a re-submission may change). */
+function compared_(id) {
+  return /^item\d+$/.test(id) || id === 'participate' || id === 'question';
+}
+
+function sameText_(a, b) {
+  return String(a || '').replace(/\s+/g, ' ').trim() === String(b || '').replace(/\s+/g, ' ').trim();
+}
+
+/** Column id → text of a row, as the sheet shows it. */
+function rowValues_(s, cols, row) {
+  var values = s.getRange(row, 1, 1, s.getLastColumn()).getDisplayValues()[0];
+  var out = {};
+  Object.keys(cols).forEach(function (id) { out[id] = values[cols[id] - 1]; });
+  return out;
+}
+
+/** Column id → text of a row that is still in memory (written in this very batch). */
+function cellValues_(cells) {
+  var out = {};
+  cells.forEach(function (c) { out[c.id] = (c.value instanceof Date) ? '' : String(c.value || ''); });
+  return out;
+}
+
+function where_(s, row, here) {
+  return 'строка ' + row + (sameSheet_(s, here) ? '' : ' на вкладке «' + s.getName() + '»');
+}
+
+function setText_(s, row, col, text) {
+  if (!col) { return; }
+  s.getRange(row, col).setNumberFormat(TEXT_FORMAT).setRichTextValue(richText_({ value: text })).setWrap(true);
+}
+
+/**
+ * A re-submission: the new row says it is one and names the previous row, the
+ * answers that changed get CHANGED_BG; the previous row is greyed out and points
+ * to the new one. The previous row may be on another tab (questions layout), or
+ * earlier in the same batch (then prev.at is its index and prev.cells its values).
+ */
+function markRepeat_(sh, cols, row, cells, prev, first) {
+  var prevSheet = prev.sheet;
+  var prevRow = (prev.at !== undefined) ? first + prev.at : prev.row;
+  var prevCols = sameSheet_(prevSheet, sh) ? cols : ensureColumns_(prevSheet, QUESTION_COLUMNS);
+  var titles = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
+  var now = cellValues_(cells);
+  var before = prev.cells ? cellValues_(prev.cells) : rowValues_(prevSheet, prevCols, prevRow);
+  var changed = Object.keys(cols).filter(function (id) {
+    return compared_(id) && !sameText_(now[id], before[id]);
+  });
+
+  var text = 'Повторная отправка, прежний ответ — ' + where_(prevSheet, prevRow, sh) + '. ' +
+    (changed.length ? 'Изменилось: ' + changed.map(function (id) { return titles[cols[id] - 1]; }).join('; ') : 'Ответы те же');
+  setText_(sh, row, cols.repeat, text);
+  changed.forEach(function (id) { sh.getRange(row, cols[id]).setBackground(CHANGED_BG); });
+  if (cols.repeat) { sh.getRange(row, cols.repeat).setBackground(CHANGED_BG); }
+
+  prevSheet.getRange(prevRow, 1, 1, prevSheet.getLastColumn()).setBackground(OLD_BG).setFontColor(OLD_FG);
+  setText_(prevSheet, prevRow, prevCols.repeat, 'Устарел, новый ответ — ' + where_(sh, row, prevSheet));
 }
 
 /**
@@ -227,7 +363,9 @@ function sheet_(spreadsheetId, sheetName) {
  * Map column id → column number, creating what is missing.
  * A header without a note but with the expected title is adopted (tables that
  * existed before notes, or a header typed by hand); otherwise the column is
- * appended after the last used one.
+ * appended after the last used one - or, when the hidden key column is the last
+ * one, inserted in front of it, so that a new visible column does not end up
+ * behind a hidden one.
  */
 function ensureColumns_(sh, defs) {
   var width = sh.getLastColumn();
@@ -252,10 +390,20 @@ function ensureColumns_(sh, defs) {
       if (want && !noteId_(notes[i]) && norm_(titles[i]) === want) { col = i + 1; break; }
     }
     if (!col) {
-      col = width + 1;
-      width = col;
-      if (col > sh.getMaxColumns()) {
-        sh.insertColumnsAfter(sh.getMaxColumns(), col - sh.getMaxColumns());
+      if (def.id !== 'key' && cols.key && cols.key === width) {
+        col = cols.key;
+        sh.insertColumnBefore(col);
+        sh.showColumns(col);
+        titles.splice(col - 1, 0, '');
+        notes.splice(col - 1, 0, '');
+        Object.keys(cols).forEach(function (id) { if (cols[id] >= col) { cols[id]++; } });
+        width++;
+      } else {
+        col = width + 1;
+        width = col;
+        if (col > sh.getMaxColumns()) {
+          sh.insertColumnsAfter(sh.getMaxColumns(), col - sh.getMaxColumns());
+        }
       }
       sh.getRange(1, col).setNumberFormat(TEXT_FORMAT)
         .setRichTextValue(richText_({ value: def.title }))
@@ -280,17 +428,6 @@ function noteId_(note) {
 
 function norm_(s) {
   return String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
-}
-
-/** Keys of the rows already in the sheet. */
-function keys_(sh, col) {
-  var seen = {};
-  var last = sh.getLastRow();
-  if (!col || last < 2) { return seen; }
-  sh.getRange(2, col, last - 1, 1).getDisplayValues().forEach(function (r) {
-    if (r[0]) { seen[String(r[0]).trim()] = true; }
-  });
-  return seen;
 }
 
 /** Keys remembered by versions 1–4 in ScriptProperties (read only, no longer written). */
