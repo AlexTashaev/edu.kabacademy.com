@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Forward mod_feedback responses to Google Sheets (via an Apps Script web app).
+ * Scheduled tasks.
  *
  * @package    local_kabfeedbackgdoc
  * @copyright  2026 Kabbalah Academy
@@ -24,8 +24,14 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'local_kabfeedbackgdoc';
-$plugin->version   = 2026100600;
-$plugin->requires  = 2024100700; // Moodle 4.5+.
-$plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.3.0';
+$tasks = [
+    [
+        'classname' => 'local_kabfeedbackgdoc\task\archive_closed_forms',
+        'blocking'  => 0,
+        'minute'    => '7',
+        'hour'      => '*',
+        'day'       => '*',
+        'month'     => '*',
+        'dayofweek' => '*',
+    ],
+];

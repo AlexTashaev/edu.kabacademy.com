@@ -63,24 +63,15 @@ if ($action === 'ping') {
         null, \core\output\notification::NOTIFY_ERROR);
 }
 
-$sql = "SELECT cm.id AS cmid, cm.course AS courseid, f.id AS feedbackid, f.name, c.shortname,
-               (SELECT COUNT(1) FROM {feedback_completed} fc WHERE fc.feedback = f.id) AS responses,
-               (SELECT MAX(fl.timemodified) FROM {feedback_completed} fl WHERE fl.feedback = f.id) AS lastresponse
-          FROM {course_modules} cm
-          JOIN {modules} m ON m.id = cm.module
-          JOIN {feedback} f ON f.id = cm.instance
-          JOIN {course} c ON c.id = cm.course
-         WHERE m.name = 'feedback' AND cm.deletioninprogress = 0
-      ORDER BY cm.course DESC, cm.id ASC";
-$forms = $DB->get_records_sql($sql);
+$forms = sender::forwarded_forms($config);
+$archived = sender::archived_cmids($config);
+$dateformat = get_string('strftimedatetimeshort', 'langconfig');
 
 // Forms that are forwarded, and their neighbours in the same courses: a form that
 // is NOT forwarded is what one usually comes here to find.
-$targets = [];
 $courses = [];
 foreach ($forms as $form) {
-    $targets[$form->cmid] = sender::target_for_cm((int)$form->cmid, (int)$form->courseid, (string)$form->name, $config);
-    if ($targets[$form->cmid] !== null) {
+    if ($form->target !== null) {
         $courses[$form->courseid] = true;
     }
 }
@@ -103,7 +94,7 @@ foreach ($forms as $form) {
     if (empty($courses[$form->courseid])) {
         continue;
     }
-    $target = $targets[$form->cmid];
+    $target = $form->target;
     if ($target === null) {
         $where = html_writer::span(get_string('target_none', $component), 'text-muted');
         $button = '';
@@ -121,6 +112,15 @@ foreach ($forms as $form) {
         if ($target['sheet'] !== '') {
             $where .= ' · ' . s($target['sheet']);
         }
+        if ($target['layout'] === sender::LAYOUT_QUESTIONS && ($closed = sender::closed_at($form))) {
+            // When the form stops taking answers its rows leave the time tabs for the archive (hourly task).
+            if (time() < $closed) {
+                $state = 'closes';
+            } else {
+                $state = in_array((int)$form->cmid, $archived, true) ? 'archived' : 'closedwaiting';
+            }
+            $where .= ' · ' . get_string($state, $component, userdate($closed, $dateformat));
+        }
         $resend = new single_button(
             new moodle_url($pageurl, ['action' => 'resend', 'cmid' => $form->cmid]),
             get_string('resend', $component), 'post');
@@ -134,7 +134,7 @@ foreach ($forms as $form) {
         $form->cmid,
         $where,
         $form->responses,
-        $form->lastresponse ? userdate($form->lastresponse, get_string('strftimedatetimeshort', 'langconfig')) : '',
+        $form->lastresponse ? userdate($form->lastresponse, $dateformat) : '',
         $button,
     ]);
     if ($target === null) {
