@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Forward mod_feedback responses to a Google Doc (via Apps Script web app).
+ * Forward mod_feedback responses to Google Sheets (via an Apps Script web app).
  *
  * @package    local_kabfeedbackgdoc
  * @copyright  2026 Kabbalah Academy
@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_kabfeedbackgdoc';
-$plugin->version   = 2026092400;
+$plugin->version   = 2026092901;
 $plugin->requires  = 2024100700; // Moodle 4.5+.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.1.0';
+$plugin->release   = '1.2.1';

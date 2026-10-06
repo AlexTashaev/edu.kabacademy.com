@@ -1040,13 +1040,19 @@ JS;
         }
 
         [$tcount, $past, $current, $future] = prompts::diary_count_prompts($diary);
-        $data['promptmode_summary'] = self::get_mobile_prompt_mode_label($diary);
-        $data['promptcount_total'] = get_string('tcount', 'diary', $tcount);
-        $data['promptcount_breakdown'] = get_string('promptinfo', 'diary', [
-            'past' => $past,
-            'current' => $current,
-            'future' => $future,
-        ]);
+        // KAB patch: no prompt captions while the diary has no prompts; prompt counters are
+        // service info for teachers only, students never see them.
+        if ($tcount > 0) {
+            $data['promptmode_summary'] = self::get_mobile_prompt_mode_label($diary);
+        }
+        if ($tcount > 0 && has_capability('mod/diary:manageentries', $context, (int)$userid)) {
+            $data['promptcount_total'] = get_string('tcount', 'diary', $tcount);
+            $data['promptcount_breakdown'] = get_string('promptinfo', 'diary', [
+                'past' => $past,
+                'current' => $current,
+                'future' => $future,
+            ]);
+        }
 
         $limitnotes = self::get_mobile_limit_notes($diary, $resolvedpromptid);
         if (!empty($limitnotes)) {

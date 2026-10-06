@@ -51,8 +51,9 @@ class send_response extends \core\task\adhoc_task {
 
         $payload = sender::build_payload($completedid);
         if ($payload === null) {
-            // Response was deleted before we got to it, or the activity is gone. Nothing to retry.
-            mtrace("local_kabfeedbackgdoc: completed {$completedid} not found, skipping");
+            // Response was deleted before we got to it, the activity is gone or is not forwarded any more.
+            // Nothing to retry.
+            mtrace("local_kabfeedbackgdoc: completed {$completedid} not found or not forwarded, skipping");
             return;
         }
 

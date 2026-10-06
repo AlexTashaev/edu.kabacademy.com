@@ -1798,8 +1798,12 @@ class diarystats {
         $diary->intro .= prompts::prompts_viewcurrent($diary, $action, $promptid);
 
         [$tcount, $past, $current, $future] = prompts::diary_count_prompts($diary);
-        $diary->intro .= get_string('tcount', 'diary', $tcount);
-        $diary->intro .= get_string('promptinfo', 'diary', ['past' => $past, 'current' => $current, 'future' => $future]);
+        // KAB patch: prompt counters are service info for teachers only. Students never see them,
+        // and nobody sees them while the diary has no prompts.
+        if ($tcount > 0 && has_capability('mod/diary:manageentries', \context_module::instance($id))) {
+            $diary->intro .= get_string('tcount', 'diary', $tcount);
+            $diary->intro .= get_string('promptinfo', 'diary', ['past' => $past, 'current' => $current, 'future' => $future]);
+        }
 
         // phpcs:ignore
         // 20240509 Modified all min/maxes below here to use data from diary_prompts table if there is a promptid in use.
