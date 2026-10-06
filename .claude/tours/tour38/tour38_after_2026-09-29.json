@@ -1,0 +1,138 @@
+{
+  "id": 38,
+  "name": "Тур по странице ОК1 Осень 2026",
+  "description": "",
+  "pathmatch": "/course/view.php?id=236",
+  "enabled": 1,
+  "sortorder": 37,
+  "endtourlabel": "",
+  "displaystepnumbers": 1,
+  "configdata": {
+    "placement": "bottom",
+    "orphan": "0",
+    "backdrop": "1",
+    "reflex": "0",
+    "filtervalues": {
+      "accessdate": {
+        "filter_accessdate": "tool_usertours_accountcreation",
+        "filter_accessdate_range": 0,
+        "filter_accessdate_enabled": "0"
+      },
+      "category": [
+        "3"
+      ],
+      "course": [
+        "236"
+      ],
+      "courseformat": [],
+      "role": [],
+      "theme": [
+        "boost",
+        "kabacademy"
+      ],
+      "cssselector": [],
+      "exclude_category": [],
+      "course_operator": [
+        "select"
+      ]
+    },
+    "majorupdatetime": 1641972472,
+    "showtourwhen": 1
+  },
+  "steps": [
+    {
+      "id": 290,
+      "tourid": 38,
+      "sortorder": 0,
+      "title": "Обзор страницы курса",
+      "content": "<p dir=\"ltr\" style=\"text-align:left;\">Уделите минутку знакомству с основной учебной страницей. Посмотрите расположение элементов уроков и разделов курса.</p>\r\n<p dir=\"ltr\" style=\"text-align:left;\">Если вы закроете тур, его можно запустить снова из блока справа внизу страницы, нажав на кружок со знаком вопроса.</p>\r\n<p dir=\"ltr\" style=\"text-align:left;\">Вся информация по процессу обучения размещена в разделе <a href=\"https://edu.kabacademy.com/mod/page/view.php?id=13434\" target=\"_blank\" rel=\"noreferrer noopener\">«Как здесь всё устроено»</a> – по возможности прочитайте его полностью, чтобы ничего не пропустить.</p>",
+      "contentformat": 1,
+      "targettype": 2,
+      "targetvalue": "",
+      "configdata": {}
+    },
+    {
+      "id": 291,
+      "tourid": 38,
+      "sortorder": 1,
+      "title": "Навигатор по элементам курса",
+      "content": "<p>В левом меню отображаются все доступные элементы всех уроков курса и отметки о их прохождении. Вы можете переходить в блок нужного урока или сразу в нужный вам элемент урока. </p>\r\n<p>Уже пройденные элементы отмечены зеленым кружком, пока не пройденные – серым. </p><p><br /></p>",
+      "contentformat": 1,
+      "targettype": 0,
+      "targetvalue": "#theme_boost-drawers-courseindex .drawercontent",
+      "configdata": {
+        "reflex": "1",
+        "placement": "right",
+        "orphan": "1"
+      }
+    },
+    {
+      "id": 292,
+      "tourid": 38,
+      "sortorder": 2,
+      "title": "Блоки уроков",
+      "content": "<p>Блоки уроков и верхний блок курса можно сворачивать и разворачивать, нажав на стрелочку слева у названия урока или свернуть все блоки по ссылке \"Свернуть все\" справа вверху страницы курса. </p>",
+      "contentformat": 1,
+      "targettype": 0,
+      "targetvalue": "#section-0 > div > div.course-section-header.d-flex",
+      "configdata": {
+        "orphan": "1",
+        "reflex": "1"
+      }
+    },
+    {
+      "id": 293,
+      "tourid": 38,
+      "sortorder": 3,
+      "title": "Выполнение элементов уроков",
+      "content": "<p>Справа у названия каждого элемента урока можно увидеть условия прохождения этого элемента (что необходимо сделать) и отметки о том, что элемент пройден, если вы уже выполнили все условия. </p>",
+      "contentformat": 1,
+      "targettype": 0,
+      "targetvalue": "#module-12946 > div > div.activity-grid > div.activity-completion.align-self-start.ms-sm-2",
+      "configdata": {
+        "orphan": "1",
+        "reflex": "1"
+      }
+    },
+    {
+      "id": 295,
+      "tourid": 38,
+      "sortorder": 4,
+      "title": "Разделы на странице курса",
+      "content": "<p>В верхней части страницы размещаются ссылки на список участников курса, ваши оценки и доступные значки курса. </p>\r\n<p>Внутри элемента урока здесь будет размещена ссылка на главную страницу курса. </p>",
+      "contentformat": 1,
+      "targettype": 0,
+      "targetvalue": "#topofscroll > div.secondary-navigation.d-print-none > nav",
+      "configdata": {
+        "orphan": "1",
+        "reflex": "1"
+      }
+    },
+    {
+      "id": 294,
+      "tourid": 38,
+      "sortorder": 5,
+      "title": "Блоки справа",
+      "content": "<p>В панели справа размещены блоки с последними объявлениями и ближайшими событиями календаря, блоки \"Прогресс\" и \"Опыт\".</p>\r\n<p>Эту панель можно открывать и закрывать при необходимости. </p>\r\n<p>Внутри Лекций в этом блоке располагается Меню (содержание) Лекции. </p>",
+      "contentformat": 1,
+      "targettype": 0,
+      "targetvalue": "#topofscroll > div.drawer-toggles.d-flex > div.drawer-toggler.drawer-right-toggle.ms-auto.d-print-none",
+      "configdata": {
+        "orphan": "1",
+        "reflex": "1",
+        "placement": "left"
+      }
+    },
+    {
+      "id": 296,
+      "tourid": 38,
+      "sortorder": 6,
+      "title": "Остались вопросы?",
+      "content": "<p dir=\"ltr\">Для начала загляните в раздел <a href=\"https://edu.kabacademy.com/mod/page/view.php?id=13434\" target=\"_blank\" rel=\"noreferrer noopener\"><strong>«Как здесь всё устроено»</strong></a> и постарайтесь освоиться на сайте. :)</p>\r\n<p dir=\"ltr\">Если останутся вопросы – вы всегда можете задать их в техподдержку (окошко справа внизу любой страницы), <br />или позже вашему помощнику-тьютору, который свяжется с вами после начала курса.</p>\r\n<p dir=\"ltr\">Успешного обучения!</p>",
+      "contentformat": 1,
+      "targettype": 2,
+      "targetvalue": "",
+      "configdata": {}
+    }
+  ]
+}
