@@ -32,19 +32,43 @@ window.kab = (() => {
     }
     const update = (action, ids, target = {}) =>
         ws('core_courseformat_update_course', {action, courseid: COURSE, ids, ...target});
-    const state = async () => JSON.parse(await ws('core_courseformat_get_state', {courseid: COURSE}));
-    const seclen = async (id) => (await state()).section.find(s => s.id == id).cmlist.length;
+    // get_state also gets an HTML answer now and then under load — retry.
+    async function state() {
+        for (let t = 0; ; t++) {
+            try {
+                return JSON.parse(await ws('core_courseformat_get_state', {courseid: COURSE}));
+            } catch (e) {
+                if (t > 10) throw e;
+                await new Promise(r => setTimeout(r, 5000));
+            }
+        }
+    }
 
+    // If the answer is not JSON, wait for the copy; if the request died before moveto_module,
+    // the copy sits next to its source (visible in lesson 2!) — move it to the target.
     async function dup(id, secid) {
-        const n0 = await seclen(secid);
+        const st0 = await state();
+        const src = st0.section.find(s => s.cmlist.includes(String(id)));
+        const srcset = new Set(src.cmlist);
+        const n0 = st0.section.find(s => s.id == secid).cmlist.length;
         try {
             await update('cm_duplicate', [id], {targetsectionid: secid});
+            return;
         } catch (e) {
             if (e.message !== 'NOJSON') throw e;
-            await new Promise(r => setTimeout(r, 5000));
-            if (await seclen(secid) !== n0 + 1) throw new Error('dup ' + id + ' failed: ' + kablast.slice(0, 300));
-            kablog.push('dup ' + id + ': HTML answer, copy is in place');
         }
+        for (let t = 0; t < 24; t++) {
+            await new Promise(r => setTimeout(r, 5000));
+            const st = await state();
+            if (st.section.find(s => s.id == secid).cmlist.length === n0 + 1) return;
+            const stray = st.section.find(s => s.id == src.id).cmlist.filter(c => !srcset.has(c));
+            if (stray.length === 1) {
+                await update('cm_move', stray.map(Number), {targetsectionid: secid});
+                kablog.push('dup ' + id + ': stray copy ' + stray + ' moved');
+                return;
+            }
+        }
+        throw new Error('dup ' + id + ' lost: ' + kablast.slice(0, 300));
     }
 
     async function addSubsection(sectionnum, name) {
