@@ -341,6 +341,117 @@ class sender {
     }
 
     /**
+     * Every feedback activity of the site, with where its responses go (target null = nowhere).
+     *
+     * @param \stdClass $config plugin config
+     * @return \stdClass[] keyed by cmid: cmid, courseid, availability, feedbackid, name, timeopen, timeclose,
+     *                     shortname, responses, lastresponse, target
+     */
+    public static function forwarded_forms(\stdClass $config): array {
+        global $DB;
+        $sql = "SELECT cm.id AS cmid, cm.course AS courseid, cm.availability, f.id AS feedbackid, f.name, f.timeopen,
+                       f.timeclose, c.shortname,
+                       (SELECT COUNT(1) FROM {feedback_completed} fc WHERE fc.feedback = f.id) AS responses,
+                       (SELECT MAX(fl.timemodified) FROM {feedback_completed} fl WHERE fl.feedback = f.id) AS lastresponse
+                  FROM {course_modules} cm
+                  JOIN {modules} m ON m.id = cm.module
+                  JOIN {feedback} f ON f.id = cm.instance
+                  JOIN {course} c ON c.id = cm.course
+                 WHERE m.name = 'feedback' AND cm.deletioninprogress = 0
+              ORDER BY cm.course DESC, cm.id ASC";
+        $forms = $DB->get_records_sql($sql);
+        foreach ($forms as $form) {
+            $form->target = self::target_for_cm((int)$form->cmid, (int)$form->courseid, (string)$form->name, $config);
+        }
+        return $forms;
+    }
+
+    /**
+     * When a form stops taking responses: its "allow answers until" or an "available
+     * until" date restriction (a top-level "all of" condition), whichever comes first.
+     *
+     * @param \stdClass $form a row of forwarded_forms() (timeclose, availability)
+     * @return int timestamp, 0 = no end set
+     */
+    public static function closed_at(\stdClass $form): int {
+        $times = [];
+        if (!empty($form->timeclose)) {
+            $times[] = (int)$form->timeclose;
+        }
+        if (!empty($form->availability)) {
+            $tree = json_decode($form->availability);
+            if (is_object($tree) && ($tree->op ?? '&') === '&' && !empty($tree->c) && is_array($tree->c)) {
+                foreach ($tree->c as $cond) {
+                    if (is_object($cond) && ($cond->type ?? '') === 'date' && ($cond->d ?? '') === '<' && !empty($cond->t)) {
+                        $times[] = (int)$cond->t;
+                    }
+                }
+            }
+        }
+        return $times ? min($times) : 0;
+    }
+
+    /**
+     * When the rows of a closed form may leave the time tabs: not before the
+     * "archive hour" (site time zone) of the day the form closed, so that the
+     * teachers of the evening webinar still have their questions in front of them.
+     *
+     * @param int $closed from closed_at()
+     * @param \stdClass $config plugin config (archivehour; '' = right after closing)
+     * @return int timestamp, 0 when the form has no end
+     */
+    public static function archive_at(int $closed, \stdClass $config): int {
+        if (!$closed) {
+            return 0;
+        }
+        $hour = trim((string)($config->archivehour ?? '21'));
+        if ($hour === '' || !is_numeric($hour)) {
+            return $closed;
+        }
+        $day = (new \DateTime('@' . $closed))->setTimezone(\core_date::get_server_timezone_object());
+        $day->setTime(max(0, min(23, (int)$hour)), 0, 0);
+        return max($closed, $day->getTimestamp());
+    }
+
+    /**
+     * Forms whose rows the script has already moved to the archive tab.
+     *
+     * @param \stdClass $config plugin config
+     * @return int[] cmids
+     */
+    public static function archived_cmids(\stdClass $config): array {
+        return self::id_list((string)($config->archivedcmids ?? ''));
+    }
+
+    /**
+     * Remember which forms are archived.
+     *
+     * @param int[] $cmids
+     */
+    public static function set_archived(array $cmids): void {
+        set_config('archivedcmids', implode(',', array_values(array_unique(array_map('intval', $cmids)))),
+            'local_kabfeedbackgdoc');
+    }
+
+    /**
+     * Tell the script a form has closed: its rows leave the time tabs for the archive tab.
+     *
+     * @param array $target from target_for_cm()
+     * @param int $cmid
+     * @param string $name activity name
+     * @return array ['ok' => bool, 'code' => int, 'body' => string, 'json' => array|null, 'tries' => int]
+     */
+    public static function post_archive(array $target, int $cmid, string $name): array {
+        global $CFG;
+        return self::deliver([
+            'event'  => 'feedback_archive',
+            'site'   => $CFG->wwwroot,
+            'target' => $target,
+            'form'   => ['cmid' => $cmid, 'name' => $name],
+        ], 240);
+    }
+
+    /**
      * Deliver one response.
      *
      * @param array $payload from build_payload()
@@ -411,8 +522,8 @@ class sender {
      * redirects (open_basedir), re-issues the POST and gets a 405, so we do
      * not follow at all: POST once, then GET the Location ourselves.
      *
-     * Only a JSON answer with "ok": true and the number of rows written counts as
-     * delivered. A broken script or a deployment that lost its "Anyone" access
+     * Only a JSON answer with "ok": true and the number of rows written (or moved,
+     * for an archive request) counts as delivered. A broken script or a deployment that lost its "Anyone" access
      * answers with an HTML page and HTTP 200, and a redirect chain that ends at the
      * web app itself answers with the ping of doGet() - neither is a delivery.
      *
@@ -474,7 +585,7 @@ class sender {
         $decoded = json_decode($body, true);
         $json = is_array($decoded) ? $decoded : null;
         $ok = ($code >= 200 && $code < 300) && $json !== null && !empty($json['ok']);
-        if ($ok && $payload !== null && !array_key_exists('written', $json)) {
+        if ($ok && $payload !== null && !array_key_exists('written', $json) && !array_key_exists('moved', $json)) {
             $ok = false;
             $body = 'not the answer of doPost(): ' . $body;
         } else if ($json === null) {

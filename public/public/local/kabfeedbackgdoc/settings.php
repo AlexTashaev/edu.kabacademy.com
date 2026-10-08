@@ -96,6 +96,15 @@ if ($hassiteconfig) {
         80
     ));
 
+    $settings->add(new admin_setting_configtext(
+        'local_kabfeedbackgdoc/archivehour',
+        get_string('archivehour', 'local_kabfeedbackgdoc'),
+        get_string('archivehour_desc', 'local_kabfeedbackgdoc'),
+        '21',
+        PARAM_RAW_TRIMMED,
+        4
+    ));
+
     $settings->add(new admin_setting_configtextarea(
         'local_kabfeedbackgdoc/routes',
         get_string('routes', 'local_kabfeedbackgdoc'),

@@ -53,6 +53,8 @@ class Sheet {
     this.cells = moved;
     this.maxRows--;
   }
+  deleteRows(start, n) { for (let i = 0; i < n; i++) { this.deleteRow(start); } }
+  rows() { return this.getLastRow() - 1; }
   getRange(r, c, nr = 1, nc = 1) {
     if (r < 1 || c < 1 || nr < 1 || nc < 1 || r + nr - 1 > this.maxRows || c + nc - 1 > this.maxCols) {
       throw new Error(`range out of bounds: ${r},${c},${nr},${nc} (grid ${this.maxRows}x${this.maxCols})`);
@@ -133,6 +135,11 @@ class Range {
   setWrap(w) { return this.each((cell) => { cell.wrap = w; }); }
   setBackground(c) { return this.each((cell) => { cell.bg = c; }); }
   setFontColor(c) { return this.each((cell) => { cell.color = c; }); }
+  getBackgrounds() { return this.grid((cell) => cell.bg || '#ffffff'); }
+  getFontColors() { return this.grid((cell) => cell.color || '#000000'); }
+  setBackgrounds(m) { this.fits(m); return this.each((cell, i, j) => { cell.bg = m[i][j] === '#ffffff' ? undefined : m[i][j]; }); }
+  setFontColors(m) { this.fits(m); return this.each((cell, i, j) => { cell.color = m[i][j] === '#000000' ? undefined : m[i][j]; }); }
+  setFontSize(n) { return this.each((cell) => { cell.size = n; }); }
   setVerticalAlignment() { return this; }
 }
 
@@ -239,7 +246,7 @@ u.hidden.add(11);
   u.cell(r, 9).value = 'Вопрос по теме урока 1'; u.cell(r, 10).value = x[2]; u.cell(r, 11).value = x[1];
 });
 
-check('ping', JSON.parse(sandbox.doGet().text), { ok: true, ping: 'local_kabfeedbackgdoc', version: 7 });
+check('ping', JSON.parse(sandbox.doGet().text), { ok: true, ping: 'local_kabfeedbackgdoc', version: 8 });
 check('wrong secret', post({ secret: 'nope', event: 'feedback_response' }), { ok: false, error: 'forbidden' });
 check('unknown event', post({ event: 'x' }), { ok: false, error: 'unknown event' });
 
@@ -256,6 +263,8 @@ check('question row', t8.row(2).slice(1), ['Мария М', 'Ptz', 'в 8:00 из
 check('question time is a date', [Object.prototype.toString.call(t8.peek(2, 1).value), t8.peek(2, 1).value.getTime(),
   t8.peek(2, 1).format], ['[object Date]', 1790500000000, 'dd.MM.yyyy H:mm:ss']);
 check('question text is literal', [t8.peek(2, 5).rich, t8.peek(2, 5).wrap, t8.peek(2, 5).format], [true, true, '@']);
+check('font size 13 on the header and on the whole row', [t8.peek(1, 1).size, t8.peek(1, 12).size, t8.peek(2, 1).size, t8.peek(2, 5).size,
+  t8.peek(2, 10).size, t8.peek(2, 12).size], [13, 13, 13, 13, 13, 13]);
 check('question link', t8.peek(2, 8).link, 'https://edu.kabacademy.com/mod/feedback/show_entries.php?id=13448&showcompleted=3000');
 check('old tab untouched', u.getLastRow(), 6);
 check('timezone fixed', qs.tz, 'Asia/Jerusalem');
@@ -403,6 +412,54 @@ check('named tab is created after the others', [post(Object.assign(signup(2623, 
   { target: { spreadsheet: 'groups', sheet: 'Весна', layout: 'generic' } })).written,
   books.groups.tabs(), books.groups.getSheetByName('Весна').peek(2, 5).value], [1, ['Лист1', 'Весна'], 'Жанна']);
 check('empty batch', post({ event: 'feedback_batch', responses: [] }), { ok: true, written: 0, duplicates: 0, tables: [] });
+
+// --- a form closes: its rows leave the time tabs for the archive --------------------------------
+// By now the rows of form 13448 (link ...?id=13448) sit on 8:00 (3000, 3003, 3000 edited, two test
+// payloads, 3007, 3008, 3009), 17:00 (3002, 3000 edited again), 20:00 (3001), Без времени (3004) and
+// one on Архив already (3006, explicit tab). The "Студент" rows have no id in their link and another
+// form name; 3005 has no link at all.
+const ar = qs.getSheetByName('Архив');
+t8.cell(2, 12).value = 'ответ на первый';   // a teacher's answer in the outdated row travels too (t8 has an extra column 5)
+const archived = post({ event: 'feedback_archive', form: { cmid: 13448, name: 'Вопрос по теме урока 1 к вебинару с преподавателями' } });
+const times = ar.getRange(2, 1, ar.rows(), 1).getValues().map((r) => (r[0] && r[0].getTime ? r[0].getTime() : 0));
+check('archive: every row of the form moved, from every tab', [archived, ar.rows()],
+  [{ ok: true, moved: 12, from: { '8:00': 8, '17:00': 2, '20:00': 1, 'Без времени': 1 }, table: qs.name }, 13]);
+check('the row that was there before stays first; the moved ones follow in order of time',
+  [ar.peek(2, 12).value, ar.peek(3, 12).value, ar.peek(5, 12).value, ar.peek(14, 12).value,
+    times.slice(1).every((v, i, a) => i === 0 || v >= a[i - 1])],
+  ['r3006t1790500006', 'r0t1', 'r3000t1790500000', 'r3009t1790800000', true]);
+check('what stays: rows of other forms', [t8.rows(), t8.peek(2, 2).value, t17.rows(), qs.getSheetByName('20:00').rows(), u.rows(),
+  u.peek(3, 5).value], [1, 'Студент 0', 1, 2, 2, 'q']);
+const rowOf = (key) => { for (let r = 2; r <= ar.getLastRow(); r++) { if (ar.peek(r, 12).value === key) { return r; } } return 0; };
+const old = rowOf('r3000t1790500000');
+check('an outdated row keeps its grey, its pointer text and the teacher answer', [ar.peek(old, 1).bg, ar.peek(old, 5).color,
+  ar.peek(old, 10).value, ar.peek(old, 11).value, ar.peek(old, 8).link, ar.peek(old, 5).value],
+  ['#efefef', '#888888', 'Устарел, новый ответ — строка 5', 'ответ на первый',
+    'https://edu.kabacademy.com/mod/feedback/show_entries.php?id=13448&showcompleted=3000', '- почему так?' + String.fromCharCode(10) + '=1+1']);
+const edited = rowOf('r3000t1790501000');
+check('a changed answer keeps its yellow', [ar.peek(edited, 4).bg, ar.peek(edited, 5).bg, ar.peek(edited, 2).bg, ar.peek(edited, 2).size],
+  ['#fff2cc', '#fff2cc', undefined, 13]);
+check('archived rows still count for the dedupe', post(question(3003, 1790500003, 'x', 'В 08:00 (изр.)')).duplicate, true);
+check('asking again moves nothing', post({ event: 'feedback_archive', form: { cmid: 13448, name: 'x' } }).moved, 0);
+check('a form that never wrote here', post({ event: 'feedback_archive', form: { cmid: 99999 } }), { ok: true, moved: 0, from: {}, table: qs.name });
+check('archive needs a cmid', post({ event: 'feedback_archive', form: {} }).ok, false);
+
+// --- the archive took a form too early: its rows go back to their time tabs -------------------
+sandbox.UNARCHIVE_CMID = 13448;
+const back = sandbox.unarchiveForm();
+// The row written to Архив on purpose (3006, an explicit tab) is a row of the form too, so it goes along.
+check('rows of the form leave the archive for the tabs of their time',
+  [back, t8.rows(), t17.rows(), qs.getSheetByName('20:00').rows(), u.rows(), ar.rows()],
+  [{ moved: { '8:00': 9, '20:00': 1, '17:00': 2, 'Без времени': 1 }, left: 0 }, 10, 3, 3, 3, 0]);
+check('they come back in archive order, with their colours, keys and answers',
+  [t8.peek(3, 13).value, t8.peek(6, 1).bg, t8.peek(6, 6).color, t8.peek(6, 13).value, t8.peek(6, 12).value],
+  ['r3006t1790500006', '#efefef', '#888888', 'r3000t1790500000', 'ответ на первый']);
+check('and are archived again on the next request', post({ event: 'feedback_archive', form: { cmid: 13448 } }).moved, 13);
+
+// --- restyling what is already there ---------------------------------------------------------
+g.cell(2, 7).size = undefined; g.cell(1, 1).size = undefined;
+check('applyFontSize covers every tab of a table', [sandbox.applyFontSize('groups')['Лист1'], g.peek(2, 7).size, g.peek(1, 1).size,
+  books.groups.getSheetByName('Весна').peek(2, 5).size], [13, 13, 13, 13]);
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

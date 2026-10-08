@@ -110,6 +110,17 @@ $r = sender::ping();
 check('ping', [$r['ok'], $r['json']['version'], curl::$log], [true, 5, ['GET script.google.com', 'GET script.googleusercontent.com']]);
 
 $config = (object)['webhookurl' => ''];
+$config = (object)['webhookurl' => 'https://script.google.com/macros/s/X/exec', 'secret' => 's'];
+curl::$script = [$posted, ['code' => 200, 'body' => '{"ok":true,"moved":12,"from":{"8:00":8},"table":"T (Moodle)"}']];
+curl::$log = [];
+$r = sender::post_archive(['spreadsheet' => '', 'sheet' => '', 'layout' => 'questions'], 13448, 'Вопрос');
+check('archive request: the answer of doPost() carries "moved" instead of "written"', [$r['ok'], $r['tries'], $r['json']['moved']],
+    [true, 1, 12]);
+curl::$script = [$posted, $ping];
+check('archive request answered with the ping is not a delivery', sender::post_archive(['spreadsheet' => '', 'sheet' => '',
+    'layout' => 'questions'], 13448, 'Вопрос')['ok'], false);
+
+$config = (object)['webhookurl' => ''];
 check('not configured: nothing is sent', [run([$posted, $written])[0], count(curl::$log)], [false, 0]);
 
 echo $fails ? "\n$fails FAILED\n" : "\nall passed\n";

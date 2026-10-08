@@ -66,6 +66,12 @@ $string['recentnote'] = 'A failed delivery is not a lost response: the task retr
 $string['fail'] = 'Failed';
 $string['taskname'] = 'Send feedback response to Google Sheet';
 $string['taskresend'] = 'Send all responses of a form to Google Sheet again';
+$string['taskarchive'] = 'Move the responses of closed forms to the "Архив" tab';
+$string['closes'] = 'closes {$a}';
+$string['closedwaiting'] = 'closed {$a->closed}, the responses move to "Архив" after {$a->archive}';
+$string['archivehour'] = 'Archive hour';
+$string['archivehour_desc'] = 'The responses of a closed form move to "Архив" no earlier than this hour (site time zone) of the day the form closed: the form closes before the evening webinar, whose teachers still need the questions. Empty = right after closing.';
+$string['archived'] = 'closed {$a}, the responses are in "Архив"';
 $string['privacy:metadata:webhook'] = 'Feedback responses (course, activity, respondent name and e-mail, answers) are sent to the configured Google Apps Script web app so that staff can read them in a Google Sheet.';
 $string['privacy:metadata:webhook:answers'] = 'The answers given in the feedback activity.';
 $string['privacy:metadata:webhook:email'] = 'The e-mail address of the respondent.';
