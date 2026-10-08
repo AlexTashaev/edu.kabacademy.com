@@ -113,13 +113,18 @@ foreach ($forms as $form) {
             $where .= ' · ' . s($target['sheet']);
         }
         if ($target['layout'] === sender::LAYOUT_QUESTIONS && ($closed = sender::closed_at($form))) {
-            // When the form stops taking answers its rows leave the time tabs for the archive (hourly task).
+            // After the form stops taking answers, and after the archive hour of that day, its rows
+            // leave the time tabs for the archive (hourly task).
             if (time() < $closed) {
-                $state = 'closes';
+                $where .= ' · ' . get_string('closes', $component, userdate($closed, $dateformat));
+            } else if (in_array((int)$form->cmid, $archived, true)) {
+                $where .= ' · ' . get_string('archived', $component, userdate($closed, $dateformat));
             } else {
-                $state = in_array((int)$form->cmid, $archived, true) ? 'archived' : 'closedwaiting';
+                $where .= ' · ' . get_string('closedwaiting', $component, (object)[
+                    'closed'  => userdate($closed, $dateformat),
+                    'archive' => userdate(sender::archive_at($closed, $config), $dateformat),
+                ]);
             }
-            $where .= ' · ' . get_string($state, $component, userdate($closed, $dateformat));
         }
         $resend = new single_button(
             new moodle_url($pageurl, ['action' => 'resend', 'cmid' => $form->cmid]),

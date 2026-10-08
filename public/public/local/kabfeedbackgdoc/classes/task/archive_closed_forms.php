@@ -23,9 +23,11 @@ use local_kabfeedbackgdoc\sender;
  * of the teachers' table for the archive tab.
  *
  * A form is closed when its "allow answers until" or its "available until" date
- * restriction has passed. Archived forms are remembered in the plugin config; a
- * form that is opened again is forgotten there, so it is archived again when it
- * closes next. A failed request is simply retried on the next run.
+ * restriction has passed; the rows move only after the archive hour of that day
+ * (sender::archive_at()), because the evening webinar is held after the form has
+ * closed. Archived forms are remembered in the plugin config; a form that is
+ * opened again is forgotten there, so it is archived again when it closes next.
+ * A failed request is simply retried on the next run.
  *
  * @package    local_kabfeedbackgdoc
  * @copyright  2026 Kabbalah Academy
@@ -60,7 +62,7 @@ class archive_closed_forms extends \core\task\scheduled_task {
             $cmid = (int)$form->cmid;
             $closed = sender::closed_at($form);
             $isarchived = in_array($cmid, $archived, true);
-            if ($closed && $now >= $closed) {
+            if ($closed && $now >= sender::archive_at($closed, $config)) {
                 if ($isarchived) {
                     continue;
                 }

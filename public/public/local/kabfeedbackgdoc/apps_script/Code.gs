@@ -745,6 +745,49 @@ function moveRowsByTime() {
 }
 
 /**
+ * The archive took a form too early (08.10.2026: the form closed at 19:00, the rows
+ * were needed at the 20:00 webinar): put the rows of the form named in UNARCHIVE_CMID
+ * back on their time tabs. Then drop its cmid from the plugin's "archivedcmids"
+ * setting, or the task will not archive it again. Safe to run again.
+ */
+var UNARCHIVE_CMID = 0;
+function unarchiveForm() {
+  var cmid = Number(UNARCHIVE_CMID);
+  if (!cmid) { throw new Error('set UNARCHIVE_CMID first'); }
+  var ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  var archive = ss.getSheetByName(ARCHIVE_TAB);
+  var out = { moved: {}, left: 0 };
+  if (archive) {
+    var cols = noteColumns_(archive);
+    var last = archive.getLastRow();
+    if (cols.key && cols.url && cols.participate && last >= 2) {
+      var links = archive.getRange(2, cols.url, last - 1, 1).getRichTextValues();
+      var slots = archive.getRange(2, cols.participate, last - 1, 1).getDisplayValues();
+      var byTab = {};
+      for (var i = 0; i < last - 1; i++) {
+        var link = links[i][0] ? links[i][0].getLinkUrl() : null;
+        var m = link ? /[?&]id=(\d+)/.exec(link) : null;
+        if (!m || Number(m[1]) !== cmid) { continue; }
+        var tab = timeTabOf_(slots[i][0]) || NO_TIME_TAB;
+        (byTab[tab] = byTab[tab] || []).push(i + 2);
+      }
+      var remove = [];
+      Object.keys(byTab).forEach(function (tab) {
+        var records = readRows_(archive, cols, byTab[tab]);
+        var sh = sheet_(SPREADSHEET_ID, tab);
+        appendRecords_(sh, ensureColumns_(sh, QUESTION_COLUMNS), records);
+        out.moved[tab] = records.length;
+        remove = remove.concat(byTab[tab]);
+      });
+      deleteRows_(archive, remove);
+    }
+    out.left = archive.getLastRow() - 1;
+  }
+  Logger.log(JSON.stringify(out));
+  return out;
+}
+
+/**
  * Font size FONT_SIZE for everything already in a table (the script writes new rows
  * that way itself). Without an argument - the default table.
  */

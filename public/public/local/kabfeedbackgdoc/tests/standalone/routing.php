@@ -8,6 +8,12 @@ define('MOODLE_INTERNAL', 1);
 $CFG = new stdClass();
 $CFG->dirroot = __DIR__ . '/stub';
 $CFG->libdir = __DIR__ . '/stub/lib';
+/** Stands in for Moodle's core_date: the site time zone of edu.kabacademy.com. */
+class core_date {
+    public static function get_server_timezone_object(): DateTimeZone {
+        return new DateTimeZone('Asia/Jerusalem');
+    }
+}
 require(__DIR__ . '/../../classes/sender.php');
 
 use local_kabfeedbackgdoc\sender;
@@ -82,6 +88,13 @@ check('a date inside "any of" is not a closing', sender::closed_at((object)['tim
     'availability' => '{"op":"|","c":[{"type":"date","d":"<","t":1791475200}],"show":true}']), 0);
 check('no end set', sender::closed_at((object)['timeclose' => 0, 'availability' => '']), 0);
 check('garbage availability', sender::closed_at((object)['timeclose' => 0, 'availability' => '{not json']), 0);
+// The rows leave the time tabs only after the archive hour (site time zone) of the closing day.
+$closed = 1791475200; // 08.10.2026 16:00 UTC = 19:00 Asia/Jerusalem (IDT)
+check('closed at 19:00: the archive waits for 21:00 that day', sender::archive_at($closed, (object)['archivehour' => '21']), $closed + 2 * 3600);
+check('default hour is 21', sender::archive_at($closed, (object)[]), $closed + 2 * 3600);
+check('closed after the hour: no wait', sender::archive_at($closed + 3 * 3600, (object)['archivehour' => '21']), $closed + 3 * 3600);
+check('empty hour: right after closing', sender::archive_at($closed, (object)['archivehour' => '']), $closed);
+check('no end, no archive time', sender::archive_at(0, (object)['archivehour' => '21']), 0);
 check('archived forms from config', sender::archived_cmids((object)['archivedcmids' => '13448, 13470']), [13448, 13470]);
 check('nothing archived yet', sender::archived_cmids((object)[]), []);
 

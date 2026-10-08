@@ -392,6 +392,28 @@ class sender {
     }
 
     /**
+     * When the rows of a closed form may leave the time tabs: not before the
+     * "archive hour" (site time zone) of the day the form closed, so that the
+     * teachers of the evening webinar still have their questions in front of them.
+     *
+     * @param int $closed from closed_at()
+     * @param \stdClass $config plugin config (archivehour; '' = right after closing)
+     * @return int timestamp, 0 when the form has no end
+     */
+    public static function archive_at(int $closed, \stdClass $config): int {
+        if (!$closed) {
+            return 0;
+        }
+        $hour = trim((string)($config->archivehour ?? '21'));
+        if ($hour === '' || !is_numeric($hour)) {
+            return $closed;
+        }
+        $day = (new \DateTime('@' . $closed))->setTimezone(\core_date::get_server_timezone_object());
+        $day->setTime(max(0, min(23, (int)$hour)), 0, 0);
+        return max($closed, $day->getTimestamp());
+    }
+
+    /**
      * Forms whose rows the script has already moved to the archive tab.
      *
      * @param \stdClass $config plugin config
