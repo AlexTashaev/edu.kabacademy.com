@@ -35,6 +35,8 @@ COURSE = 236
 TZ = ZoneInfo("Asia/Jerusalem")
 SLOTS = (8, 17, 20)  # часы вебинаров по Израилю
 ADMINS = {2}  # аккаунт администратора записан студентом — не считать
+# у модераторов форума бывает и роль «студент» — в таблицу студентов не брать
+STAFF_ROLES = {"teacher", "editingteacher", "manager", "forummoderator", "moderator_assist", "koordinator"}
 
 # урок -> (zoom id, cmid «Запись вебинара N (архив)», quiz id)
 LESSONS = {
@@ -142,7 +144,8 @@ def build(data, outdir):
     students = {}
     for u in data["users"]:
         uid = int(u["id"])
-        if "student" not in (u["roles"] or "").split(",") or uid in ADMINS:
+        roles = set((u["roles"] or "").split(","))
+        if "student" not in roles or roles & STAFF_ROLES or uid in ADMINS:
             continue
         students[uid] = u
 
@@ -295,6 +298,8 @@ def build(data, outdir):
         "   досмотрел ли — Moodle не знает; это лучшее, что видно.",
         "Тест — оценка за «Проверьте себя: тест по уроку N», из 10.",
         "Баллы опыта — «капли живой воды» блока «Опыт!» за любую активность в курсе; уровень по ним же.",
+        "   Капли даются только за действия внутри Moodle. Был на вебинаре, а баллов 0 и «Последний вход» пуст —",
+        "   ни разу не входил в Moodle: попал в Zoom по прямой ссылке, отчёт Zoom узнал его по email.",
         "Сортировка — по баллам опыта, затем по числу вебинаров.",
         "",
         "Отчёт Zoom приходит в Moodle с задержкой: сегодняшние сессии появляются после их окончания.",
