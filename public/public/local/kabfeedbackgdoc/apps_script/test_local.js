@@ -444,6 +444,18 @@ check('asking again moves nothing', post({ event: 'feedback_archive', form: { cm
 check('a form that never wrote here', post({ event: 'feedback_archive', form: { cmid: 99999 } }), { ok: true, moved: 0, from: {}, table: qs.name });
 check('archive needs a cmid', post({ event: 'feedback_archive', form: {} }).ok, false);
 
+// --- the archive took a form too early: its rows go back to their time tabs -------------------
+sandbox.UNARCHIVE_CMID = 13448;
+const back = sandbox.unarchiveForm();
+// The row written to Архив on purpose (3006, an explicit tab) is a row of the form too, so it goes along.
+check('rows of the form leave the archive for the tabs of their time',
+  [back, t8.rows(), t17.rows(), qs.getSheetByName('20:00').rows(), u.rows(), ar.rows()],
+  [{ moved: { '8:00': 9, '20:00': 1, '17:00': 2, 'Без времени': 1 }, left: 0 }, 10, 3, 3, 3, 0]);
+check('they come back in archive order, with their colours, keys and answers',
+  [t8.peek(3, 13).value, t8.peek(6, 1).bg, t8.peek(6, 6).color, t8.peek(6, 13).value, t8.peek(6, 12).value],
+  ['r3006t1790500006', '#efefef', '#888888', 'r3000t1790500000', 'ответ на первый']);
+check('and are archived again on the next request', post({ event: 'feedback_archive', form: { cmid: 13448 } }).moved, 13);
+
 // --- restyling what is already there ---------------------------------------------------------
 g.cell(2, 7).size = undefined; g.cell(1, 1).size = undefined;
 check('applyFontSize covers every tab of a table', [sandbox.applyFontSize('groups')['Лист1'], g.peek(2, 7).size, g.peek(1, 1).size,
