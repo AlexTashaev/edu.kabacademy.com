@@ -336,7 +336,8 @@ if '--sql' in sys.argv:
     sql.append("DELETE FROM mdl_book_chapters WHERE bookid=%d;" % B['id'])
     transcript = open('spring3/t9_2094_c64.html', encoding='utf-8').read()
     chapters = [('Лекция урока в записи', book_ch1), ('Беседа «Восприятие реальности» (курс «Основы каббалы», 2018)', book_ch2),
-                ('Стенограмма беседы «Восприятие реальности»', transcript), ('Фильм «Сан-Францисские горки»', book_ch4)]
+                ('Стенограмма беседы «Восприятие реальности»', transcript)]
+    # films are not part of the additional materials (owner, 14.10.2026): «Сан-Францисские горки» (book_ch4) dropped
     for i, (title, html) in enumerate(chapters, 1):
         sql.append("INSERT INTO mdl_book_chapters (bookid,pagenum,subchapter,title,content,contentformat,hidden,timecreated,timemodified,importsrc) VALUES (%d,%d,0,%s,%s,1,0,%d,%d,'');" % (B['id'], i, q(title), hx(html), NOW, NOW))
     # renamed copies without content changes

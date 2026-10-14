@@ -214,18 +214,12 @@ book_ch1 += '<div class="kab-kicker">Ответы на вопросы по те�
 book_ch1 += yt('Ответы на вопросы по теме «Душа и тело»', 'Gb6us5_nblM', '1nF1Tw3UDvt1_zJRfic4f3baAQz-xvNx4')
 book_ch1 += '</div>\n'
 
-book_ch2 = '''<div class="kab-page">
-<div class="kab-quote">Факультатив, к неделе не привязан. Фильм о кругооборотах душ.</div>
-<p style="text-align: center;"><a class="external-media-provider" href="https://www.youtube.com/watch?v=bV-mie-owWo">Фильм «Шаги по пути истины. Кругообороты душ»</a></p>
-</div>
-'''
-# Links to kabbalahmedia.info are not given to students (owner, 14.10.2026): the Факультатив chapter with
-# the link to the article «Тело и душа» is dropped.
-BOOK = [('Лекции урока в записи', book_ch1),
-        ('Фильм «Шаги по пути истины. Кругообороты душ»', book_ch2)]
+# Owner, 14.10.2026: no links to kabbalahmedia.info for students (the chapter with the link to the article
+# «Тело и душа» is dropped) and no films in the additional materials (the film «Кругообороты душ» is dropped).
+BOOK = [('Лекции урока в записи', book_ch1)]
 
 PAGES = {'p_toc': toc, 'p_intro': intro, 'p_ch1': ch1, 'p_ch2': ch2, 'p_ch3': ch3, 'p_ch4': ch4,
-         'page_resume': resume, 'forum_otklik': otklik, 'book_ch1': book_ch1, 'book_ch2': book_ch2}
+         'page_resume': resume, 'forum_otklik': otklik, 'book_ch1': book_ch1}
 
 # ---------------- Тест «Проверьте себя» (quiz 1240): вопросы и верные ответы из дока, разборы неверных — свои ----------------
 # (name, text, [(answer, fraction, feedback)], single) — answers are shuffled by the quiz
