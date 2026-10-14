@@ -3506,10 +3506,17 @@ function glossary_get_entries_by_letter($glossary, $context, $letter, $from, $li
     // Now sorting out the array.
     $filteredentries = [];
 
+    // KAB patch: compare characters, not bytes. substr()/strtoupper()/ctype_alpha() see only
+    // the first byte of a Cyrillic letter, so every letter of the alphabet bar showed nothing
+    // and "Special" showed everything. "Special" = first character is not in the alphabet bar,
+    // as in mod_glossary_entry_query_builder::filter_by_non_letter().
     if ($letter != 'ALL' && $letter != 'SPECIAL' && core_text::strlen($letter)) {
+        $letterupper = core_text::strtoupper($letter);
+        $letterlength = core_text::strlen($letter);
         // Build a new array with the filtered entries.
         foreach ($entries as $key => $entry) {
-            if (strtoupper(substr(format_string($entry->concept), 0, 1)) === strtoupper($letter)) {
+            $start = core_text::substr(format_string($entry->concept), 0, $letterlength);
+            if (core_text::strtoupper($start) === $letterupper) {
                 // Add it when starting with the correct letter.
                 $filteredentries[$key] = $entry;
             }
@@ -3518,9 +3525,11 @@ function glossary_get_entries_by_letter($glossary, $context, $letter, $from, $li
     }
 
     if ($letter == 'SPECIAL') {
+        $alphabet = array_map('core_text::strtoupper', explode(',', get_string('alphabet', 'langconfig')));
         // Build a new array with the filtered entries.
         foreach ($entries as $key => $entry) {
-            if (!ctype_alpha(substr(format_string($entry->concept), 0, 1))) {
+            $first = core_text::strtoupper(core_text::substr(format_string($entry->concept), 0, 1));
+            if (!in_array($first, $alphabet, true)) {
                 // Add it when starting with a non-letter character.
                 $filteredentries[$key] = $entry;
             }

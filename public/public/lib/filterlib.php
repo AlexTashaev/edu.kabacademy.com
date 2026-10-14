@@ -996,19 +996,22 @@ function filter_prepare_phrases_for_filtering(array $linkarray) {
 
         // If we ony want to match entire words then add \b assertions. However, only
         // do this if the first or last thing in the phrase to match is a word character.
+        // KAB patch: 'u' in both checks and in the final regexp. Without it \w and \b know
+        // only ASCII, so a Cyrillic phrase never got \b and "match whole words only" was
+        // ignored: "падение" linked inside "Совпадение", "человек" inside "человека".
         if ($linkobject->fullmatch) {
-            if (preg_match('~^\w~', $linkobject->workregexp)) {
+            if (preg_match('~^\w~u', $linkobject->workregexp)) {
                 $linkobject->workregexp = '\b' . $linkobject->workregexp;
             }
-            if (preg_match('~\w$~', $linkobject->workregexp)) {
+            if (preg_match('~\w$~u', $linkobject->workregexp)) {
                 $linkobject->workregexp = $linkobject->workregexp . '\b';
             }
         }
 
-        $linkobject->workregexp = '/(' . $linkobject->workregexp . ')/s';
+        $linkobject->workregexp = '/(' . $linkobject->workregexp . ')/su';
 
         if (!$linkobject->casesensitive) {
-            $linkobject->workregexp .= 'iu';
+            $linkobject->workregexp .= 'i';
         }
     }
 
