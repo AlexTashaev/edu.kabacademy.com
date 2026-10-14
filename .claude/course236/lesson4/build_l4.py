@@ -227,14 +227,9 @@ book_ch2 = '''<div class="kab-page">
 </div>
 '''
 
-book_ch3 = '''<div class="kab-page">
-<div class="kab-quote">Факультатив, к неделе не привязан. Коротко о теме всего урока.</div>
-<p style="text-align: center;"><a class="external-media-provider" href="https://www.youtube.com/watch?v=yT0b880qoS4">Мультфильм «Строение мироздания. Коротко о каббале — 15»</a></p>
-</div>
-'''
+# Фильмы в «Дополнительные материалы» не включаем (правило владельца 14.10): мультфильм из Факультатива дока не ставится.
 BOOK = [('Лекции урока в записи', book_ch1),
-        ('Урок «Схема мироздания. Четыре стадии развития желания» (курс «Основы каббалы», 2011)', book_ch2),
-        ('Мультфильм «Строение мироздания. Коротко о каббале — 15»', book_ch3)]
+        ('Урок «Схема мироздания. Четыре стадии развития желания» (курс «Основы каббалы», 2011)', book_ch2)]
 
 # ---------------- Семинар: текст темы (пост публикует владелец, как в уроках 1–3) ----------------
 seminar_post = '''<div class="kab-text">
@@ -250,7 +245,7 @@ seminar_post = '''<div class="kab-text">
 
 PAGES = {'p_toc': toc, 'p_ch1': ch1, 'p_ch2': ch2, 'p_ch3': ch3, 'p_ch4': ch4, 'p_ch5': ch5,
          'page_resume': resume, 'forum_otklik': otklik, 'book_ch1': book_ch1, 'book_ch2': book_ch2,
-         'book_ch3': book_ch3, 'seminar_post': seminar_post}
+         'seminar_post': seminar_post}
 
 # ---------------- Тест «Проверьте себя» (quiz 1238): вопросы и верные ответы из дока, разборы неверных — свои ----------------
 # (name, text, [(answer, fraction, feedback)]) — first answer is the right one (answers are shuffled by the quiz)
