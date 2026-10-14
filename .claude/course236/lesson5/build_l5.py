@@ -73,9 +73,8 @@ def archive(uid, intro):
     return ('<div class="kab-page">\n<div class="kab-quote">%s</div>\n'
             '<div style="position: relative; width: 100%%; aspect-ratio: 16 / 9; margin: 16px 0;">\n'
             '<iframe src="https://kabbalahmedia.info/lessons/cu/%s?mediaType=video&amp;shareLang=ru&amp;embed=1&amp;autoPlay=0" '
-            'style="position: absolute; inset: 0; width: 100%%; height: 100%%; border: 0;" scrolling="no" allowfullscreen=""></iframe>\n</div>\n'
-            '<p><a class="kab-link" href="https://kabbalahmedia.info/ru/lessons/cu/%s" target="_blank" rel="noopener">Открыть в архиве</a></p>\n</div>\n'
-            % (intro, uid, uid))
+            'style="position: absolute; inset: 0; width: 100%%; height: 100%%; border: 0;" scrolling="no" allowfullscreen=""></iframe>\n</div>\n</div>\n'
+            % (intro, uid))
 
 
 def table(head, rows):
@@ -223,20 +222,15 @@ book_ch1 += '</div>\n'
 
 book_ch2 = archive('YA89b1a9', 'Вебинар Михаэля Лайтмана 14 октября 2018 года, 62 минуты. Полный разбор темы урока: Творец управляет двумя силами, положительной и отрицательной, и постоянно ведёт к добру. Клип «Невозможно управление только одной силой» в главе 3 лекции — начало этого вебинара.')
 book_ch3 = archive('JZPDGZ9D', 'Урок Михаэля Лайтмана 21 ноября 2010 года, 59 минут, по статье Бааль Сулама «Мир» — той, на которой построен урок: противоречие в управлении и теории, которыми его объясняло человечество.')
-book_ch4 = '''<div class="kab-page">
-<div class="kab-quote">Факультатив, к неделе не привязан. Статьи, на которых построен урок, — целиком.</div>
-<p><a class="kab-link" href="https://kabbalahmedia.info/ru/sources/qEcXTJ41" target="_blank" rel="noopener">Бааль Сулам, «Мир»</a> — статья целиком, в редакции «Сборника трудов Бааль Сулама».</p>
-<p><a class="kab-link" href="https://kabbalahmedia.info/ru/sources/hFeGidcS" target="_blank" rel="noopener">Бааль Сулам, «Нет никого, кроме Него»</a> — первая статья сборника «Шамати».</p>
-</div>
-'''
+# Links to kabbalahmedia.info are not given to students (owner, 14.10.2026): no «Открыть в архиве» under the players,
+# and the Факультатив chapter with links to the articles «Мир» and «Нет никого, кроме Него» is dropped.
 BOOK = [('Лекции урока в записи', book_ch1),
         ('Вебинар «Добро и зло в управлении Творца» (2018)', book_ch2),
-        ('Урок «Бааль Сулам. Мир. Контрасты и противоречия управления» (2010)', book_ch3),
-        ('Статьи Бааль Сулама «Мир» и «Нет никого, кроме Него»', book_ch4)]
+        ('Урок «Бааль Сулам. Мир. Контрасты и противоречия управления» (2010)', book_ch3)]
 
 PAGES = {'p_toc': toc, 'p_ch1': ch1, 'p_ch2': ch2, 'p_ch3': ch3, 'p_ch4': ch4,
          'page_resume': resume, 'forum_otklik': otklik, 'book_ch1': book_ch1, 'book_ch2': book_ch2,
-         'book_ch3': book_ch3, 'book_ch4': book_ch4}
+         'book_ch3': book_ch3}
 
 # ---------------- Тест «Проверьте себя» (quiz 1239): вопросы и верные ответы из дока, разборы неверных — свои ----------------
 # (name, text, [(answer, fraction, feedback)], single) — answers are shuffled by the quiz

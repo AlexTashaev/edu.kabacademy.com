@@ -219,17 +219,13 @@ book_ch2 = '''<div class="kab-page">
 <p style="text-align: center;"><a class="external-media-provider" href="https://www.youtube.com/watch?v=bV-mie-owWo">Фильм «Шаги по пути истины. Кругообороты душ»</a></p>
 </div>
 '''
-book_ch3 = '''<div class="kab-page">
-<div class="kab-quote">Факультатив, к неделе не привязан. Статья, на которой построен урок, — целиком.</div>
-<p><a class="kab-link" href="https://kabbalahmedia.info/ru/sources/z1UFx4Jr" target="_blank" rel="noopener">Бааль Сулам, «Тело и душа»</a> — статья целиком, в редакции «Сборника трудов Бааль Сулама».</p>
-</div>
-'''
+# Links to kabbalahmedia.info are not given to students (owner, 14.10.2026): the Факультатив chapter with
+# the link to the article «Тело и душа» is dropped.
 BOOK = [('Лекции урока в записи', book_ch1),
-        ('Фильм «Шаги по пути истины. Кругообороты душ»', book_ch2),
-        ('Статья Бааль Сулама «Тело и душа»', book_ch3)]
+        ('Фильм «Шаги по пути истины. Кругообороты душ»', book_ch2)]
 
 PAGES = {'p_toc': toc, 'p_intro': intro, 'p_ch1': ch1, 'p_ch2': ch2, 'p_ch3': ch3, 'p_ch4': ch4,
-         'page_resume': resume, 'forum_otklik': otklik, 'book_ch1': book_ch1, 'book_ch2': book_ch2, 'book_ch3': book_ch3}
+         'page_resume': resume, 'forum_otklik': otklik, 'book_ch1': book_ch1, 'book_ch2': book_ch2}
 
 # ---------------- Тест «Проверьте себя» (quiz 1240): вопросы и верные ответы из дока, разборы неверных — свои ----------------
 # (name, text, [(answer, fraction, feedback)], single) — answers are shuffled by the quiz
