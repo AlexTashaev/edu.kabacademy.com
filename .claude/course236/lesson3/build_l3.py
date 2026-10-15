@@ -216,10 +216,10 @@ record = '''<div class="kab-page">
 # ---------------- Книга «Дополнительные материалы» ----------------
 def yt(title, ytid, driveid):
     return ('<p style="text-align: center;"><a class="external-media-provider" href="https://youtu.be/%s">%s</a></p>\n'
-            '<details class="kab-details">\n<summary><span style="color: #3c5d90;">Альтернативный плеер <em>(если видео выше не воспроизводится)</em></span></summary>\n'
+            '<details class="kab-details" style="margin-bottom: 40px;">\n<summary><span style="color: #3c5d90;">Альтернативный плеер <em>(если видео выше не воспроизводится)</em></span></summary>\n'
             '<br><iframe src="https://drive.google.com/file/d/%s/preview" width="100%%" height="480" allow="autoplay"></iframe></details>\n' % (ytid, title, driveid))
 
-book_ch1 = '<div class="kab-page">\n<div class="kab-quote">Лекция курса «Основы каббалы» по теме урока — в записи. Тот же материал в лекционном изложении; ядро урока на него не опирается.</div>\n'
+book_ch1 = '<div class="kab-page">\n'
 book_ch1 += '<div class="kab-kicker">Восприятие реальности. Преподаватель Борис Белоцерковский</div>\n'
 book_ch1 += yt('Восприятие реальности. Основы каббалы, часть 1 (преподаватель Борис Белоцерковский)', 'V12UNh9bZCw', '1QUBtBzzEQASTK9DfCnfpBBk_9qxU2uZv')
 book_ch1 += '<div class="kab-kicker">Лекция в трёх частях</div>\n'

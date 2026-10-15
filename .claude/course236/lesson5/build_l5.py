@@ -56,7 +56,7 @@ def figure(code, n, w, h, alt, caption):
 def yt(title, ytid, driveid=None):
     out = '<p style="text-align: center;"><a class="external-media-provider" href="https://youtu.be/%s">%s</a></p>\n' % (ytid, title)
     if driveid:
-        out += ('<details class="kab-details">\n<summary><span style="color: #3c5d90;">Альтернативный плеер <em>(если видео выше не воспроизводится)</em></span></summary>\n'
+        out += ('<details class="kab-details" style="margin-bottom: 40px;">\n<summary><span style="color: #3c5d90;">Альтернативный плеер <em>(если видео выше не воспроизводится)</em></span></summary>\n'
                 '<br><iframe src="https://drive.google.com/file/d/%s/preview" width="100%%" height="480" allow="autoplay"></iframe></details>\n' % driveid)
     return out
 
@@ -204,7 +204,7 @@ otklik = '''<div class="kab-text">
 '''
 
 # ---------------- Книга «Дополнительные материалы к Уроку 5» ----------------
-book_ch1 = '<div class="kab-page">\n<div class="kab-quote">Лекции по теме урока — в записи. Тот же материал в лекционном изложении; ядро урока на него не опирается.</div>\n'
+book_ch1 = '<div class="kab-page">\n'
 book_ch1 += '<div class="kab-kicker">Вступление</div>\n'
 book_ch1 += yt('Основы каббалы. Единственность Творца', '4oGy31qwWqw', '1BoJfhe5YdY99hFIR3aOadfWyAwdkHfc8')
 book_ch1 += p('Человек постоянно находится под воздействием различных сил, которые практически не поддаются прогнозированию и управлению. Следуя общепринятым нормам поведения, человек хотел бы получать предсказуемый результат своих действий. Однако реакция окружающей среды, включая природу и общество, как правило, противоположна ожиданиям человека.')

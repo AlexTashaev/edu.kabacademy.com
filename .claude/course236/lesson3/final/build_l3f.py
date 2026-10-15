@@ -34,7 +34,7 @@ def figure(code, n, w, h, alt, caption):
 
 def yt(title, ytid, driveid):
     return ('<p style="text-align: center;"><a class="external-media-provider" href="https://youtu.be/%s">%s</a></p>\n'
-            '<details class="kab-details">\n<summary><span style="color: #3c5d90;">Альтернативный плеер <em>(если видео выше не воспроизводится)</em></span></summary>\n'
+            '<details class="kab-details" style="margin-bottom: 40px;">\n<summary><span style="color: #3c5d90;">Альтернативный плеер <em>(если видео выше не воспроизводится)</em></span></summary>\n'
             '<br><iframe src="https://drive.google.com/file/d/%s/preview" width="100%%" height="480" allow="autoplay"></iframe></details>\n' % (ytid, title, driveid))
 
 def srcquote(text, who):
@@ -174,7 +174,7 @@ otklik = '''<div class="kab-text">
 '''
 
 # ---------------- Книга «Дополнительные материалы», глава 1: + вступительный ролик старого урока ----------------
-book_ch1 = '<div class="kab-page">\n<div class="kab-quote">Лекция курса «Основы каббалы» по теме урока — в записи. Тот же материал в лекционном изложении; ядро урока на него не опирается.</div>\n'
+book_ch1 = '<div class="kab-page">\n'
 book_ch1 += '<div class="kab-kicker">Вступление</div>\n'
 book_ch1 += yt('Восприятие реальности. Вступление к лекции', 'egjTNqzDh9w', '1EHM4EuYqPbeBO6m8rqtsU2vj9WzhenjH')
 book_ch1 += '<div class="kab-kicker">Восприятие реальности. Преподаватель Борис Белоцерковский</div>\n'
