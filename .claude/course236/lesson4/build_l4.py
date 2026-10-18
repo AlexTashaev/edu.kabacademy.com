@@ -295,7 +295,7 @@ QUIZ, PAGE_RESUME, FORUM_OTKLIK = 1238, 2490, 3905
 # 17904 map -> 17905 toc -> 17906 ch1 -> 17909 ch2 -> 17907 ch3 -> 17908 ch4 -> new ch5
 PAGE_IDS = {'map': 17904, 'toc': 17905, 'ch1': 17906, 'ch2': 17909, 'ch3': 17907, 'ch4': 17908}
 # Lesson 3 + 7 days, Israel time (25.10 the clocks go back: count in local time, not +604800 s)
-EXP_L = int(datetime(2026, 10, 27, 23, 59, tzinfo=TZ).timestamp())   # lecture and otklik: Tuesday 23:59
+EXP_L = int(datetime(2026, 10, 28, 23, 59, tzinfo=TZ).timestamp())   # lecture and otklik: Wednesday 23:59 (moved from Tuesday 18.10.2026)
 EXP_Q = int(datetime(2026, 10, 28, 23, 59, tzinfo=TZ).timestamp())   # test: Wednesday 23:59
 # quiz slots -> question versions -> answer ids (from the DB, 14.10.2026)
 QIDS = [([68774, 68775], [[284096, 284097, 284098, 284099], [284100, 284101, 284102, 284103]]),
@@ -346,7 +346,7 @@ if '--sql' in sys.argv:
     sql.append("UPDATE mdl_forum SET intro=%s, timemodified=%d WHERE id=%d;" % (hx(otklik), NOW, FORUM_OTKLIK))
     # open the lecture, test and résumé (the lesson section itself stays date-locked until 23.10 08:00)
     sql.append("UPDATE mdl_course_modules SET visible=1, visibleold=1 WHERE id IN (%d,%d,%d);" % (CM_LESSON, CM_QUIZ, CM_RESUME))
-    # dates as in lesson 3 + 7 days: lecture/otklik Tuesday, test Wednesday
+    # whole lesson is due Wednesday 23:59 (webinar on the next topic is on Thursday)
     sql.append("UPDATE mdl_course_modules SET completionexpected=%d WHERE id IN (%d,%d);" % (EXP_L, CM_LESSON, CM_OTKLIK))
     sql.append("UPDATE mdl_course_modules SET completionexpected=%d WHERE id=%d;" % (EXP_Q, CM_QUIZ))
     sql.append("UPDATE mdl_event SET timestart=%d, timesort=%d, visible=1, timemodified=%d WHERE courseid=236 AND modulename='lesson' AND instance=%d AND eventtype='expectcompletionon';" % (EXP_L, EXP_L, NOW, LESSON))
