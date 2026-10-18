@@ -27,4 +27,4 @@ UPDATE mdl_course SET cacherev = cacherev + 1 WHERE id = 236;
 ```
 
 Генераторы уроков приведены в соответствие: `lesson-4-patterns-generators` (52943de)
-и `lesson-2-from-doc` (cba80c4). Ветку `pyatyy` (уроки 5–8) правит её сессия.
+и `lesson-2-from-doc` (cba80c4), в `pyatyy` (уроки 3, 5–7) — d1ca890; урок 8 (ea5abb6) собран сразу со средой.
