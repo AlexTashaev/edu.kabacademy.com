@@ -98,5 +98,29 @@ check('no end, no archive time', sender::archive_at(0, (object)['archivehour' =>
 check('archived forms from config', sender::archived_cmids((object)['archivedcmids' => '13448, 13470']), [13448, 13470]);
 check('nothing archived yet', sender::archived_cmids((object)[]), []);
 
+// Typed answers: mod_feedback saves them through s(), the table gets them as typed.
+/** Moodle's s(), as mod_feedback textarea/textfield create_value() calls it. */
+function moodle_s(string $var): string {
+    return preg_replace('/&amp;#(\d+|x[0-9a-f]+);/i', '&#$1;', htmlspecialchars($var, ENT_QUOTES | ENT_HTML401 | ENT_SUBSTITUTE));
+}
+$typed = [
+    'quotes'          => 'Что такое "заключительное желание"? Формулировка из теста урока 2.',
+    'apostrophe'      => "Don't и «ёлочки» — с тире",
+    'ampersand, tags' => 'А & Б, x < y > z, <b>не жирный</b>',
+    'entity as typed' => 'набрал &quot; руками и &amp;',
+    'phone, formula'  => "+79991234567\n=HYPERLINK(\"x\")",
+];
+foreach ($typed as $what => $text) {
+    check("textarea keeps $what", sender::answer_text('textarea', moodle_s($text)), $text);
+    check("textfield keeps $what", sender::answer_text('textfield', moodle_s($text)), $text);
+}
+check('the reported answer, as it lies in the database',
+    sender::answer_text('textarea', 'Что такое &quot;заключительное желание&quot;? Формулировка из теста урока 2.'),
+    'Что такое "заключительное желание"? Формулировка из теста урока 2.');
+check('typed text is trimmed', sender::answer_text('textarea', "  ответ \n"), 'ответ');
+check('option label: markup out, entities decoded', sender::answer_text('multichoice', 'в 17:00 <b>изр</b><br />&quot;да&quot; &amp; нет'),
+    "в 17:00 изр\n\"да\" & нет");
+check('format_string output decoded', sender::plain('Вопросы &amp; ответы &lt;1&gt;'), 'Вопросы & ответы <1>');
+
 echo $fails ? "\n$fails FAILED\n" : "\nall passed\n";
 exit($fails ? 1 : 0);

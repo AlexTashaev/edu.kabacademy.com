@@ -254,17 +254,11 @@ class sender {
                 // Fall back to the raw value.
                 $printval = $raw;
             }
-            if (!in_array($item->typ, ['textarea', 'textfield'], true)) {
-                // Option labels may carry markup; free-text answers are raw and kept as typed.
-                $printval = str_replace(['<br>', '<br />', '<br/>'], "\n", $printval);
-                $printval = html_entity_decode(strip_tags($printval), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            }
-            $printval = trim($printval);
             $answers[] = [
                 'itemid' => (int)$item->id,
-                'name'   => format_string($item->name, true, ['context' => $modcontext]),
+                'name'   => self::plain(format_string($item->name, true, ['context' => $modcontext])),
                 'type'   => $item->typ,
-                'value'  => $printval,
+                'value'  => self::answer_text($item->typ, $printval),
             ];
         }
 
@@ -284,12 +278,13 @@ class sender {
             'course'      => [
                 'id'        => (int)$course->id,
                 'shortname' => $course->shortname,
-                'fullname'  => format_string($course->fullname, true, ['context' => \context_course::instance($course->id)]),
+                'fullname'  => self::plain(format_string($course->fullname, true,
+                    ['context' => \context_course::instance($course->id)])),
             ],
             'feedback'    => [
                 'id'   => (int)$feedback->id,
                 'cmid' => (int)$cm->id,
-                'name' => format_string($feedback->name, true, ['context' => $modcontext]),
+                'name' => self::plain(format_string($feedback->name, true, ['context' => $modcontext])),
                 'url'  => (new \moodle_url('/mod/feedback/view.php', ['id' => $cm->id]))->out(false),
             ],
             'anonymous'   => $anonymous,
@@ -322,9 +317,37 @@ class sender {
               ORDER BY g.name";
         $names = [];
         foreach ($DB->get_records_sql($sql, ['courseid' => $courseid, 'userid' => $userid]) as $g) {
-            $names[] = format_string($g->name, true, ['context' => \context_course::instance($courseid)]);
+            $names[] = self::plain(format_string($g->name, true, ['context' => \context_course::instance($courseid)]));
         }
         return $names;
+    }
+
+    /**
+     * The text of an answer as the student typed or chose it.
+     *
+     * mod_feedback saves typed answers (textarea, textfield) through s(), so the
+     * database holds "&quot;", "&#039;", "&amp;", "&lt;" in place of the characters.
+     * Option labels of the other types may carry markup and entities.
+     *
+     * @param string $typ feedback item type
+     * @param string $printval from get_printval()
+     * @return string plain text
+     */
+    public static function answer_text(string $typ, string $printval): string {
+        if (!in_array($typ, ['textarea', 'textfield'], true)) {
+            $printval = strip_tags(str_replace(['<br>', '<br />', '<br/>'], "\n", $printval));
+        }
+        return trim(self::plain($printval));
+    }
+
+    /**
+     * Plain text of a string escaped for HTML (by s() or format_string()): the table is not HTML.
+     *
+     * @param string $html
+     * @return string
+     */
+    public static function plain(string $html): string {
+        return html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 
     /**
