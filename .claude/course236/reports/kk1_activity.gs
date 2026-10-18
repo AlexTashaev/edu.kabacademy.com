@@ -15,7 +15,7 @@
  */
 var SECRET = 'CHANGE_ME';
 var SPREADSHEET_ID = 'CHANGE_ME';
-var VERSION = 1;
+var VERSION = 2;
 var DONE_BG = '#d9ead3';
 
 function doPost(e) {
@@ -81,7 +81,7 @@ function write_(data) {
   sh.setFrozenColumns(1);
   sh.getRange(1, 1, height, width).createFilter();
 
-  var widths = [200, 220, 60, 130];
+  var widths = [200, 220, 80, 130];
   for (var c = 0; c < width; c++) {
     sh.setColumnWidth(c + 1, c < widths.length ? widths[c] : (c >= width - 2 ? 130 : 95));
   }
