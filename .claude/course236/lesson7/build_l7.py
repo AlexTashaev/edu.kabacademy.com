@@ -305,7 +305,7 @@ QUIZ, PAGE_RESUME, FORUM_OTKLIK, BOOK_ID = 1241, 2499, 3913, 973
 # 17922 map -> 17923 toc -> 17924 intro -> 17927 ch1 -> 17925 ch2 -> 17926 ch3 («Завершить»)
 PAGE_IDS = {'map': 17922, 'toc': 17923, 'intro': 17924, 'ch1': 17927, 'ch2': 17925, 'ch3': 17926}
 # Lesson 6 + 7 days, Israel time
-EXP_L = int(datetime(2026, 11, 17, 23, 59, tzinfo=TZ).timestamp())   # lecture and otklik: Tuesday 23:59
+EXP_L = int(datetime(2026, 11, 18, 23, 59, tzinfo=TZ).timestamp())   # lecture and otklik: Wednesday 23:59, as the test (owner, 18.10.2026)
 EXP_Q = int(datetime(2026, 11, 18, 23, 59, tzinfo=TZ).timestamp())   # test: Wednesday 23:59
 # quiz slots -> question versions -> answer ids (from the DB, 18.10.2026); slot 7 = new question 68870 (copy of 68805)
 QIDS = [([68798, 68799], [[284192, 284193, 284194, 284195], [284196, 284197, 284198, 284199]]),

@@ -66,7 +66,7 @@ INSERT INTO mdl_book_chapters (bookid,pagenum,subchapter,title,content,contentfo
 UPDATE mdl_label SET name='Как устроен этот урок', timemodified=1791374680 WHERE id=535;
 UPDATE mdl_url SET name='Мой Дневник', timemodified=1791374680 WHERE id=620;
 UPDATE mdl_page SET name='Тематические дни', timemodified=1791374680 WHERE id=2488;
-UPDATE mdl_course_modules SET completionexpected=1792529940 WHERE id IN (13492,13495);
+UPDATE mdl_course_modules SET completionexpected=1792616340 WHERE id IN (13492,13495);
 UPDATE mdl_course_modules SET completionexpected=1792616340 WHERE id=13493;
 UPDATE mdl_course_modules SET availability='{"op":"&","c":[{"type":"date","d":"<","t":1792684800,"nodeUID":1788791814720}],"showc":[true]}' WHERE id=13496;
 UPDATE mdl_course_modules SET availability='{"op":"&","c":[{"type":"date","d":">=","t":1792472400,"nodeUID":1790871362904}],"showc":[true]}' WHERE id=13497;
@@ -75,9 +75,9 @@ UPDATE mdl_course_sections SET availability='{"op":"&","c":[{"type":"date","d":"
 UPDATE mdl_course_sections SET availability='{"op":"&","c":[{"type":"date","d":">=","t":1792126800,"nodeUID":1789038924677}],"showc":[true]}', timemodified=1791374680 WHERE id=1796;
 UPDATE mdl_course_sections SET availability='{"op":"&","c":[{"type":"date","d":">=","t":1792126800,"nodeUID":1789038952197}],"showc":[true]}', timemodified=1791374680 WHERE id=1798;
 UPDATE mdl_event SET name='Лекция 3. Восприятие реальности открывается', timestart=1792126800, timesort=1792126800, timemodified=1791374680 WHERE modulename='lesson' AND instance=1964 AND eventtype='open';
-UPDATE mdl_event SET name='Лекция 3. Восприятие реальности должно быть выполнено', timestart=1792529940, timesort=1792529940, timemodified=1791374680 WHERE modulename='lesson' AND instance=1964 AND eventtype='expectcompletionon';
+UPDATE mdl_event SET name='Лекция 3. Восприятие реальности должно быть выполнено', timestart=1792616340, timesort=1792616340, timemodified=1791374680 WHERE modulename='lesson' AND instance=1964 AND eventtype='expectcompletionon';
 UPDATE mdl_event SET name='Проверьте себя: Тест по уроку 3 должно быть выполнено', timestart=1792616340, timesort=1792616340, timemodified=1791374680 WHERE modulename='quiz' AND instance=1237 AND eventtype='expectcompletionon';
-UPDATE mdl_event SET name='Отклик недели 3: вопрос на выбор должно быть выполнено', timestart=1792529940, timesort=1792529940, timemodified=1791374680 WHERE modulename='forum' AND instance=3902 AND eventtype='expectcompletionon';
+UPDATE mdl_event SET name='Отклик недели 3: вопрос на выбор должно быть выполнено', timestart=1792616340, timesort=1792616340, timemodified=1791374680 WHERE modulename='forum' AND instance=3902 AND eventtype='expectcompletionon';
 UPDATE mdl_course SET cacherev=cacherev+1 WHERE id=236;
 COMMIT;
 SELECT id,title,LENGTH(contents) clen FROM mdl_lesson_pages WHERE lessonid=1964 ORDER BY id;
