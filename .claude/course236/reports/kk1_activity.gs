@@ -3,13 +3,18 @@
  * в таблицу новой вкладкой (имя — дата выгрузки, дд.мм.гггг) первой слева.
  * Повтор в тот же день заменяет вкладку этого дня; прошлые недели остаются.
  *
- * Установка: в таблице «Расширения → Apps Script», вставить этот файл, задать
- * SECRET (тот же, что в config.json выгрузки), Deploy → New deployment → Web app,
- * Execute as: Me, Who has access: Anyone. exec-URL деплоя — в config.json.
+ * Проект отдельный (script.google.com → New project в своём Drive), не привязанный
+ * к таблице: таблица лежит на общем диске, и привязанный скрипт Google не даёт
+ * развернуть веб-приложением («You do not have permission to perform this action»).
+ *
+ * Установка: вставить этот файл, задать SECRET и SPREADSHEET_ID (те же, что в
+ * config.json выгрузки: secret и sheet), Deploy → New deployment → Web app,
+ * Execute as: Me, Who has access: Anyone. exec-URL деплоя — в config.json (url).
  * Обновление кода: Deploy → Manage deployments → карандаш → Version: New version
  * (New deployment дал бы новый URL).
  */
 var SECRET = 'CHANGE_ME';
+var SPREADSHEET_ID = 'CHANGE_ME';
 var VERSION = 1;
 var DONE_BG = '#d9ead3';
 
@@ -39,7 +44,7 @@ function respond(obj) {
 }
 
 function write_(data) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var head = data.headers, rows = data.rows;
   var width = head.length, height = rows.length + 1;
 
@@ -90,9 +95,7 @@ function write_(data) {
 
   var old = ss.getSheetByName(data.title);
   if (old) ss.deleteSheet(old);
-  sh.setName(data.title);
-  ss.setActiveSheet(sh);
-  ss.moveActiveSheet(1);
+  sh.setName(data.title); // вкладка уже первая: insertSheet(…, 0)
   return data.title;
 }
 
