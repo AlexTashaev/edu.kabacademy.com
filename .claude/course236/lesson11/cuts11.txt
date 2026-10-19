@@ -1,0 +1,15 @@
+# fileid name from to poster_s [from2 to2] -> sh cut11.sh $line  (archive cdn ids; seconds of the source recording)
+1AmOYS2i Lesson-11-clip-K1 174.9 254.6 27.9
+nRk1RcMV Lesson-11-clip-K2 2666.85 2833.6 8
+NiW0CZ01 Lesson-11-clip-K3 522.1 611.95 31.5
+GhSxvmkg Lesson-11-clip-K4 73.7 159.4 20
+DNZE8Lqb Lesson-11-clip-K5 202.5 294.95 6
+10hW2hva Lesson-11-clip-K7 1709.4 1757.0 16.7
+BLQ7w26H Lesson-11-clip-K9 33.0 130.95 8
+dPdvCWe3 Lesson-11-clip-K13 1329.75 1444.8 8
+OOj6J9lh Lesson-11-clip-K14 15.0 138.7 68.0
+6mmJcoLA Lesson-11-clip-K15 43.4 179.2 8
+FKKJzqQA Lesson-11-clip-K16 1257.6 1333.0 8 1377.45 1445.3
+IktZ1eFf Lesson-11-clip-K17 777.3 804.2 120 853.3 1006.0
+W3ERYC7b Lesson-11-clip-K18 1663.35 1723.45 8
+NiW0CZ01 Lesson-11-clip-K19 1514.5 1578.3 6
