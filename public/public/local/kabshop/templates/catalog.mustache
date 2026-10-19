@@ -1,0 +1,53 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_kabshop/catalog
+
+    Каталог витрины: разделы, в каждом — карточки товаров.
+
+    Example context (json):
+    {
+        "canmanage": true,
+        "manageurl": "#",
+        "sections": [
+            {"id": 1, "name": "Начать обучение", "description": "",
+             "products": [{"id": 1, "name": "Классическая каббала", "summary": "15 уроков", "price": "Бесплатно",
+                           "free": true, "image": null, "url": "#", "external": false, "hidden": false}]}
+        ]
+    }
+}}
+<div class="kabshop-catalog">
+    {{#canmanage}}
+    <div class="kabshop-manage-link text-end mb-3">
+        <a class="btn btn-outline-secondary btn-sm" href="{{manageurl}}">{{#str}} manage, local_kabshop {{/str}}</a>
+    </div>
+    {{/canmanage}}
+    {{#sections}}
+    <section class="kabshop-section" id="kabshop-section-{{id}}">
+        <h2 class="kabshop-section-title">{{name}}</h2>
+        {{#description}}<div class="kabshop-section-desc">{{{description}}}</div>{{/description}}
+        <div class="kabshop-grid">
+            {{#products}}
+            {{> local_kabshop/card }}
+            {{/products}}
+        </div>
+    </section>
+    {{/sections}}
+    {{^sections}}
+    <p class="kabshop-empty">{{#str}} emptycatalog, local_kabshop {{/str}}</p>
+    {{/sections}}
+</div>
