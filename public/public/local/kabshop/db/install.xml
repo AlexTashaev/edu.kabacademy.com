@@ -29,6 +29,8 @@
         <FIELD NAME="price" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2"/>
         <FIELD NAME="currency" TYPE="char" LENGTH="3" NOTNULL="true" DEFAULT="USD" SEQUENCE="false"/>
         <FIELD NAME="pricelabel" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="Подпись к цене: в месяц, от"/>
+        <FIELD NAME="customamount" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Сумма на выбор; price = минимум"/>
+        <FIELD NAME="presets" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Готовые суммы через запятую"/>
         <FIELD NAME="accountid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="payment_accounts.id"/>
         <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Курс, куда записывает"/>
         <FIELD NAME="enrolperiod" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Срок доступа, сек; 0 = бессрочно"/>
@@ -61,6 +63,22 @@
       <INDEXES>
         <INDEX NAME="productid" UNIQUE="false" FIELDS="productid"/>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_kabshop_intent" COMMENT="Выбранная покупателем сумма до оплаты (сумма на выбор)">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="productid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="amount" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="currency" TYPE="char" LENGTH="3" NOTNULL="true" DEFAULT="USD" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="productid" UNIQUE="false" FIELDS="productid"/>
       </INDEXES>
     </TABLE>
   </TABLES>

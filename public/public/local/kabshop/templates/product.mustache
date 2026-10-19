@@ -49,6 +49,7 @@
                 {{/post}}
                 {{#payment}}
                 <button type="button" class="btn btn-primary btn-lg"
+                        {{#autopay}}data-kabshop-autopay="1"{{/autopay}}
                         data-action="core_payment/triggerPayment"
                         data-component="{{component}}"
                         data-paymentarea="{{paymentarea}}"
@@ -58,6 +59,30 @@
                         data-description="{{description}}">{{label}}</button>
                 {{/payment}}
             {{/action}}
+            {{#changeurl}}
+            <div class="mt-2"><a href="{{changeurl}}">{{#str}} changeamount, local_kabshop {{/str}}</a></div>
+            {{/changeurl}}
+            {{#donateform}}
+            <form method="post" action="{{url}}" class="kabshop-donate">
+                <input type="hidden" name="id" value="{{id}}">
+                <input type="hidden" name="sesskey" value="{{sesskey}}">
+                <fieldset>
+                    <legend class="kabshop-donate-legend">{{#str}} chooseamount, local_kabshop {{/str}}</legend>
+                    <div class="kabshop-presets">
+                        {{#presets}}
+                        <input type="radio" class="btn-check" name="preset" id="kabshop-preset-{{value}}" value="{{value}}" {{#checked}}checked{{/checked}}>
+                        <label class="btn btn-outline-primary" for="kabshop-preset-{{value}}">{{label}}</label>
+                        {{/presets}}
+                    </div>
+                    <label class="kabshop-custom-label" for="kabshop-custom">{{#str}} otheramount, local_kabshop {{/str}}</label>
+                    <div class="input-group kabshop-custom">
+                        <input type="number" class="form-control" id="kabshop-custom" name="customvalue" min="{{min}}" step="0.01" inputmode="decimal">
+                        <span class="input-group-text">{{currency}}</span>
+                    </div>
+                </fieldset>
+                <button type="submit" class="btn btn-primary btn-lg mt-3">{{#str}} continue {{/str}}</button>
+            </form>
+            {{/donateform}}
             {{#nopayment}}
             <div class="alert alert-warning mt-2">{{#str}} nopayment, local_kabshop {{/str}}</div>
             {{/nopayment}}

@@ -73,7 +73,7 @@ class catalog {
      * @return bool
      */
     public static function is_free(\stdClass $product): bool {
-        return (float)$product->price < 0.01;
+        return empty($product->customamount) && (float)$product->price < 0.01;
     }
 
     /**
@@ -90,10 +90,73 @@ class catalog {
             return get_string('free', 'local_kabshop');
         }
         $s = \core_payment\helper::get_cost_as_string((float)$product->price, $product->currency);
+        if (!empty($product->customamount)) {
+            $s = get_string('pricefrom', 'local_kabshop', $s);
+        }
         if (!empty($product->pricelabel)) {
             $s .= ' ' . format_string($product->pricelabel);
         }
         return $s;
+    }
+
+    /** Наибольшая сумма на выбор — защита от опечаток. */
+    const MAX_AMOUNT = 100000;
+
+    /**
+     * Готовые суммы для товара с суммой на выбор: из настройки товара, не меньше минимума.
+     *
+     * @param \stdClass $product
+     * @return float[]
+     */
+    public static function presets(\stdClass $product): array {
+        $min = (float)$product->price;
+        $out = [];
+        foreach (preg_split('/[\s,;]+/', (string)($product->presets ?? ''), -1, PREG_SPLIT_NO_EMPTY) as $v) {
+            $v = round((float)str_replace(',', '.', $v), 2);
+            if ($v >= $min && $v > 0 && $v <= self::MAX_AMOUNT) {
+                $out[] = $v;
+            }
+        }
+        if (!$out && $min > 0) {
+            $out = [$min];
+        }
+        return array_values(array_unique($out));
+    }
+
+    /**
+     * Запомнить выбранную покупателем сумму. Минимум — цена товара.
+     *
+     * @param \stdClass $product
+     * @param int $userid
+     * @param float $amount
+     * @return int id записи
+     */
+    public static function create_intent(\stdClass $product, int $userid, float $amount): int {
+        global $DB;
+        $amount = round($amount, 2);
+        if (empty($product->customamount) || $amount < (float)$product->price || $amount <= 0
+                || $amount > self::MAX_AMOUNT) {
+            throw new \moodle_exception('invalidamount', 'local_kabshop');
+        }
+        return $DB->insert_record('local_kabshop_intent', (object)[
+            'productid' => $product->id,
+            'userid' => $userid,
+            'amount' => $amount,
+            'currency' => $product->currency,
+            'timecreated' => time(),
+        ]);
+    }
+
+    /**
+     * Выбранная сумма по id.
+     *
+     * @param int $id
+     * @param int $strictness
+     * @return \stdClass|false
+     */
+    public static function get_intent(int $id, int $strictness = MUST_EXIST) {
+        global $DB;
+        return $DB->get_record('local_kabshop_intent', ['id' => $id], '*', $strictness);
     }
 
     /**

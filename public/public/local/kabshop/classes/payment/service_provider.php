@@ -19,7 +19,10 @@ namespace local_kabshop\payment;
 use local_kabshop\catalog;
 
 /**
- * Оплата товара витрины через core_payment. Платёжная зона — 'product', itemid — id товара.
+ * Оплата товара витрины через core_payment.
+ *
+ * Зоны: 'product' — itemid = id товара, цена из товара;
+ *       'custom'  — itemid = id выбранной суммы (local_kabshop_intent), сумма на выбор покупателя.
  *
  * @package    local_kabshop
  * @copyright  2026 Kabacademy
@@ -28,16 +31,31 @@ use local_kabshop\catalog;
 class service_provider implements \core_payment\local\callback\service_provider {
 
     /**
-     * Цена, валюта и платёжный счёт товара.
+     * Товар и сумма к оплате для зоны.
+     *
+     * @param string $paymentarea
+     * @param int $itemid
+     * @return array [товар, сумма]
+     */
+    protected static function resolve(string $paymentarea, int $itemid): array {
+        if ($paymentarea === 'custom') {
+            $intent = catalog::get_intent($itemid);
+            return [catalog::get_product($intent->productid), (float)$intent->amount];
+        }
+        $product = catalog::get_product($itemid);
+        return [$product, (float)$product->price];
+    }
+
+    /**
+     * Цена, валюта и платёжный счёт.
      *
      * @param string $paymentarea
      * @param int $itemid
      * @return \core_payment\local\entities\payable
      */
     public static function get_payable(string $paymentarea, int $itemid): \core_payment\local\entities\payable {
-        $product = catalog::get_product($itemid);
-        return new \core_payment\local\entities\payable((float)$product->price, $product->currency,
-            (int)$product->accountid);
+        [$product, $amount] = self::resolve($paymentarea, $itemid);
+        return new \core_payment\local\entities\payable($amount, $product->currency, (int)$product->accountid);
     }
 
     /**
@@ -48,11 +66,11 @@ class service_provider implements \core_payment\local\callback\service_provider 
      * @return \moodle_url
      */
     public static function get_success_url(string $paymentarea, int $itemid): \moodle_url {
-        $product = catalog::get_product($itemid);
+        [$product] = self::resolve($paymentarea, $itemid);
         if ($product->courseid) {
             return new \moodle_url('/course/view.php', ['id' => $product->courseid]);
         }
-        return new \moodle_url('/local/kabshop/product.php', ['id' => $itemid, 'paid' => 1]);
+        return new \moodle_url('/local/kabshop/product.php', ['id' => $product->id, 'paid' => 1]);
     }
 
     /**
@@ -65,7 +83,7 @@ class service_provider implements \core_payment\local\callback\service_provider 
      * @return bool
      */
     public static function deliver_order(string $paymentarea, int $itemid, int $paymentid, int $userid): bool {
-        $product = catalog::get_product($itemid);
+        [$product] = self::resolve($paymentarea, $itemid);
         return catalog::grant($product, $userid, $paymentid);
     }
 }

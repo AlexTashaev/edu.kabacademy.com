@@ -28,6 +28,7 @@ require_once(__DIR__ . '/../../config.php');
 
 $id = required_param('id', PARAM_INT);
 $paid = optional_param('paid', 0, PARAM_BOOL);
+$intentid = optional_param('intent', 0, PARAM_INT);
 
 $context = context_system::instance();
 $product = catalog::get_product($id);
@@ -51,6 +52,8 @@ $owned = $loggedin && catalog::is_owned($product, $USER->id);
 $free = catalog::is_free($product);
 
 $action = null;
+$donateform = null;
+$custom = !empty($product->customamount);
 if ($product->kind === 'external') {
     if (!empty($product->externalurl)) {
         $action = ['href' => $product->externalurl, 'label' => get_string('gotoexternal', 'local_kabshop')];
@@ -63,8 +66,48 @@ if ($product->kind === 'external') {
 } else if (!$loggedin) {
     $action = [
         'href' => (new moodle_url('/local/kabshop/enrol.php', ['id' => $id]))->out(false),
-        'label' => get_string($free ? 'loginandenrol' : 'loginandbuy', 'local_kabshop'),
+        'label' => get_string($free ? 'loginandenrol' : ($custom ? 'loginanddonate' : 'loginandbuy'), 'local_kabshop'),
     ];
+} else if ($custom && $product->accountid) {
+    $intent = $intentid ? catalog::get_intent($intentid, IGNORE_MISSING) : null;
+    if ($intent && $intent->userid == $USER->id && $intent->productid == $id) {
+        // Сумма выбрана — кнопка оплаты, окно оплаты открывается сразу.
+        $amountstr = \core_payment\helper::get_cost_as_string((float)$intent->amount, $intent->currency);
+        $action = [
+            'payment' => true,
+            'autopay' => true,
+            'component' => 'local_kabshop',
+            'paymentarea' => 'custom',
+            'itemid' => $intent->id,
+            'cost' => (float)$intent->amount,
+            'successurl' => \local_kabshop\payment\service_provider::get_success_url('custom', $intent->id)->out(false),
+            'description' => $name,
+            'label' => get_string('payamount', 'local_kabshop', $amountstr),
+        ];
+        $changeurl = (new moodle_url('/local/kabshop/product.php', ['id' => $id]))->out(false);
+        $PAGE->requires->js_amd_inline("require(['core_payment/gateways_modal'], function(m) {
+            m.init();
+            var b = document.querySelector('[data-kabshop-autopay]');
+            if (b) { b.click(); }
+        });");
+    } else {
+        $presets = [];
+        foreach (catalog::presets($product) as $i => $v) {
+            $presets[] = [
+                'value' => $v,
+                'label' => \core_payment\helper::get_cost_as_string($v, $product->currency),
+                'checked' => $i === 0,
+            ];
+        }
+        $donateform = [
+            'url' => (new moodle_url('/local/kabshop/donate.php'))->out(false),
+            'id' => $id,
+            'sesskey' => sesskey(),
+            'presets' => $presets,
+            'min' => max((float)$product->price, 0.01),
+            'currency' => $product->currency,
+        ];
+    }
 } else if ($free) {
     $action = [
         'post' => (new moodle_url('/local/kabshop/enrol.php'))->out(false),
@@ -72,7 +115,7 @@ if ($product->kind === 'external') {
         'sesskey' => sesskey(),
         'label' => get_string('enrolfree', 'local_kabshop'),
     ];
-} else if ($product->accountid) {
+} else if ($product->accountid && !$custom) {
     $PAGE->requires->js_call_amd('core_payment/gateways_modal', 'init');
     $action = [
         'payment' => true,
@@ -89,6 +132,8 @@ if ($product->kind === 'external') {
 $data = catalog::card($product);
 $data['description'] = format_text($product->description ?? '', $product->descriptionformat, ['context' => $context]);
 $data['action'] = $action;
+$data['donateform'] = $donateform;
+$data['changeurl'] = !empty($action['autopay']) ? $changeurl : null;
 $data['nopayment'] = !$free && !$product->accountid && $product->kind !== 'external';
 $data['paid'] = $paid;
 $data['canmanage'] = $canmanage;

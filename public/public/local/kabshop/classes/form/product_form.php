@@ -77,6 +77,14 @@ class product_form extends \moodleform {
         $mform->setType('pricelabel', PARAM_TEXT);
         $mform->addHelpButton('pricelabel', 'pricelabel', $p);
 
+        $mform->addElement('advcheckbox', 'customamount', get_string('customamount', $p));
+        $mform->addHelpButton('customamount', 'customamount', $p);
+
+        $mform->addElement('text', 'presets', get_string('presets', $p), ['size' => 30]);
+        $mform->setType('presets', PARAM_TEXT);
+        $mform->addHelpButton('presets', 'presets', $p);
+        $mform->hideIf('presets', 'customamount', 'notchecked');
+
         $accounts = [0 => get_string('none')];
         foreach (\core_payment\helper::get_payment_accounts_menu(\context_system::instance()) as $aid => $aname) {
             $accounts[$aid] = $aname;
