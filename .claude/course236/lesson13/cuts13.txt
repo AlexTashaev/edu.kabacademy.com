@@ -1,0 +1,17 @@
+# fileid name poster_s from to [from to ...] -> sh cut13.sh $line  (archive cdn ids; seconds of the source recording)
+SoOA81wE Lesson-13-clip-K1 32 1445.75 1459.4 1461.68 1476.6 1482.6 1499.7
+SoOA81wE Lesson-13-clip-K2 30 1884.3 1895.3 1924.3 1971.2 2083.0 2167.6
+IrL4fO0Z Lesson-13-clip-K4 8 1459.5 1487.0 1505.3 1523.5
+VF=crop=404:228:23:65,scale=640:360, 16X7j1Rr Lesson-13-clip-K7 10 1640.05 1685.2 1700.95 1749.8 1775.5 1814.4
+rWXtlNOc Lesson-13-clip-K8 70 1006.6 1083.5 1132.9 1188.0
+eQTZDo6l Lesson-13-clip-K9 12 804.3 923.6 992.8 1016.6
+DZscPJQp Lesson-13-clip-K3 10 3522.5 3549.6 3554.8 3575.4
+DLid1CBd Lesson-13-clip-K10 18.6 421.8 468.3
+RtfuP8gJ Lesson-13-clip-K6 10 1579.6 1619.2 1646.0 1679.6
+ewaDlwwv Lesson-13-clip-K11 30 2277.2 2323.0 2371.4 2462.3
+rIPjElK6 Lesson-13-clip-K5 8 3295.6 3326.2
+HAinw2nC Lesson-13-clip-K14 35 1206.5 1252.0
+WSHqm9NA Lesson-13-clip-K13 80 604.4 721.5
+WSHqm9NA Lesson-13-clip-K16 50 1722.9 1810.6
+vWRIFPMe Lesson-13-clip-K18 40 1480.7 1627.0
+HAinw2nC Lesson-13-clip-K19 40 1765.5 1846.5
