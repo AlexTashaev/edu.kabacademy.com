@@ -49,6 +49,8 @@ $PAGE->navbar->add($name);
 
 $loggedin = isloggedin() && !isguestuser();
 $owned = $loggedin && catalog::is_owned($product, $USER->id);
+$activesub = ($loggedin && !empty($product->recurmonths))
+    ? \local_kabshop\subscriptions::get_active($product->id, $USER->id) : null;
 $free = catalog::is_free($product);
 
 $action = null;
@@ -62,6 +64,11 @@ if ($product->kind === 'external') {
     $action = [
         'href' => (new moodle_url('/course/view.php', ['id' => $product->courseid]))->out(false),
         'label' => get_string('gotocourse', 'local_kabshop'),
+    ];
+} else if ($activesub) {
+    $action = [
+        'href' => (new moodle_url('/local/kabshop/subscriptions.php'))->out(false),
+        'label' => get_string('managesub', 'local_kabshop'),
     ];
 } else if (!$loggedin) {
     $action = [
@@ -133,6 +140,8 @@ $data = catalog::card($product);
 $data['description'] = format_text($product->description ?? '', $product->descriptionformat, ['context' => $context]);
 $data['action'] = $action;
 $data['donateform'] = $donateform;
+$data['subinfo'] = $activesub ? get_string('subactive', 'local_kabshop',
+    userdate($activesub->nextcharge, get_string('strftimedate', 'langconfig'))) : null;
 $data['changeurl'] = !empty($action['autopay']) ? $changeurl : null;
 $data['nopayment'] = !$free && !$product->accountid && $product->kind !== 'external';
 $data['paid'] = $paid;

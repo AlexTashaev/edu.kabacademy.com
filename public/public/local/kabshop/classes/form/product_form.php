@@ -85,6 +85,14 @@ class product_form extends \moodleform {
         $mform->addHelpButton('presets', 'presets', $p);
         $mform->hideIf('presets', 'customamount', 'notchecked');
 
+        $recur = [0 => get_string('recur_none', $p)];
+        foreach (\local_kabshop\subscriptions::PERIODS as $m) {
+            $recur[$m] = get_string('recur_' . $m, $p);
+        }
+        $mform->addElement('select', 'recurmonths', get_string('recurring', $p), $recur);
+        $mform->addHelpButton('recurmonths', 'recurring', $p);
+        $mform->setDefault('recurmonths', 0);
+
         $accounts = [0 => get_string('none')];
         foreach (\core_payment\helper::get_payment_accounts_menu(\context_system::instance()) as $aid => $aname) {
             $accounts[$aid] = $aname;
@@ -134,6 +142,9 @@ class product_form extends \moodleform {
         // Платный товар (или сумма на выбор) без платёжного счёта не продаётся — на странице
         // товара было бы «Оплата не настроена».
         $paid = (float) $data['price'] > 0 || !empty($data['customamount']);
+        if (!empty($data['recurmonths']) && !$paid) {
+            $errors['recurmonths'] = get_string('recurfree', 'local_kabshop');
+        }
         if ($paid && $data['kind'] !== 'external' && empty($data['accountid'])) {
             $errors['accountid'] = get_string('accountrequired', 'local_kabshop');
         }

@@ -38,6 +38,7 @@
         <div class="kabshop-product-buy">
             {{#summary}}<p class="kabshop-product-summary">{{{summary}}}</p>{{/summary}}
             {{#price}}<div class="kabshop-price kabshop-price-lg{{#free}} kabshop-price-free{{/free}}">{{price}}</div>{{/price}}
+            {{#subinfo}}<div class="alert alert-info">{{subinfo}}</div>{{/subinfo}}
             {{#action}}
                 {{#href}}<a class="btn btn-primary btn-lg" href="{{href}}">{{label}}</a>{{/href}}
                 {{#post}}

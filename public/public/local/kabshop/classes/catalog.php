@@ -95,6 +95,8 @@ class catalog {
         }
         if (!empty($product->pricelabel)) {
             $s .= ' ' . format_string($product->pricelabel);
+        } else if (!empty($product->recurmonths)) {
+            $s .= ' ' . subscriptions::period_label((int) $product->recurmonths);
         }
         return $s;
     }
@@ -209,17 +211,19 @@ class catalog {
      * @param \stdClass $product
      * @param int $userid
      * @param int $paymentid 0 — бесплатная запись
-     * @return bool
+     * @param \stdClass|null $sub подписка, если это автосписание
+     * @return int номер покупки (он же номер заказа в письме)
      */
-    public static function grant(\stdClass $product, int $userid, int $paymentid = 0): bool {
+    public static function grant(\stdClass $product, int $userid, int $paymentid = 0, ?\stdClass $sub = null): int {
         global $DB;
         $amount = 0;
         $currency = $product->currency;
-        if ($paymentid && ($payment = $DB->get_record('payments', ['id' => $paymentid]))) {
+        $payment = $paymentid ? $DB->get_record('payments', ['id' => $paymentid]) : null;
+        if ($payment) {
             $amount = $payment->amount;
             $currency = $payment->currency;
         }
-        $DB->insert_record('local_kabshop_purchase', (object)[
+        $purchaseid = $DB->insert_record('local_kabshop_purchase', (object)[
             'productid' => $product->id,
             'userid' => $userid,
             'paymentid' => $paymentid,
@@ -227,10 +231,24 @@ class catalog {
             'currency' => $currency,
             'timecreated' => time(),
         ]);
-        if ($product->courseid) {
-            self::enrol($product, $userid);
+
+        // Регулярный товар: первая оплата заводит подписку; оплата, пришедшая от шлюза при уже
+        // активной подписке (своё автосписание шлюза, напр. Robokassa), продлевает её.
+        if (!$sub && $payment && !empty($product->recurmonths)) {
+            $sub = subscriptions::get_active($product->id, $userid);
+            $sub = $sub ? subscriptions::extend($sub, $paymentid)
+                : subscriptions::create($product, $userid, $payment);
         }
-        return true;
+
+        if ($product->courseid) {
+            // По подписке доступ — до следующего списания плюс запас на повторы.
+            $timeend = $sub ? $sub->nextcharge + subscriptions::GRACE : 0;
+            self::enrol($product, $userid, $timeend);
+        }
+        if ($payment) {
+            mailer::paid($product, $userid, $purchaseid, $payment, $sub);
+        }
+        return $purchaseid;
     }
 
     /**
@@ -238,8 +256,9 @@ class catalog {
      *
      * @param \stdClass $product
      * @param int $userid
+     * @param int $timeend конец доступа по подписке; 0 — по сроку товара или бессрочно
      */
-    protected static function enrol(\stdClass $product, int $userid): void {
+    protected static function enrol(\stdClass $product, int $userid, int $timeend = 0): void {
         global $DB;
         $plugin = enrol_get_plugin('manual');
         $instance = $DB->get_record('enrol', ['courseid' => $product->courseid, 'enrol' => 'manual'],
@@ -251,8 +270,11 @@ class catalog {
         }
         $roleid = $instance->roleid ?: $DB->get_field('role', 'id', ['shortname' => 'student']);
         $timestart = 0;
-        $timeend = 0;
-        if ($product->enrolperiod) {
+        if ($timeend > 0) {
+            // Продление существующей записи меняет только конец доступа.
+            $timestart = (int) $DB->get_field('user_enrolments', 'timestart',
+                ['enrolid' => $instance->id, 'userid' => $userid]) ?: time();
+        } else if ($product->enrolperiod) {
             $timestart = time();
             $timeend = $timestart + (int)$product->enrolperiod;
         }

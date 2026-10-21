@@ -78,22 +78,46 @@ class api {
     }
 
     /**
-     * Пожертвование ли это: для товаров витрины local_kabshop — вид товара «donation».
-     * Сервис ставит по нему признак пожертвования (VAT=Y), как WordPress по категории donation.
+     * Товар витрины local_kabshop, за который платёж (по зоне оплаты).
+     *
+     * @param \stdClass $rec запись paygw_kbb1
+     * @return \stdClass|null
+     */
+    public static function kabshop_product(\stdClass $rec): ?\stdClass {
+        global $DB;
+        if ($rec->component !== 'local_kabshop' || !$DB->get_manager()->table_exists('local_kabshop_product')) {
+            return null;
+        }
+        $productid = (int) $rec->itemid;
+        if ($rec->paymentarea === 'custom') {
+            $productid = (int) $DB->get_field('local_kabshop_intent', 'productid', ['id' => $rec->itemid]);
+        } else if ($rec->paymentarea === 'renewal') {
+            $productid = (int) $DB->get_field('local_kabshop_sub', 'productid', ['id' => $rec->itemid]);
+        }
+        return $DB->get_record('local_kabshop_product', ['id' => $productid]) ?: null;
+    }
+
+    /**
+     * Пожертвование ли это: вид товара витрины «donation». Сервис ставит по нему признак
+     * пожертвования (VAT=Y), как WordPress по категории donation.
      *
      * @param \stdClass $rec запись paygw_kbb1
      * @return bool
      */
     public static function is_donation(\stdClass $rec): bool {
-        global $DB;
-        if ($rec->component !== 'local_kabshop' || !class_exists('\local_kabshop\catalog')) {
-            return false;
-        }
-        $productid = $rec->itemid;
-        if ($rec->paymentarea === 'custom') {
-            $productid = (int) $DB->get_field('local_kabshop_intent', 'productid', ['id' => $rec->itemid]);
-        }
-        return $DB->get_field('local_kabshop_product', 'kind', ['id' => $productid]) === 'donation';
+        $product = self::kabshop_product($rec);
+        return $product && $product->kind === 'donation';
+    }
+
+    /**
+     * Регулярный ли товар: тогда при первой оплате просим сервис сохранить карту.
+     *
+     * @param \stdClass $rec запись paygw_kbb1
+     * @return bool
+     */
+    public static function is_recurring(\stdClass $rec): bool {
+        $product = self::kabshop_product($rec);
+        return $product && !empty($product->recurmonths);
     }
 
     /**
@@ -139,7 +163,48 @@ class api {
             'Reference'     => (string) $rec->id,
             'IsVisual'      => false,
             'PluginVersion' => 'moodle-paygw_kbb1/' . ($plugin->release ?? ''),
-        ];
+        ] + self::recurring_flags($rec);
+    }
+
+    /**
+     * Просьба сохранить карту для будущих автосписаний — как в woocommerce-bb:
+     * карта — CreateToken, PayPal — IsRecurring. Только для первой оплаты регулярного товара.
+     *
+     * @param \stdClass $rec
+     * @return array
+     */
+    protected static function recurring_flags(\stdClass $rec): array {
+        if ($rec->paymentarea === 'renewal' || !self::is_recurring($rec)) {
+            return [];
+        }
+        return $rec->method === 'emv' ? ['CreateToken' => 'True'] : ['IsRecurring' => true];
+    }
+
+    /**
+     * Списание по сохранённому токену (/emv/charge, /paypal/charge).
+     *
+     * @param \stdClass $config
+     * @param string $method
+     * @param array $payload
+     * @return array ['txnid' => string] при успехе или ['error' => string]
+     */
+    public static function charge(\stdClass $config, string $method, array $payload): array {
+        $curl = new \curl();
+        $curl->setHeader([
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . trim((string) $config->apitoken),
+        ]);
+        $body = $curl->post(self::endpoint($config, $method, 'charge'), json_encode($payload), [
+            'CURLOPT_TIMEOUT' => 45,
+            'CURLOPT_SSL_VERIFYPEER' => true,
+        ]);
+        $code = (int) ($curl->get_info()['http_code'] ?? 0);
+        $data = json_decode((string) $body, true);
+        if (!$curl->get_errno() && $code === 200 && ($data['status'] ?? '') === 'success') {
+            $inner = !empty($data['data']) ? json_decode((string) $data['data'], true) : [];
+            return ['txnid' => (string) ($inner['transaction_id'] ?? '')];
+        }
+        return ['error' => (string) ($data['error'] ?? ($curl->error ?: ('HTTP ' . $code)))];
     }
 
     /**

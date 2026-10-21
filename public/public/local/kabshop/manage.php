@@ -76,4 +76,32 @@ foreach (catalog::get_sections(true) as $s) {
     echo html_writer::table($table);
 }
 
+// Подписки: что и когда спишется, где ошибки.
+$subs = $DB->get_records('local_kabshop_sub', null, 'timemodified DESC', '*', 0, 100);
+echo $OUTPUT->heading(get_string('subscriptions', $p), 3);
+if (!$subs) {
+    echo html_writer::tag('p', get_string('nosubscriptions', $p), ['class' => 'text-muted']);
+} else {
+    $fmt = get_string('strftimedatetimeshort', 'langconfig');
+    $table = new html_table();
+    $table->head = ['#', get_string('user'), get_string('subproduct', $p), get_string('subamount', $p),
+        get_string('substatus', $p), get_string('subnext', $p), get_string('subfails', $p)];
+    $table->attributes['class'] = 'generaltable';
+    foreach ($subs as $sub) {
+        $u = core_user::get_user($sub->userid);
+        $pr = catalog::get_product($sub->productid, IGNORE_MISSING);
+        $table->data[] = [
+            $sub->id,
+            $u ? html_writer::link(new moodle_url('/user/profile.php', ['id' => $u->id]), fullname($u)) : $sub->userid,
+            $pr ? format_string($pr->name) : $sub->productid,
+            \core_payment\helper::get_cost_as_string((float) $sub->amount, $sub->currency) . ' '
+                . \local_kabshop\subscriptions::period_label((int) $sub->months) . ' · ' . s($sub->gateway),
+            get_string('substatus_' . $sub->status, $p),
+            userdate($sub->nextcharge, $fmt),
+            $sub->failcount ? $sub->failcount . ': ' . s((string) $sub->lasterror) : '—',
+        ];
+    }
+    echo html_writer::table($table);
+}
+
 echo $OUTPUT->footer();
