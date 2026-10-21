@@ -23,6 +23,7 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
+$string['accountrequired'] = 'Для платного товара выберите платёжный счёт.';
 $string['addproduct'] = 'Добавить товар';
 $string['addsection'] = 'Добавить раздел';
 $string['amountrange'] = 'Укажите сумму от {$a->min} до {$a->max}.';

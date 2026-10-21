@@ -23,6 +23,7 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
+$string['accountrequired'] = 'Choose a payment account for a paid product.';
 $string['addproduct'] = 'Add product';
 $string['addsection'] = 'Add section';
 $string['amountrange'] = 'Enter an amount from {$a->min} to {$a->max}.';

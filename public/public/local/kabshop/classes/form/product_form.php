@@ -131,6 +131,12 @@ class product_form extends \moodleform {
         if ($data['kind'] === 'external' && empty($data['externalurl'])) {
             $errors['externalurl'] = get_string('required');
         }
+        // Платный товар (или сумма на выбор) без платёжного счёта не продаётся — на странице
+        // товара было бы «Оплата не настроена».
+        $paid = (float) $data['price'] > 0 || !empty($data['customamount']);
+        if ($paid && $data['kind'] !== 'external' && empty($data['accountid'])) {
+            $errors['accountid'] = get_string('accountrequired', 'local_kabshop');
+        }
         return $errors;
     }
 }
