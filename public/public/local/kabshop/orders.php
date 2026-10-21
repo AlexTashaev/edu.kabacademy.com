@@ -79,6 +79,10 @@ $tabs = [
     new tabobject('orders', new moodle_url('/local/kabshop/orders.php', ['tab' => 'orders']), get_string('orders', $p)),
     new tabobject('attempts', new moodle_url('/local/kabshop/orders.php', ['tab' => 'attempts']), get_string('attempts', $p)),
 ];
+echo html_writer::div(
+    html_writer::link(new moodle_url('/local/kabshop/grant.php'), get_string('grant', $p), ['class' => 'btn btn-primary me-2']) .
+    html_writer::link(new moodle_url('/local/kabshop/coupons.php'), get_string('coupons', $p), ['class' => 'btn btn-secondary']),
+    'mb-3');
 echo $OUTPUT->tabtree($tabs, $tab);
 
 if ($tab === 'attempts') {
@@ -140,6 +144,7 @@ if (!$rows) {
     $t->attributes['class'] = 'generaltable';
     foreach ($rows as $r) {
         $cells = $row($r);
+        $cells[0] = html_writer::link(new moodle_url('/local/kabshop/order.php', ['id' => $r->id]), $cells[0]);
         $cells[2] = html_writer::link(new moodle_url('/user/profile.php', ['id' => $r->userid]), s($cells[2]));
         $cells[3] = s($cells[3]);
         $t->data[] = $cells;

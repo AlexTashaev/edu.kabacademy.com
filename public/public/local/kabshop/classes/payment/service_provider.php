@@ -90,6 +90,14 @@ class service_provider implements \core_payment\local\callback\service_provider 
      */
     public static function deliver_order(string $paymentarea, int $itemid, int $paymentid, int $userid): bool {
         [$product, , $sub] = self::resolve($paymentarea, $itemid);
-        return catalog::grant($product, $userid, $paymentid, $sub) > 0;
+        $opts = [];
+        if ($paymentarea === 'custom') {
+            // Цена со скидкой по купону тоже идёт через зону 'custom' — учесть купон в заказе.
+            $intent = catalog::get_intent($itemid);
+            if (!empty($intent->couponid)) {
+                $opts = ['couponid' => (int) $intent->couponid, 'amountoff' => (float) $intent->amountoff];
+            }
+        }
+        return catalog::grant($product, $userid, $paymentid, $sub, $opts) > 0;
     }
 }

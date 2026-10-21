@@ -37,4 +37,10 @@ if ($hassiteconfig || has_capability('local/kabshop:manage', context_system::ins
         new moodle_url('/local/kabshop/orders.php'),
         'local/kabshop:manage'
     ));
+    $ADMIN->add('courses', new admin_externalpage(
+        'local_kabshop_coupons',
+        get_string('coupons', 'local_kabshop'),
+        new moodle_url('/local/kabshop/coupons.php'),
+        'local/kabshop:manage'
+    ));
 }

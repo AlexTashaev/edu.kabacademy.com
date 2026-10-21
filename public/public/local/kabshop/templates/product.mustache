@@ -39,6 +39,7 @@
             {{#summary}}<p class="kabshop-product-summary">{{{summary}}}</p>{{/summary}}
             {{#price}}<div class="kabshop-price kabshop-price-lg{{#free}} kabshop-price-free{{/free}}">{{price}}</div>{{/price}}
             {{#subinfo}}<div class="alert alert-info">{{subinfo}}</div>{{/subinfo}}
+            {{#couponinfo}}<div class="alert alert-success">{{couponinfo}}</div>{{/couponinfo}}
             {{#action}}
                 {{#href}}<a class="btn btn-primary btn-lg" href="{{href}}">{{label}}</a>{{/href}}
                 {{#post}}
@@ -60,8 +61,19 @@
                         data-description="{{description}}">{{label}}</button>
                 {{/payment}}
             {{/action}}
+            {{#couponform}}
+            <form method="post" action="{{url}}" class="kabshop-coupon mt-3">
+                <input type="hidden" name="id" value="{{id}}">
+                <input type="hidden" name="sesskey" value="{{sesskey}}">
+                <label class="kabshop-custom-label" for="kabshop-coupon">{{#str}} couponlabel, local_kabshop {{/str}}</label>
+                <div class="input-group kabshop-custom">
+                    <input type="text" class="form-control" id="kabshop-coupon" name="code" autocomplete="off" maxlength="64">
+                    <button type="submit" class="btn btn-outline-secondary">{{#str}} couponapply, local_kabshop {{/str}}</button>
+                </div>
+            </form>
+            {{/couponform}}
             {{#changeurl}}
-            <div class="mt-2"><a href="{{changeurl}}">{{#str}} changeamount, local_kabshop {{/str}}</a></div>
+            <div class="mt-2"><a href="{{changeurl}}">{{changelabel}}</a></div>
             {{/changeurl}}
             {{#donateform}}
             <form method="post" action="{{url}}" class="kabshop-donate">

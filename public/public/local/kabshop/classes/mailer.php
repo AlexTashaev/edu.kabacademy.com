@@ -119,6 +119,41 @@ class mailer {
     }
 
     /**
+     * Письмо «доступ открыт» — ручная выдача администратором или купон на 100%.
+     *
+     * @param \stdClass $product
+     * @param int $userid
+     * @param int $purchaseid
+     */
+    public static function granted(\stdClass $product, int $userid, int $purchaseid): void {
+        global $DB, $SITE;
+        $user = \core_user::get_user($userid);
+        if (!$user || $user->deleted) {
+            return;
+        }
+        $p = 'local_kabshop';
+        $a = (object) [
+            'firstname' => $user->firstname,
+            'product' => format_string($product->name),
+            'order' => $purchaseid,
+            'site' => format_string($SITE->fullname),
+        ];
+        $lines = [get_string('mail_hello', $p, $a), '', get_string('mail_granted_body', $p, $a), '',
+            get_string('mail_order', $p, $a)];
+        if ($product->courseid && ($course = $DB->get_record('course', ['id' => $product->courseid]))) {
+            $a->course = format_string($course->fullname);
+            $lines[] = '';
+            $lines[] = get_string('mail_course', $p, $a);
+            $lines[] = (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false);
+        }
+        $lines[] = '';
+        $lines[] = get_string('mail_signature', $p, $a);
+        $text = implode("\n", $lines);
+        $html = nl2br(preg_replace('#(https?://[^\s<]+)#', '<a href="$1">$1</a>', s($text)));
+        email_to_user($user, \core_user::get_noreply_user(), get_string('mail_granted_subject', $p, $a), $text, $html);
+    }
+
+    /**
      * Письмо о неудачном автосписании: после первой неудачи — «повторим», после последней —
      * «подписка остановлена». Промежуточные неудачи — без писем.
      *

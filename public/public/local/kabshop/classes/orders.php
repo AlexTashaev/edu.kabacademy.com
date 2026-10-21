@@ -93,12 +93,14 @@ class orders {
                  JOIN {user} u ON u.id = pu.userid
             LEFT JOIN {local_kabshop_product} pr ON pr.id = pu.productid
             LEFT JOIN {payments} pm ON pm.id = pu.paymentid
+            LEFT JOIN {local_kabshop_coupon} cp ON cp.id = pu.couponid
                  $kbb1join
                 WHERE " . implode(' AND ', $where);
 
         $total = $DB->count_records_sql("SELECT COUNT(1) $from", $params);
         $rows = $DB->get_records_sql(
             "SELECT pu.id, pu.timecreated, pu.amount, pu.currency, pu.paymentid, pu.productid, pu.userid,
+                    pu.status, pu.grantedby, pu.couponid, pu.amountoff, cp.code AS couponcode,
                     pr.name AS productname, u.email {$names->selects},
                     pm.gateway, pm.paymentarea $kbb1sel
              $from
@@ -113,10 +115,21 @@ class orders {
      * @return string
      */
     public static function type(\stdClass $r): string {
-        if (empty($r->paymentid)) {
-            return get_string('ordertype_free', 'local_kabshop');
+        $p = 'local_kabshop';
+        if (!empty($r->grantedby)) {
+            $t = get_string('ordertype_manual', $p);
+        } else if (empty($r->paymentid)) {
+            $t = get_string(!empty($r->couponid) ? 'ordertype_coupon' : 'ordertype_free', $p);
+        } else {
+            $t = get_string($r->paymentarea === 'renewal' ? 'ordertype_renewal' : 'ordertype_paid', $p);
         }
-        return get_string($r->paymentarea === 'renewal' ? 'ordertype_renewal' : 'ordertype_paid', 'local_kabshop');
+        if (!empty($r->couponcode)) {
+            $t .= ' · ' . $r->couponcode;
+        }
+        if (($r->status ?? 'ok') === 'revoked') {
+            $t .= ' · ' . get_string('ordertype_revoked', $p);
+        }
+        return $t;
     }
 
     /**

@@ -111,9 +111,10 @@ class subscriptions {
      * @param \stdClass $product
      * @param int $userid
      * @param \stdClass $payment запись payments
+     * @param float|null $renewamount сумма следующих списаний, если первая оплата была со скидкой
      * @return \stdClass
      */
-    public static function create(\stdClass $product, int $userid, \stdClass $payment): \stdClass {
+    public static function create(\stdClass $product, int $userid, \stdClass $payment, ?float $renewamount = null): \stdClass {
         global $DB;
         $now = time();
         $sub = (object) [
@@ -123,7 +124,7 @@ class subscriptions {
             'accountid' => $payment->accountid,
             'firstpaymentid' => $payment->id,
             'lastpaymentid' => $payment->id,
-            'amount' => $payment->amount,
+            'amount' => $renewamount ?? $payment->amount,
             'currency' => $payment->currency,
             'months' => (int) $product->recurmonths,
             'status' => 'active',

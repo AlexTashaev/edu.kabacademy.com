@@ -210,11 +210,13 @@ class catalog {
      *
      * @param \stdClass $product
      * @param int $userid
-     * @param int $paymentid 0 — бесплатная запись
+     * @param int $paymentid 0 — без оплаты (бесплатно, 100% купон, ручная выдача)
      * @param \stdClass|null $sub подписка, если это автосписание
+     * @param array $opts couponid, amountoff — купон; grantedby, note, timeend, mail — ручная выдача
      * @return int номер покупки (он же номер заказа в письме)
      */
-    public static function grant(\stdClass $product, int $userid, int $paymentid = 0, ?\stdClass $sub = null): int {
+    public static function grant(\stdClass $product, int $userid, int $paymentid = 0, ?\stdClass $sub = null,
+            array $opts = []): int {
         global $DB;
         $amount = 0;
         $currency = $product->currency;
@@ -223,6 +225,8 @@ class catalog {
             $amount = $payment->amount;
             $currency = $payment->currency;
         }
+        $couponid = (int) ($opts['couponid'] ?? 0);
+        $amountoff = (float) ($opts['amountoff'] ?? 0);
         $purchaseid = $DB->insert_record('local_kabshop_purchase', (object)[
             'productid' => $product->id,
             'userid' => $userid,
@@ -230,25 +234,71 @@ class catalog {
             'amount' => $amount,
             'currency' => $currency,
             'timecreated' => time(),
+            'status' => 'ok',
+            'grantedby' => (int) ($opts['grantedby'] ?? 0),
+            'note' => isset($opts['note']) ? \core_text::substr(trim((string) $opts['note']), 0, 250) : null,
+            'couponid' => $couponid,
+            'amountoff' => $amountoff,
         ]);
+        if ($couponid) {
+            coupons::redeem($couponid, $userid, $purchaseid, $amountoff, $currency);
+        }
 
         // Регулярный товар: первая оплата заводит подписку; оплата, пришедшая от шлюза при уже
         // активной подписке (своё автосписание шлюза, напр. Robokassa), продлевает её.
+        // Скидка по купону — только на первый платёж: подписка списывает полную цену.
         if (!$sub && $payment && !empty($product->recurmonths)) {
             $sub = subscriptions::get_active($product->id, $userid);
             $sub = $sub ? subscriptions::extend($sub, $paymentid)
-                : subscriptions::create($product, $userid, $payment);
+                : subscriptions::create($product, $userid, $payment, $couponid ? (float) $product->price : null);
         }
 
         if ($product->courseid) {
             // По подписке доступ — до следующего списания плюс запас на повторы.
-            $timeend = $sub ? $sub->nextcharge + subscriptions::GRACE : 0;
+            $timeend = $sub ? $sub->nextcharge + subscriptions::GRACE : (int) ($opts['timeend'] ?? 0);
             self::enrol($product, $userid, $timeend);
         }
         if ($payment) {
             mailer::paid($product, $userid, $purchaseid, $payment, $sub);
+        } else if (!empty($opts['mail'])) {
+            mailer::granted($product, $userid, $purchaseid);
         }
         return $purchaseid;
+    }
+
+    /**
+     * Отозвать доступ по заказу (например, после возврата денег через бухгалтерию):
+     * снять запись на курс, остановить подписку на этот товар, пометить заказ.
+     *
+     * @param int $purchaseid
+     * @param int $adminid
+     * @param string $note
+     * @return bool
+     */
+    public static function revoke(int $purchaseid, int $adminid, string $note = ''): bool {
+        global $DB;
+        $purchase = $DB->get_record('local_kabshop_purchase', ['id' => $purchaseid]);
+        if (!$purchase || $purchase->status === 'revoked') {
+            return false;
+        }
+        $product = self::get_product($purchase->productid, IGNORE_MISSING);
+        if ($product && $product->courseid) {
+            $instance = $DB->get_record('enrol', ['courseid' => $product->courseid, 'enrol' => 'manual'],
+                '*', IGNORE_MULTIPLE);
+            if ($instance) {
+                enrol_get_plugin('manual')->unenrol_user($instance, $purchase->userid);
+            }
+        }
+        if ($product && ($sub = subscriptions::get_active($product->id, $purchase->userid))) {
+            $DB->update_record('local_kabshop_sub', (object) ['id' => $sub->id, 'status' => 'cancelled',
+                'timemodified' => time()]);
+        }
+        $who = fullname(\core_user::get_user($adminid));
+        $text = trim(($purchase->note ? $purchase->note . ' · ' : '') .
+            get_string('revokednote', 'local_kabshop', (object) ['who' => $who, 'note' => trim($note)]));
+        $DB->update_record('local_kabshop_purchase', (object) ['id' => $purchase->id, 'status' => 'revoked',
+            'timerevoked' => time(), 'note' => \core_text::substr($text, 0, 250)]);
+        return true;
     }
 
     /**

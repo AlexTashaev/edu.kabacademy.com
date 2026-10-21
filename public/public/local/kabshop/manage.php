@@ -93,7 +93,7 @@ if (!$subs) {
         $u = core_user::get_user($sub->userid);
         $pr = catalog::get_product($sub->productid, IGNORE_MISSING);
         $table->data[] = [
-            $sub->id,
+            html_writer::link(new moodle_url('/local/kabshop/sub.php', ['id' => $sub->id]), $sub->id),
             $u ? html_writer::link(new moodle_url('/user/profile.php', ['id' => $u->id]), fullname($u)) : $sub->userid,
             $pr ? format_string($pr->name) : $sub->productid,
             \core_payment\helper::get_cost_as_string((float) $sub->amount, $sub->currency) . ' '
