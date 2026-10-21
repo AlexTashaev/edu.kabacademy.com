@@ -42,6 +42,8 @@ echo html_writer::div(
         ['class' => 'btn btn-secondary me-2']) .
     html_writer::link(new moodle_url('/local/kabshop/edit_product.php'), get_string('addproduct', $p),
         ['class' => 'btn btn-primary me-2']) .
+    html_writer::link(new moodle_url('/local/kabshop/orders.php'), get_string('orders', $p),
+        ['class' => 'btn btn-secondary me-2']) .
     html_writer::link(new moodle_url('/local/kabshop/index.php'), get_string('catalog', $p),
         ['class' => 'btn btn-link']),
     'mb-4');
