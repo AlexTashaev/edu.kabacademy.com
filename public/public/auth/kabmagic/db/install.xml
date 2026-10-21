@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="auth/kabmagic/db" VERSION="20261021" COMMENT="XMLDB file for Moodle auth/kabmagic"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="auth_kabmagic_tokens" COMMENT="Login link requests: hashed one-time tokens plus the rows needed for rate limiting">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="User the link was issued to; 0 when the address matched nobody eligible (the row then only counts towards the rate limit)"/>
+        <FIELD NAME="emailhash" TYPE="char" LENGTH="64" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="SHA-256 of the lower-cased address that was entered, for rate limiting"/>
+        <FIELD NAME="tokenhash" TYPE="char" LENGTH="64" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="SHA-256 of the raw token; empty when no link was issued. The token itself is never stored"/>
+        <FIELD NAME="wantsurl" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Absolute URL inside wwwroot to open after the login"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timeused" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="0 until the link is used"/>
+        <FIELD NAME="ip" TYPE="char" LENGTH="45" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="IP address the link was requested from"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="tokenhash" UNIQUE="false" FIELDS="tokenhash"/>
+        <INDEX NAME="emailhash-timecreated" UNIQUE="false" FIELDS="emailhash, timecreated"/>
+        <INDEX NAME="ip-timecreated" UNIQUE="false" FIELDS="ip, timecreated"/>
+        <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
+        <INDEX NAME="timecreated" UNIQUE="false" FIELDS="timecreated"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>
