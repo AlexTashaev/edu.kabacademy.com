@@ -27,6 +27,7 @@ $string['auth_kabmagicdescription'] = 'Adds a "Log in with an email link" button
 $string['loginbutton'] = 'Log in with an email link';
 $string['requesttitle'] = 'Log in with an email link';
 $string['requestintro'] = 'Enter the e-mail address your account is registered with. We will send you a link that signs you in, no password needed.';
+$string['emaillabel'] = 'E-mail';
 $string['sendlink'] = 'Send me a link';
 $string['sent'] = 'If an account with this address exists, an e-mail with a login link has been sent. Check your inbox and the spam folder: the link works once and only for a short time.';
 $string['backtologin'] = 'Back to the login page';

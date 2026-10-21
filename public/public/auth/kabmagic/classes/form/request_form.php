@@ -35,7 +35,7 @@ class request_form extends \moodleform {
     public function definition() {
         $mform = $this->_form;
 
-        $mform->addElement('text', 'email', get_string('email'), [
+        $mform->addElement('text', 'email', get_string('emaillabel', 'auth_kabmagic'), [
             'size' => 40,
             'maxlength' => 100,
             'autocomplete' => 'email',
