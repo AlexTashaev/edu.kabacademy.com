@@ -51,12 +51,17 @@ class manager {
      * @return \stdClass lifetime (min), ratelimit, ratewindow (min), allowedauths (array)
      */
     public static function config(): \stdClass {
+        // A setting that is missing, empty or zero means "use the default": the admin
+        // settings page saves empty fields when it is first saved without touching them.
         $config = get_config('auth_kabmagic');
         $out = new \stdClass();
-        $out->lifetime = max(1, (int)($config->lifetime ?? 15));
-        $out->ratelimit = max(1, (int)($config->ratelimit ?? 3));
-        $out->ratewindow = max(1, (int)($config->ratewindow ?? 5));
-        $auths = isset($config->allowedauths) ? (string)$config->allowedauths : self::DEFAULT_AUTHS;
+        $out->lifetime = (int)($config->lifetime ?? 0) > 0 ? (int)$config->lifetime : 15;
+        $out->ratelimit = (int)($config->ratelimit ?? 0) > 0 ? (int)$config->ratelimit : 3;
+        $out->ratewindow = (int)($config->ratewindow ?? 0) > 0 ? (int)$config->ratewindow : 5;
+        $auths = trim((string)($config->allowedauths ?? ''));
+        if ($auths === '') {
+            $auths = self::DEFAULT_AUTHS;
+        }
         $out->allowedauths = array_values(array_filter(array_map('trim', explode(',', $auths)), function($auth) {
             return $auth !== '' && $auth !== 'nologin';
         }));
