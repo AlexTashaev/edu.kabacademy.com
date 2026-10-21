@@ -5,12 +5,17 @@
 в Zoom, открывал архив вебинара; сколько раз входил на сайт с начала обучения
 и когда был на сайте последний раз.
 
-Запуск (локальная сессия с ssh-алиасом web-18):
+Еженедельный запуск — cron на web-18 (пользователь edu.kabacademy.com, под уже
+стоящим в crontab CRON_TZ=Asia/Jerusalem), файлы в /sites/edu.kabacademy.com/public/kab-tools/kk1_activity/:
+    0 11 * * 5 cd <папка> && PYTHONIOENCODING=utf-8 /usr/bin/python3 kk1_activity.py --local-sql ./moodle_sql.sh --push ./config.json >> run.log 2>&1
+
+Разовый запуск с машины владельца (ssh-алиас web-18, нужен openpyxl для -o):
     python kk1_activity.py -o "<папка вне репо>" [--push "<config.json>"]
 
--o     — куда положить xlsx-копию (в ней ПДн: только вне репозитория);
---push — config.json вне репо: {"url": "<exec-URL Apps Script>", "secret": "..."};
-         выгрузка ложится в таблицу новой вкладкой с датой (см. kk1_activity.gs).
+-o          — куда положить xlsx-копию (в ней ПДн: только вне репозитория); без -o не пишется;
+--push      — config.json вне репо: {"url": "<exec-URL Apps Script>", "secret": "..."};
+              выгрузка ложится в таблицу новой вкладкой с датой (см. kk1_activity.gs);
+--local-sql — SQL через локальную обёртку moodle_sql.sh (на самом web-18), а не через ssh.
 
 Уроки попадают в выгрузку, когда вебинар урока уже начался (по mdl_zoom.start_time).
 
@@ -37,10 +42,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Font, PatternFill
-from openpyxl.utils import get_column_letter
-
 COURSE = 236
 SITE = "https://edu.kabacademy.com"
 TZ = ZoneInfo("Asia/Jerusalem")
@@ -56,6 +57,7 @@ LESSONS = {
     13: (397, 13644, 13646), 14: (396, 13659, 13661), 15: (395, 13674, 13676),
 }
 SQL_CMD = ["ssh", "web-18", '/tmp/kab_moodle_sql2.sh "$(cat)"']
+LOCAL_SQL = None  # путь к moodle_sql.sh, когда скрипт работает на самом web-18
 
 
 def ids(xs):
@@ -112,7 +114,11 @@ def unescape(s):
 
 
 def query(sql):
-    out = subprocess.run(SQL_CMD, input=sql, capture_output=True, text=True, encoding="utf-8", check=True).stdout
+    if LOCAL_SQL:
+        run = dict(args=[LOCAL_SQL, sql])
+    else:
+        run = dict(args=SQL_CMD, input=sql)
+    out = subprocess.run(**run, capture_output=True, text=True, encoding="utf-8", check=True).stdout
     lines = out.rstrip("\n").split("\n")
     if not lines or not lines[0]:
         return []
@@ -187,6 +193,11 @@ def build(data, start):
 
 
 def save_xlsx(head, notes, rows, outdir, stamp):
+    # openpyxl нужен только для копии: на web-18 его нет, там -o не передаётся
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Активность"
@@ -253,14 +264,19 @@ def push(config, head, notes, rows, stamp):
 
 
 def main():
+    global LOCAL_SQL
     ap = argparse.ArgumentParser()
-    ap.add_argument("-o", "--outdir", default=".")
+    ap.add_argument("-o", "--outdir", help="папка для xlsx-копии (нужен openpyxl)")
     ap.add_argument("--push", metavar="CONFIG", help="config.json с url и secret Apps Script")
+    ap.add_argument("--local-sql", metavar="SH", help="moodle_sql.sh — SQL на самом web-18, без ssh")
     args = ap.parse_args()
+    LOCAL_SQL = args.local_sql
+    stamp = datetime.now(TZ)
+    print(f"=== {stamp:%d.%m.%Y %H:%M} (Израиль)", flush=True)
     data, start = fetch()
     head, notes, rows, lessons = build(data, start)
-    stamp = datetime.now(TZ)
-    print(save_xlsx(head, notes, rows, args.outdir, stamp))
+    if args.outdir:
+        print(save_xlsx(head, notes, rows, args.outdir, stamp))
     print("студентов:", len(rows), "уроков:", lessons)
     for i, n in enumerate(lessons):
         col = 4 + 3 * i
