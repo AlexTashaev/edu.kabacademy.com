@@ -50,10 +50,12 @@ class login_forgot_password_form extends moodleform {
         // Hook for plugins to extend form definition.
         core_login_extend_forgot_password_form($mform);
 
-        $mform->addElement('header', 'searchbyusername', get_string('searchbyusername'), '');
-
-        $purpose = user_edit_map_field_purpose($USER->id, 'username');
-        $mform->addElement('text', 'username', get_string('username'), 'size="20"' . $purpose);
+        // KAB patch: поиск только по e-mail. Поле «Логин» убрано: автозаполнение браузера
+        // подставляло адрес в оба поля, а валидация ядра требует ровно одно из них, и форма
+        // не отправлялась. Логин студенты не знают (его заводил Edwiser), e-mail — знают.
+        // Пустое скрытое поле оставлено, чтобы core_login_process_password_reset_request()
+        // и core_login_validate_forgot_password_data() работали без правки ядра.
+        $mform->addElement('hidden', 'username', '');
         $mform->setType('username', PARAM_RAW);
 
         $mform->addElement('header', 'searchbyemail', get_string('searchbyemail'), '');
@@ -61,10 +63,7 @@ class login_forgot_password_form extends moodleform {
         $purpose = user_edit_map_field_purpose($USER->id, 'email');
         $mform->addElement('text', 'email', get_string('email'), 'maxlength="100" size="30"' . $purpose);
         $mform->setType('email', PARAM_RAW_TRIMMED);
-
-        // Avoid the user to fill both fields.
-        $mform->disabledIf('email', 'username', 'neq', '');
-        $mform->disabledIf('username', 'email', 'neq', '');
+        $mform->addRule('email', get_string('required'), 'required', null, 'client');
 
         $mform->addElement('html', '<hr />');
 
@@ -102,6 +101,8 @@ class login_forgot_password_form extends moodleform {
         // Extend validation for any form extensions from plugins.
         $errors = array_merge($errors, core_login_validate_extend_forgot_password_form($data));
 
+        // KAB patch: поле «Логин» скрыто и всегда пустое — ядро в этом случае валидирует e-mail.
+        $data['username'] = '';
         $errors += core_login_validate_forgot_password_data($data);
 
         return $errors;
