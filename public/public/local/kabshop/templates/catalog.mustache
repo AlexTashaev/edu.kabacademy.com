@@ -17,34 +17,70 @@
 {{!
     @template local_kabshop/catalog
 
-    Каталог витрины: разделы, в каждом — карточки товаров.
+    Каталог витрины: навигация по разделам, герой (первый товар первого
+    раздела — крупно), дальше разделы с карточками.
 
     Example context (json):
     {
         "canmanage": true,
         "manageurl": "#",
+        "shownav": true,
         "sections": [
-            {"id": 1, "name": "Начать обучение", "description": "",
-             "products": [{"id": 1, "name": "Классическая каббала", "summary": "15 уроков", "price": "Бесплатно",
-                           "free": true, "image": null, "url": "#", "external": false, "hidden": false}]}
+            {"id": 1, "name": "Начать обучение", "description": "", "featured": true,
+             "hero": {"id": 1, "name": "Классическая каббала", "summary": "15 уроков",
+                      "price": "Бесплатно", "free": true, "image": null, "url": "#",
+                      "external": false, "hidden": false},
+             "hasproducts": true,
+             "products": [{"id": 2, "name": "Спецкурс", "summary": "", "price": "50 $",
+                           "free": false, "image": null, "url": "#", "external": false,
+                           "hidden": false}]}
         ]
     }
 }}
 <div class="kabshop-catalog">
     {{#canmanage}}
-    <div class="kabshop-manage-link text-end mb-3">
+    <div class="kabshop-manage-link">
         <a class="btn btn-outline-secondary btn-sm" href="{{manageurl}}">{{#str}} manage, local_kabshop {{/str}}</a>
     </div>
     {{/canmanage}}
+    {{#shownav}}
+    <nav class="kabshop-nav" aria-label="{{#str}} catalog, local_kabshop {{/str}}">
+        {{#sections}}
+        <a class="kabshop-nav-link" href="#kabshop-section-{{id}}">{{name}}</a>
+        {{/sections}}
+    </nav>
+    {{/shownav}}
     {{#sections}}
-    <section class="kabshop-section" id="kabshop-section-{{id}}">
+    <section class="kabshop-section{{#featured}} kabshop-section-featured{{/featured}}" id="kabshop-section-{{id}}">
         <h2 class="kabshop-section-title">{{name}}</h2>
         {{#description}}<div class="kabshop-section-desc">{{{description}}}</div>{{/description}}
+        {{#hero}}
+        <article class="kabshop-hero{{#hidden}} kabshop-card-hidden{{/hidden}}">
+            <div class="kabshop-hero-media">
+                {{#image}}<img src="{{image}}" alt="">{{/image}}
+                {{^image}}<span class="kabshop-card-placeholder" aria-hidden="true"></span>{{/image}}
+                {{#hidden}}<span class="kabshop-badge-hidden">{{#str}} hidden, local_kabshop {{/str}}</span>{{/hidden}}
+            </div>
+            <div class="kabshop-hero-body">
+                <h3 class="kabshop-hero-title"><a class="kabshop-card-link" href="{{url}}">{{name}}</a></h3>
+                {{#summary}}<p class="kabshop-hero-summary">{{{summary}}}</p>{{/summary}}
+                <div class="kabshop-hero-footer">
+                    {{#price}}<span class="kabshop-price kabshop-price-hero{{#free}} kabshop-price-free{{/free}}">{{price}}</span>{{/price}}
+                    <span class="kabshop-btn-cta" aria-hidden="true">
+                        {{#external}}{{#str}} gotoexternal, local_kabshop {{/str}}{{/external}}
+                        {{^external}}{{#str}} more, local_kabshop {{/str}}{{/external}}
+                    </span>
+                </div>
+            </div>
+        </article>
+        {{/hero}}
+        {{#hasproducts}}
         <div class="kabshop-grid">
             {{#products}}
             {{> local_kabshop/card }}
             {{/products}}
         </div>
+        {{/hasproducts}}
     </section>
     {{/sections}}
     {{^sections}}

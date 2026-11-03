@@ -17,7 +17,8 @@
 {{!
     @template local_kabshop/product
 
-    Страница товара.
+    Страница товара: обложка слева, панель покупки справа (на десктопе —
+    липнет при прокрутке), описание ниже.
 
     Example context (json):
     {"name": "Система мироздания", "summary": "Спецкурс", "description": "<p>Описание</p>",
@@ -28,16 +29,16 @@
 }}
 <div class="kabshop-product">
     {{#paid}}
-    <div class="alert alert-success">{{#str}} thankyou, local_kabshop {{/str}}</div>
+    <div class="alert alert-success kabshop-paid">{{#str}} thankyou, local_kabshop {{/str}}</div>
     {{/paid}}
     <div class="kabshop-product-hero">
         <div class="kabshop-product-media">
             {{#image}}<img src="{{image}}" alt="">{{/image}}
-            {{^image}}<span class="kabshop-card-placeholder"></span>{{/image}}
+            {{^image}}<span class="kabshop-card-placeholder" aria-hidden="true"></span>{{/image}}
         </div>
-        <div class="kabshop-product-buy">
+        <div class="kabshop-buy">
             {{#summary}}<p class="kabshop-product-summary">{{{summary}}}</p>{{/summary}}
-            {{#price}}<div class="kabshop-price kabshop-price-lg{{#free}} kabshop-price-free{{/free}}">{{price}}</div>{{/price}}
+            {{#price}}<div class="kabshop-price-lg{{#free}} kabshop-price-lg-free{{/free}}">{{price}}</div>{{/price}}
             {{#subinfo}}<div class="alert alert-info">{{subinfo}}</div>{{/subinfo}}
             {{#couponinfo}}<div class="alert alert-success">{{couponinfo}}</div>{{/couponinfo}}
             {{#action}}
@@ -62,18 +63,21 @@
                 {{/payment}}
             {{/action}}
             {{#couponform}}
-            <form method="post" action="{{url}}" class="kabshop-coupon mt-3">
-                <input type="hidden" name="id" value="{{id}}">
-                <input type="hidden" name="sesskey" value="{{sesskey}}">
-                <label class="kabshop-custom-label" for="kabshop-coupon">{{#str}} couponlabel, local_kabshop {{/str}}</label>
-                <div class="input-group kabshop-custom">
-                    <input type="text" class="form-control" id="kabshop-coupon" name="code" autocomplete="off" maxlength="64">
-                    <button type="submit" class="btn btn-outline-secondary">{{#str}} couponapply, local_kabshop {{/str}}</button>
-                </div>
-            </form>
+            <details class="kabshop-coupon">
+                <summary>{{#str}} couponlabel, local_kabshop {{/str}}</summary>
+                <form method="post" action="{{url}}">
+                    <input type="hidden" name="id" value="{{id}}">
+                    <input type="hidden" name="sesskey" value="{{sesskey}}">
+                    <label class="visually-hidden sr-only" for="kabshop-coupon">{{#str}} couponcode, local_kabshop {{/str}}</label>
+                    <div class="input-group kabshop-custom">
+                        <input type="text" class="form-control" id="kabshop-coupon" name="code" autocomplete="off" maxlength="64">
+                        <button type="submit" class="btn btn-outline-secondary">{{#str}} couponapply, local_kabshop {{/str}}</button>
+                    </div>
+                </form>
+            </details>
             {{/couponform}}
             {{#changeurl}}
-            <div class="mt-2"><a href="{{changeurl}}">{{changelabel}}</a></div>
+            <div class="kabshop-changeamount"><a href="{{changeurl}}">{{changelabel}}</a></div>
             {{/changeurl}}
             {{#donateform}}
             <form method="post" action="{{url}}" class="kabshop-donate">
@@ -84,7 +88,7 @@
                     <div class="kabshop-presets">
                         {{#presets}}
                         <input type="radio" class="btn-check" name="preset" id="kabshop-preset-{{value}}" value="{{value}}" {{#checked}}checked{{/checked}}>
-                        <label class="btn btn-outline-primary" for="kabshop-preset-{{value}}">{{label}}</label>
+                        <label class="btn" for="kabshop-preset-{{value}}">{{label}}</label>
                         {{/presets}}
                     </div>
                     <label class="kabshop-custom-label" for="kabshop-custom">{{#str}} otheramount, local_kabshop {{/str}}</label>
@@ -97,15 +101,15 @@
             </form>
             {{/donateform}}
             {{#nopayment}}
-            <div class="alert alert-warning mt-2">{{#str}} nopayment, local_kabshop {{/str}}</div>
+            <div class="alert alert-warning">{{#str}} nopayment, local_kabshop {{/str}}</div>
             {{/nopayment}}
             {{#canmanage}}
-            <div class="mt-3"><a href="{{editurl}}">{{#str}} editproduct, local_kabshop {{/str}}</a></div>
+            <div class="kabshop-editlink"><a href="{{editurl}}">{{#str}} editproduct, local_kabshop {{/str}}</a></div>
             {{/canmanage}}
         </div>
     </div>
     {{#description}}
     <div class="kabshop-product-description">{{{description}}}</div>
     {{/description}}
-    <p class="mt-4"><a href="{{catalogurl}}">← {{#str}} backtocatalog, local_kabshop {{/str}}</a></p>
+    <p class="kabshop-back"><a href="{{catalogurl}}">← {{#str}} backtocatalog, local_kabshop {{/str}}</a></p>
 </div>

@@ -17,26 +17,28 @@
 {{!
     @template local_kabshop/card
 
-    Карточка товара в каталоге.
+    Карточка товара в каталоге. Кликабельна целиком: ссылка-заголовок
+    растянута на карточку через CSS, остальное — не интерактивно.
 
     Example context (json):
     {"id": 1, "name": "Классическая каббала", "summary": "15 уроков", "price": "Бесплатно",
      "free": true, "image": null, "url": "#", "external": false, "hidden": false}
 }}
 <article class="kabshop-card{{#hidden}} kabshop-card-hidden{{/hidden}}">
-    <a class="kabshop-card-media" href="{{url}}" tabindex="-1" aria-hidden="true">
+    <div class="kabshop-card-media">
         {{#image}}<img src="{{image}}" alt="" loading="lazy">{{/image}}
-        {{^image}}<span class="kabshop-card-placeholder"></span>{{/image}}
-    </a>
+        {{^image}}<span class="kabshop-card-placeholder" aria-hidden="true"></span>{{/image}}
+        {{#hidden}}<span class="kabshop-badge-hidden">{{#str}} hidden, local_kabshop {{/str}}</span>{{/hidden}}
+    </div>
     <div class="kabshop-card-body">
-        <h3 class="kabshop-card-title"><a href="{{url}}">{{name}}</a></h3>
+        <h3 class="kabshop-card-title"><a class="kabshop-card-link" href="{{url}}">{{name}}</a></h3>
         {{#summary}}<p class="kabshop-card-summary">{{{summary}}}</p>{{/summary}}
         <div class="kabshop-card-footer">
             {{#price}}<span class="kabshop-price{{#free}} kabshop-price-free{{/free}}">{{price}}</span>{{/price}}
-            <a class="btn btn-primary btn-sm kabshop-more" href="{{url}}">
+            <span class="kabshop-more{{#external}} kabshop-more-external{{/external}}" aria-hidden="true">
                 {{#external}}{{#str}} gotoexternal, local_kabshop {{/str}}{{/external}}
                 {{^external}}{{#str}} more, local_kabshop {{/str}}{{/external}}
-            </a>
+            </span>
         </div>
     </div>
 </article>

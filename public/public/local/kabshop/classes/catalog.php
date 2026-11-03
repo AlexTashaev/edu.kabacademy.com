@@ -370,11 +370,19 @@ class catalog {
                 'id' => $s->id,
                 'name' => format_string($s->name),
                 'description' => format_text($s->description ?? '', FORMAT_HTML),
-                'products' => array_map([self::class, 'card'], $s->products),
+                'products' => array_map([self::class, 'card'], array_values($s->products)),
+                'hasproducts' => true,
             ];
+        }
+        // Первый раздел — витринный: его первый товар рисуется крупно (герой).
+        if ($out) {
+            $out[0]['featured'] = true;
+            $out[0]['hero'] = array_shift($out[0]['products']);
+            $out[0]['hasproducts'] = !empty($out[0]['products']);
         }
         return [
             'sections' => $out,
+            'shownav' => count($out) > 1,
             'canmanage' => has_capability('local/kabshop:manage', context_system::instance()),
             'manageurl' => (new moodle_url('/local/kabshop/manage.php'))->out(false),
         ];
