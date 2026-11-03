@@ -690,6 +690,7 @@ class results {
      * @param array $entry
      * @param array $teachers
      * @param array $grades
+     * @param bool $allowemptygrading Whether to allow empty grading fields.
      */
     public static function diary_print_user_entry(
         $context,
@@ -839,6 +840,8 @@ class results {
                 'diary-tags'
             );
             echo self::diary_render_entry_attachments($entry, $course, $cm);
+            // 20260830 Added comments right after the user entry.
+            echo self::diary_render_entry_comments($entry, $diary, $course, $cm);
             // 20210701 Moved copy 1 of 2 here due to new stats.
             echo '</div></td><td class="diary-col-actions"></td></tr>';
 
@@ -1571,6 +1574,49 @@ class results {
     }
 
     /**
+     * Render comments for a diary entry.
+     *
+     * @param stdClass $entry Diary entry object.
+     * @param stdClass $diary Diary activity object.
+     * @param stdClass|bool $course Course object.
+     * @param stdClass|cm_info|bool $cm Course module object.
+     * @return string HTML comments output.
+     */
+    public static function diary_render_entry_comments($entry, $diary, $course = false, $cm = false) {
+        global $CFG;
+
+        if (empty($diary->enablecomments)) {
+            return '';
+        }
+
+        if (!$cm) {
+            $courseid = $course ? (int)$course->id : 0;
+            $cm = get_coursemodule_from_instance('diary', (int)$entry->diary, $courseid);
+        }
+
+        if (!$cm) {
+            return '';
+        }
+
+        require_once($CFG->dirroot . '/comment/lib.php');
+
+        $context = context_module::instance($cm->id);
+        $cmt = new \stdClass();
+        $cmt->context = $context;
+        if ($course) {
+            $cmt->course = $course;
+        }
+        $cmt->cm = $cm;
+        $cmt->area = 'diary_entries';
+        $cmt->itemid = (int)$entry->id;
+        $cmt->showcount = true;
+        $cmt->component = 'mod_diary';
+
+        $comment = new \comment($cmt);
+        return html_writer::div($comment->output(true), 'diary-entry-comments');
+    }
+
+    /**
      * Return the editor and attachment options when editing a diary entry.
      *
      * @param array $course Course object.
@@ -1798,10 +1844,13 @@ class results {
         $data = (array) $data;
         // My single data entry contains id, sesskey, and three other items, entry, feedback, and ???
         // Peel out all the data from variable names.
+        // 20260909 Only accept keys matching r<id> or c<id> (e.g. "r15", "c15") so that unrelated
+        // form fields starting with "r" or "c" (such as an editor field literally named "content")
+        // can't be misread as feedback data and cause an undefined array key later.
         foreach ($data as $key => $val) {
-            if (strpos($key, 'r') === 0 || strpos($key, 'c') === 0) {
-                $type = substr($key, 0, 1);
-                $num = substr($key, 1);
+            if (preg_match('/^([rc])(\d+)$/', (string)$key, $matches)) {
+                $type = $matches[1];
+                $num = $matches[2];
                 $feedback[$num][$type] = $val;
             }
         }
@@ -1814,6 +1863,10 @@ class results {
         // 20211203 Changed back to 0.
         $count = 1;
         foreach ($feedback as $num => $vals) {
+            // 20260909 Guard against stray/unexpected keys that don't correspond to a real entry.
+            if (!isset($entrybyentry[$num])) {
+                continue;
+            }
             $entry = $entrybyentry[$num];
             // Only update entries where feedback has actually changed.
             $ratingchanged = false;
@@ -1823,8 +1876,7 @@ class results {
             } else {
                 $studentrating = $entry->rating;
             }
-            $studentcomment = clean_text($vals['c'], FORMAT_HTML);
-
+            $studentcomment = clean_text($vals['c'] ?? '', FORMAT_HTML);
             if ($canrate && $studentrating != $entry->rating && !($studentrating == '' && $entry->rating == "0")) {
                 $ratingchanged = true;
             }

@@ -77,7 +77,7 @@ class prompts_form extends moodleform {
         $mform->addElement('date_time_selector', 'datestart', get_string('datestart', 'mod_diary', 'promptid'));
         $mform->setType('datestart', PARAM_INT);
         $mform->addElement('date_time_selector', 'datestop', get_string('datestop', 'mod_diary', 'promptid'));
-        $mform->setType('stopdate', PARAM_INT);
+        $mform->setType('datestop', PARAM_INT);
 
         // Optional short title for the prompt picker.
         $mform->addElement('text', 'title', get_string('prompttitle', 'mod_diary'), ['size' => 60, 'maxlength' => 255]);
@@ -232,5 +232,30 @@ class prompts_form extends moodleform {
         $buttonarray[] = &$mform->createElement('cancel');
         $mform->addGroup($buttonarray, 'buttonar', '', [' '], false);
         $mform->closeHeaderBefore('buttonar');
+    }
+
+    /**
+     * Validate prompt date windows before saving.
+     *
+     * @param array $data Submitted form data.
+     * @param array $files Submitted files.
+     * @return array Validation errors keyed by form field.
+     */
+    public function validation($data, $files) {
+        $errors = parent::validation($data, $files);
+        $promptmode = (int)($this->_customdata['promptmode'] ?? prompts::PROMPTMODE_SEQUENTIAL);
+        $errorstring = prompts::validate_prompt_date_window(
+            (int)$data['diaryid'],
+            (int)$data['entryid'],
+            (int)$data['datestart'],
+            (int)$data['datestop'],
+            $promptmode
+        );
+
+        if ($errorstring !== '') {
+            $errors['datestop'] = get_string($errorstring, 'mod_diary');
+        }
+
+        return $errors;
     }
 }

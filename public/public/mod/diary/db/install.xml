@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/diary/db" VERSION="2026071109" COMMENT="XMLDB file for Moodle mod/diary"
+<XMLDB PATH="mod/diary/db" VERSION="2026083000" COMMENT="XMLDB file for Moodle mod/diary"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -22,8 +22,9 @@
         <FIELD NAME="timeclose" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="editall" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Edit all comments setting."/>
         <FIELD NAME="editdates" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Edit any entry date."/>
-        <FIELD NAME="promptmode" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Prompt assignment mode. 0=sequential, 1=choice, 2=random, 3=complete all, 4=partial complete."/>
-        <FIELD NAME="requiredpromptcount" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Required prompt completions for partial-complete mode. 0 means unset/ignored."/>
+        <FIELD NAME="promptmode" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Prompt assignment mode. 0=sequential date/time, 1=choice, 2=random, 3=complete all, 4=choice x of xx, 5=random x of xx, 6=sequential graded."/>
+        <FIELD NAME="sequentialgradedpacing" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Use prompt start-date offsets as relative pacing for sequential graded mode."/>
+        <FIELD NAME="requiredpromptcount" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Required prompt completions for the x-of-xx modes (4 and 5). 0 means unset/ignored."/>
         <FIELD NAME="manualpromptid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Optional manual prompt override for this activity. 0 disables manual override."/>
         <FIELD NAME="maxeditopens" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Maximum number of times an existing entry can be opened for editing. 0 means unlimited."/>
         <FIELD NAME="deleteentry" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Allow users to delete an entry."/>
@@ -31,6 +32,7 @@
         <FIELD NAME="entrytextbgc" TYPE="char" LENGTH="25" NOTNULL="true" DEFAULT="#EEFC84" SEQUENCE="false" COMMENT="Background color for the text of a Diary entry."/>
         <FIELD NAME="enablestats" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Show/hide statistics."/>
         <FIELD NAME="enabletitles" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Enable/disable require titles."/>
+        <FIELD NAME="enablecomments" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Enable comments for diary entries."/>
         <FIELD NAME="submissionemail" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Enable email to the course teacher/s when a new/changed entry is submitted."/>
         <FIELD NAME="teacheremail" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Enable email now without waiting for max edit time."/>
         <FIELD NAME="studentemail" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Enable email now without waiting for max edit time."/>
