@@ -1,0 +1,104 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * EN strings for local_kabperson.
+ *
+ * @package    local_kabperson
+ * @copyright  2026 Kabacademy
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+defined('MOODLE_INTERNAL') || die();
+
+$string['pluginname'] = 'KAB Person Card';
+$string['kabperson:view'] = 'View person card (PII of any user)';
+$string['eventcardviewed'] = 'Person card viewed';
+
+// Settings.
+$string['settings_gate'] = 'Operator page gate (view.php)';
+$string['settings_gate_desc'] = 'view.php is opened by the Chatwoot Dashboard App without a Moodle login. It only serves emails that have a chat contact with a conversation (checked via the Chatwoot API below), rate-limited per IP. Not configured = the anonymous page is closed (fail-closed). Logged-in users with the local/kabperson:view capability bypass the gate.';
+$string['chatwootbase'] = 'Chatwoot base URL';
+$string['chatwootbase_desc'] = 'E.g. https://support.edu.kabacademy.com (or the internal API base if the edge strips the api_access_token header).';
+$string['chatwootaccount'] = 'Chatwoot account id';
+$string['chatwootaccount_desc'] = 'Numeric account id from the Chatwoot URL.';
+$string['chatwoottoken'] = 'Chatwoot API token';
+$string['chatwoottoken_desc'] = 'Access token of an agent/bot with read access to contacts. Stored in Moodle config, not in git.';
+$string['frameancestors'] = 'Allowed iframe parents (frame-ancestors)';
+$string['frameancestors_desc'] = 'Space-separated origins allowed to embed view.php in an iframe (Chatwoot Dashboard App), e.g. https://support.edu.kabacademy.com. Empty = no CSP header is sent.';
+$string['settings_sources'] = 'Sources';
+$string['settings_sources_desc'] = 'Moodle itself is always on. External adapters (kabacademy WP, kabbalah.info, books.kab.co.il) are stage 2 and are reported as "off" in the JSON for now.';
+$string['enablekabshop'] = 'Read local_kabshop (academy payments)';
+$string['enablekabshop_desc'] = 'Purchases, subscriptions and unfinished payments from the Moodle shop. Turn off if the shop schema changes and the block starts failing.';
+
+// View page.
+$string['viewtitle'] = 'Person card';
+$string['emaillabel'] = 'Email';
+$string['show'] = 'Show';
+$string['refresh'] = 'Refresh';
+$string['jsonlink'] = 'JSON';
+$string['notfound'] = 'Not in the common base (no Moodle user with this email).';
+$string['sec_identity'] = 'Person';
+$string['sec_learning'] = 'Learning';
+$string['sec_payments'] = 'Academy payments';
+$string['col_course'] = 'Course';
+$string['col_role'] = 'Role';
+$string['col_enrolstatus'] = 'Enrolment';
+$string['col_progress'] = 'Progress';
+$string['col_lastaccess'] = 'Last access';
+$string['col_badges'] = 'Badges';
+$string['col_date'] = 'Date';
+$string['col_product'] = 'Product';
+$string['col_kind'] = 'Kind';
+$string['col_amount'] = 'Amount';
+$string['col_status'] = 'Status';
+$string['col_gateway'] = 'Gateway';
+$string['cohorts'] = 'Cohorts';
+$string['sitebadges'] = 'Site badges';
+$string['orders'] = 'Orders';
+$string['subscriptions'] = 'Subscriptions';
+$string['unfinished'] = 'Unfinished payments';
+$string['donortotal'] = 'Donations total';
+$string['nextcharge'] = 'Next charge';
+$string['failcount'] = 'Failed attempts';
+$string['lasterror'] = 'Last error';
+$string['registered'] = 'Registered';
+$string['lastlogin'] = 'Last login';
+$string['telegram'] = 'Telegram linked';
+$string['duplicates'] = 'Duplicate signals';
+$string['statusactive'] = 'active';
+$string['statussuspended'] = 'suspended';
+$string['statusdeleted'] = 'deleted';
+$string['nothing'] = '—';
+$string['generatedat'] = 'Card built at';
+$string['fromcache'] = 'from cache (up to 10 min old)';
+
+// Gate errors.
+$string['err_notconfigured'] = 'Chatwoot access is not configured';
+$string['err_ratelimited'] = 'Too many requests';
+$string['err_bademail'] = 'A valid email is required';
+$string['err_notacontact'] = 'No chat contact for this email';
+$string['err_chatwoot'] = 'Cannot verify contact (Chatwoot unavailable)';
+
+// Privacy.
+$string['privacy:metadata'] = 'The KAB Person Card plugin stores no personal data of its own: it only reads Moodle and local_kabshop and keeps a short-lived cache.';
+$string['privacy:metadata:chatwoot'] = 'To gate the operator page, the looked-up email is sent to the Chatwoot support system to check that this email belongs to a chat contact.';
+$string['privacy:metadata:chatwoot:email'] = 'The email address being looked up.';
+
+// Cache definitions.
+$string['cachedef_person'] = 'Built person cards (10 minutes per email)';
+$string['cachedef_gate'] = 'PII gate verdicts (email is a chat contact)';
+$string['cachedef_ratelimit'] = 'Per-IP rate limit counters for view.php';
