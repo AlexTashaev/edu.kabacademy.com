@@ -9,28 +9,28 @@
     font-style: normal;
     font-weight: 400;
     font-display: swap;
-    src: url("/kab/fonts/Montserrat-Regular.woff2") format("woff2");
+    src: url("/kab/fonts/Montserrat-Regular.woff2?v=1") format("woff2");
 }
 @font-face {
     font-family: "Montserrat";
     font-style: normal;
     font-weight: 500;
     font-display: swap;
-    src: url("/kab/fonts/Montserrat-Medium.woff2") format("woff2");
+    src: url("/kab/fonts/Montserrat-Medium.woff2?v=1") format("woff2");
 }
 @font-face {
     font-family: "Montserrat";
     font-style: normal;
     font-weight: 600;
     font-display: swap;
-    src: url("/kab/fonts/Montserrat-SemiBold.woff2") format("woff2");
+    src: url("/kab/fonts/Montserrat-SemiBold.woff2?v=1") format("woff2");
 }
 @font-face {
     font-family: "Montserrat";
     font-style: normal;
     font-weight: 700;
     font-display: swap;
-    src: url("/kab/fonts/Montserrat-Bold.woff2") format("woff2");
+    src: url("/kab/fonts/Montserrat-Bold.woff2?v=1") format("woff2");
 }
 
 .kabshop-catalog,
@@ -72,7 +72,7 @@ body #page.drawers .main-inner:has(.kabshop-product) {
 /* --- Навигация по разделам --- */
 .kabshop-nav {
     position: sticky;
-    top: 60px; /* под фиксированной шапкой Boost */
+    top: 65px; /* под фиксированной шапкой Boost (измерено на dev) */
     z-index: 10;
     display: flex;
     gap: .5rem;
@@ -116,9 +116,10 @@ body #page.drawers .main-inner:has(.kabshop-product) {
 }
 
 /* --- Разделы --- */
-.kabshop-section {
+/* Специфичность выше правила ядра Boost (оно ставит секциям 70px). */
+.kabshop-catalog .kabshop-section {
     margin-bottom: 3rem;
-    scroll-margin-top: 132px;
+    scroll-margin-top: 140px;
 }
 
 .kabshop-section-title {
