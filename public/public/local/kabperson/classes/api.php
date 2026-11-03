@@ -398,7 +398,10 @@ class api {
             'unfinished'    => [],
             'donor_total'   => new \stdClass(),
         ];
-        if (!get_config('local_kabperson', 'enablekabshop')) {
+        // Не записанную настройку читаем как дефолт «включено» (как в auth_kabmagic
+        // e523b78): до первого сохранения настроек get_config отдаёт false.
+        $enablekabshop = get_config('local_kabperson', 'enablekabshop');
+        if ($enablekabshop !== false && empty($enablekabshop)) {
             return $out;
         }
         $dbman = $DB->get_manager();
