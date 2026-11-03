@@ -50,19 +50,16 @@ class cron_task extends \core\task\scheduled_task {
      * Execute the scheduled task.
      */
     public function execute() {
-        global $CFG, $USER, $DB;
+        global $CFG, $DB;
 
         $cutofftime = time() - $CFG->maxeditingtime;
 
         if ($entries = journal_get_unmailed_graded($cutofftime)) {
             $timenow = time();
 
-            if (class_exists('\core_user\fields')) {
-                $usernamefields = \core_user\fields::get_name_fields();
-            } else {
-                $usernamefields = get_all_user_name_fields();
-            }
-            $requireduserfields = 'id, auth, mnethostid, email, emailstop, mailformat, maildisplay, lang, deleted, suspended, '
+            $usernamefields = \core_user\fields::get_name_fields();
+            $requireduserfields = 'id, auth, mnethostid, username, email, emailstop, '
+                . 'mailformat, maildisplay, lang, deleted, suspended, '
                 . implode(', ', $usernamefields);
 
             // To save some db queries.
@@ -77,26 +74,26 @@ class cron_task extends \core\task\scheduled_task {
                     continue;
                 }
 
-                echo "Processing journal entry $entry->id\n";
+                mtrace("Processing journal entry $entry->id");
 
                 if (!empty($users[$entry->userid])) {
                     $user = $users[$entry->userid];
                 } else {
                     if (!$user = $DB->get_record("user", ["id" => $entry->userid], $requireduserfields)) {
-                        echo "Could not find user $entry->userid\n";
+                        mtrace("Could not find user $entry->userid");
+                        $DB->set_field("journal_entries", "mailed", "1", ["id" => $entry->id]);
                         continue;
                     }
                     $users[$entry->userid] = $user;
                 }
-
-                $USER->lang = $user->lang;
 
                 if (!empty($courses[$entry->course])) {
                     $course = $courses[$entry->course];
                 } else {
                     // We need fullname for the email template.
                     if (!$course = $DB->get_record('course', ['id' => $entry->course], 'id, shortname, fullname')) {
-                        echo "Could not find course $entry->course\n";
+                        mtrace("Could not find course $entry->course");
+                        $DB->set_field("journal_entries", "mailed", "1", ["id" => $entry->id]);
                         continue;
                     }
                     $courses[$entry->course] = $course;
@@ -106,7 +103,8 @@ class cron_task extends \core\task\scheduled_task {
                     $teacher = $users[$entry->teacher];
                 } else {
                     if (!$teacher = $DB->get_record("user", ["id" => $entry->teacher], $requireduserfields)) {
-                        echo "Could not find teacher $entry->teacher\n";
+                        mtrace("Could not find teacher $entry->teacher");
+                        $DB->set_field("journal_entries", "mailed", "1", ["id" => $entry->id]);
                         continue;
                     }
                     $users[$entry->teacher] = $teacher;
@@ -115,7 +113,8 @@ class cron_task extends \core\task\scheduled_task {
                 // All cached.
                 $coursejournals = get_fast_modinfo($course)->get_instances_of('journal');
                 if (empty($coursejournals) || empty($coursejournals[$entry->journal])) {
-                    echo "Could not find course module for journal id $entry->journal\n";
+                    mtrace("Could not find course module for journal id $entry->journal");
+                    $DB->set_field("journal_entries", "mailed", "1", ["id" => $entry->id]);
                     continue;
                 }
                 $mod = $coursejournals[$entry->journal];
@@ -126,8 +125,13 @@ class cron_task extends \core\task\scheduled_task {
                 $entriesmanager = has_capability('mod/journal:manageentries', $context, $user);
 
                 if (!$canadd && $entriesmanager) {
-                    continue;  // Not an active participant.
+                    // Not an active participant.
+                    $DB->set_field("journal_entries", "mailed", "1", ["id" => $entry->id]);
+                    continue;
                 }
+
+                // Write the message in the language of the user.
+                $oldlang = force_current_language($user->lang);
 
                 // Prepare data for email template.
                 $journalinfo = new \stdClass();
@@ -164,13 +168,15 @@ class cron_task extends \core\task\scheduled_task {
 
                 $msgid = message_send($eventdata);
 
+                force_current_language($oldlang);
+
                 if (!$msgid) {
-                    echo "Error: Journal cron: Could not send out notification for "
-                        . "id $entry->id to user $user->id ($user->email)\n";
+                    mtrace("Error: Journal cron: Could not send out notification for "
+                        . "id $entry->id to user $user->id ($user->email)");
                 }
 
                 if (!$DB->set_field("journal_entries", "mailed", "1", ["id" => $entry->id])) {
-                    echo "Could not update the mailed field for id $entry->id\n";
+                    mtrace("Could not update the mailed field for id $entry->id");
                 }
             }
         }

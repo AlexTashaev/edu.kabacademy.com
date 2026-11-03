@@ -28,6 +28,17 @@ require_once('lib.php');
 $id = required_param('id', PARAM_INT);   // Course module.
 $sortby = optional_param('sortby', 'dateasc', PARAM_ALPHA);
 $selecteduser = optional_param('selecteduser', 0, PARAM_INT);
+$show = optional_param('show', 'all', PARAM_ALPHA);
+if ($show !== 'needsgrading') {
+    $show = 'all';
+}
+$page = optional_param('page', 0, PARAM_INT);
+$perpage = optional_param('perpage', 20, PARAM_INT);
+
+$perpageoptions = [10 => 10, 20 => 20, 50 => 50, 100 => 100, 0 => get_string('all')];
+if (!array_key_exists($perpage, $perpageoptions)) {
+    $perpage = 20;
+}
 
 $validsortoptions = [
     'dateasc',
@@ -54,10 +65,7 @@ $PAGE->navbar->add(get_string('entries', 'journal'));
 $PAGE->set_title(get_string('modulenameplural', 'journal'));
 $PAGE->set_heading($course->fullname);
 
-// Moodle 4.0+ Activity Header support.
-if (method_exists($PAGE, 'set_activity_record')) {
-    $PAGE->set_activity_record($journal);
-}
+$PAGE->set_activity_record($journal);
 
 $PAGE->requires->js_call_amd('mod_journal/report', 'init');
 
@@ -81,6 +89,13 @@ $userswithentries = array_map(function ($entry) {
 // Group mode.
 $groupmode = groups_get_activity_groupmode($cm);
 $currentgroup = groups_get_activity_group($cm, true);
+
+// In separate groups mode, a grader who is in no group and cannot access all groups must not see any entries.
+if ($groupmode == SEPARATEGROUPS && !$currentgroup && !has_capability('moodle/site:accessallgroups', $context)) {
+    echo $OUTPUT->notification(get_string('notingroup'), \core\output\notification::NOTIFY_INFO);
+    echo $OUTPUT->footer();
+    exit;
+}
 
 // Fetch users who can ADD entries (Students, but also Teachers/Admins).
 $groups = $currentgroup ? $currentgroup : '';
@@ -111,7 +126,7 @@ if ($users) {
 
 // Process incoming data if there is any.
 if ($data = data_submitted()) {
-    confirm_sesskey();
+    require_sesskey();
     $feedback = [];
     $data = (array) $data;
 
@@ -124,70 +139,48 @@ if ($data = data_submitted()) {
         }
     }
 
-    $timenow = time();
+    $manager = \mod_journal\manager::create_from_coursemodule($cm);
     $count = 0;
     foreach ($feedback as $num => $vals) {
         if (!isset($entrybyentry[$num])) {
             continue;
         }
         $entry = $entrybyentry[$num];
-        $ratingchanged = false;
+        if (!groups_user_groups_visible($course, $entry->userid, $cm)) {
+            continue;
+        }
 
-        $studentrating = clean_param($vals['r'], PARAM_INT);
-        // Ensure text is a string to satisfy PHP 8.1 strict typing.
-        $rawtext = isset($vals['c']['text']) ? (string) $vals['c']['text'] : '';
-        $studentcomment = clean_text($rawtext, FORMAT_HTML);
-        $studentcomment = file_save_draft_area_files(
-            $vals['c']['itemid'],
-            $context->id,
-            'mod_journal',
-            'feedback',
-            $num,
-            [],
-            $studentcomment
-        );
+        // Locked and overridden grades have no feedback editor, their feedback stays unchanged.
+        if (isset($vals['c']) && is_array($vals['c'])) {
+            $feedbacktext = (string) ($vals['c']['text'] ?? '');
+            $draftitemid = clean_param($vals['c']['itemid'] ?? 0, PARAM_INT);
+        } else {
+            $feedbacktext = (string) $entry->entrycomment;
+            $draftitemid = 0;
+        }
 
-        if ($studentrating != $entry->rating || $studentcomment != $entry->entrycomment) {
-            $ratingchanged = $studentrating != $entry->rating;
-
-            $newentry = (object) [
-                'id' => $num,
-                'rating' => $studentrating,
-                'entrycomment' => $studentcomment,
-                'teacher' => $USER->id,
-                'timemarked' => $timenow,
-                'mailed' => 0,
-            ];
-            if (!$DB->update_record('journal_entries', $newentry)) {
-                echo $OUTPUT->notification(
-                    get_string('failedupdate', 'journal', $entry->userid),
-                    \core\output\notification::NOTIFY_ERROR
-                );
-            } else {
-                $count++;
-                $entrybyuser[$entry->userid]->rating = $studentrating;
-                $entrybyuser[$entry->userid]->entrycomment = $studentcomment;
-                $entrybyuser[$entry->userid]->teacher = $USER->id;
-                $entrybyuser[$entry->userid]->timemarked = $timenow;
-
-                $journal = $DB->get_record('journal', ['id' => $entrybyuser[$entry->userid]->journal]);
-                $journal->cmidnumber = $cm->idnumber;
-                journal_update_grades($journal, $entry->userid);
-            }
+        try {
+            $changed = $manager->save_feedback(
+                $entry,
+                clean_param($vals['r'] ?? $entry->rating, PARAM_INT),
+                $feedbacktext,
+                $draftitemid
+            );
+        } catch (invalid_parameter_exception $e) {
+            echo $OUTPUT->notification(
+                get_string('failedupdate', 'journal', $entry->userid),
+                \core\output\notification::NOTIFY_ERROR
+            );
+            continue;
+        }
+        if ($changed) {
+            $count++;
         }
     }
 
-    // Trigger feedback updated event.
-    $event = \mod_journal\event\feedback_updated::create([
-        'objectid' => $journal->id,
-        'context' => $context,
-    ]);
-    $event->add_record_snapshot('course_modules', $cm);
-    $event->add_record_snapshot('course', $course);
-    $event->add_record_snapshot('journal', $journal);
-    $event->trigger();
-
-    echo $OUTPUT->notification(get_string('feedbackupdated', 'journal', $count), \core\output\notification::NOTIFY_SUCCESS);
+    if ($count > 0) {
+        echo $OUTPUT->notification(get_string('feedbackupdated', 'journal', $count), \core\output\notification::NOTIFY_SUCCESS);
+    }
 } else {
     // Trigger entries viewed event.
     $event = \mod_journal\event\entries_viewed::create([
@@ -200,9 +193,46 @@ if ($data = data_submitted()) {
     $event->trigger();
 }
 
-if (!$users && !journal_get_users_done($journal, $currentgroup)) {
+$usersdone = journal_get_users_done($journal, $currentgroup) ?: [];
+mod_journal_sort_users($usersdone, $sortby, $entrybyuser);
+$needsgradingcount = 0;
+foreach ($usersdone as $user) {
+    if (journal_entry_needs_grading($entrybyuser[$user->id] ?? null)) {
+        $needsgradingcount++;
+    }
+}
+
+// The users whose entries are shown, in order, to grade them one by one. The selected user stays in the list once graded.
+$getgradeableids = function (int $selecteduser) use ($usersdone, $entrybyuser, $show): array {
+    $ids = [];
+    foreach ($usersdone as $user) {
+        if ($show === 'all' || $user->id == $selecteduser || journal_entry_needs_grading($entrybyuser[$user->id])) {
+            $ids[] = (int) $user->id;
+        }
+    }
+    return $ids;
+};
+$gradeableids = $getgradeableids($selecteduser);
+$position = array_search($selecteduser, $gradeableids);
+
+// Move on to the next entry once the feedback of the selected one is saved.
+if ($position !== false && isset($gradeableids[$position + 1]) && optional_param('savenext', '', PARAM_RAW) !== '') {
+    $selecteduser = $gradeableids[$position + 1];
+    $gradeableids = $getgradeableids($selecteduser);
+    $position = array_search($selecteduser, $gradeableids);
+}
+
+if (!$users && !$usersdone) {
     echo $OUTPUT->notification(get_string('nousersyet', 'journal'), \core\output\notification::NOTIFY_INFO);
 } else {
+    $baseurl = new moodle_url('/mod/journal/report.php', [
+        'id' => $id,
+        'selecteduser' => $selecteduser,
+        'sortby' => $sortby,
+        'show' => $show,
+        'perpage' => $perpage,
+    ]);
+
     // Toolbar Area: Filter, Group, Sort.
     echo html_writer::start_div('d-flex flex-wrap justify-content-between align-items-center mb-3');
 
@@ -213,6 +243,9 @@ if (!$users && !journal_get_users_done($journal, $currentgroup)) {
         'class' => 'd-flex align-items-center me-3', // Class me-3 for spacing (Bootstrap 5).
     ]);
     $filterform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $id]);
+    $filterform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sortby', 'value' => $sortby]);
+    $filterform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'show', 'value' => $show]);
+    $filterform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'perpage', 'value' => $perpage]);
     $filterform .= html_writer::select(
         $useroptions,
         'selecteduser',
@@ -242,7 +275,7 @@ if (!$users && !journal_get_users_done($journal, $currentgroup)) {
         'lastnamedesc' => get_string('lastnamedesc', 'journal'),
     ];
     $select = new single_select(
-        new moodle_url($PAGE->url),
+        new moodle_url($baseurl, ['sortby' => null]),
         'sortby',
         $options,
         $sortby,
@@ -251,7 +284,61 @@ if (!$users && !journal_get_users_done($journal, $currentgroup)) {
     $select->set_label(get_string('sortby'), ['class' => 'me-1']);
     echo html_writer::div($OUTPUT->render($select), 'divwrapper sortbyselect');
 
+    // 4. Entries to show.
+    $select = new single_select(
+        new moodle_url($baseurl, ['show' => null]),
+        'show',
+        [
+            'all' => get_string('all'),
+            'needsgrading' => get_string('needsgradingcount', 'journal', $needsgradingcount),
+        ],
+        $show,
+        null,
+    );
+    $select->set_label(get_string('show'), ['class' => 'me-1']);
+    echo html_writer::div($OUTPUT->render($select), 'divwrapper showselect');
+
+    // 5. Entries per page.
+    $select = new single_select(new moodle_url($baseurl, ['perpage' => null]), 'perpage', $perpageoptions, $perpage, null);
+    $select->set_label(get_string('perpage'), ['class' => 'me-1']);
+    echo html_writer::div($OUTPUT->render($select), 'divwrapper perpageselect');
+
     echo html_writer::end_div(); // End Toolbar.
+
+    // Navigation between the entries, to grade them one by one.
+    if ($position !== false) {
+        $navigation = [];
+        if ($position > 0) {
+            $navigation[] = html_writer::link(
+                new moodle_url($baseurl, ['selecteduser' => $gradeableids[$position - 1]]),
+                get_string('previousentry', 'journal'),
+                ['class' => 'btn btn-secondary me-2 mr-2 previousentry']
+            );
+        }
+        $navigation[] = html_writer::span(
+            get_string('entryxofy', 'journal', ['index' => $position + 1, 'count' => count($gradeableids)]),
+            'me-2 mr-2 entryposition'
+        );
+        if (isset($gradeableids[$position + 1])) {
+            $navigation[] = html_writer::link(
+                new moodle_url($baseurl, ['selecteduser' => $gradeableids[$position + 1]]),
+                get_string('nextentry', 'journal'),
+                ['class' => 'btn btn-secondary me-2 mr-2 nextentry']
+            );
+        }
+        $navigation[] = html_writer::link(
+            new moodle_url($baseurl, ['selecteduser' => 0]),
+            get_string('allentries', 'journal'),
+            ['class' => 'btn btn-link allentries']
+        );
+        echo html_writer::div(implode('', $navigation), 'd-flex align-items-center mb-3 entrynavigation');
+    } else if ($selecteduser == 0 && $gradeableids) {
+        echo html_writer::div(html_writer::link(
+            new moodle_url($baseurl, ['selecteduser' => $gradeableids[0]]),
+            get_string('gradeonebyone', 'journal'),
+            ['class' => 'btn btn-secondary gradeonebyone']
+        ), 'mb-3');
+    }
 
     $grades = make_grades_menu($journal->grade);
 
@@ -261,30 +348,46 @@ if (!$users && !journal_get_users_done($journal, $currentgroup)) {
         'method' => 'post',
     ]);
 
-    if ($usersdone = journal_get_users_done($journal, $currentgroup)) {
-        mod_journal_sort_users($usersdone, $sortby, $entrybyuser);
-        echo html_writer::tag('h3', get_string('userswhocompletedthejournal', 'journal'), ['class' => 'journalheader']);
-        foreach ($usersdone as $user) {
-            // Apply User Filter.
+    if ($show === 'needsgrading' && !$needsgradingcount) {
+        echo $OUTPUT->notification(get_string('noentriesneedgrading', 'journal'), \core\output\notification::NOTIFY_INFO);
+    }
+
+    // Users with an entry come first, then the users without an entry, who have nothing to grade.
+    $rows = [];
+    foreach ($usersdone as $user) {
+        if ($selecteduser == 0 ? in_array($user->id, $gradeableids) : $selecteduser == $user->id) {
+            $rows[] = [$user, $entrybyuser[$user->id]];
+        }
+        // Remove user from the "Not Completed" list if they are in the "Done" list.
+        unset($users[$user->id]);
+    }
+    if ($users && $show === 'all') {
+        mod_journal_sort_users($users, $sortby, $entrybyuser);
+        foreach ($users as $user) {
             if ($selecteduser == 0 || $selecteduser == $user->id) {
-                journal_print_user_entry($course, $user, $entrybyuser[$user->id], $teachers, $grades, $cm->id);
-            }
-            // Remove user from the "Not Completed" list if they are in the "Done" list.
-            if (isset($users[$user->id])) {
-                unset($users[$user->id]);
+                $rows[] = [$user, null];
             }
         }
     }
 
-    if ($users) {
-        mod_journal_sort_users($users, $sortby, $entrybyuser);
-        echo html_writer::tag('h3', get_string('userswhodidnotcompletedthejournal', 'journal'), ['class' => 'journalheader']);
-        foreach ($users as $user) {
-            // Apply User Filter.
-            if ($selecteduser == 0 || $selecteduser == $user->id) {
-                journal_print_user_entry($course, $user, null, $teachers, $grades, $cm->id);
-            }
+    if ($perpage) {
+        $page = min(max($page, 0), max((int) ceil(count($rows) / $perpage) - 1, 0));
+        $pagingbar = $OUTPUT->paging_bar(count($rows), $page, $perpage, $baseurl);
+        $rows = array_slice($rows, $page * $perpage, $perpage);
+    } else {
+        $page = 0;
+        $pagingbar = '';
+    }
+
+    echo $pagingbar;
+    $heading = null;
+    foreach ($rows as [$user, $entry]) {
+        $rowheading = $entry ? 'userswhocompletedthejournal' : 'userswhodidnotcompletedthejournal';
+        if ($rowheading !== $heading) {
+            echo html_writer::tag('h3', get_string($rowheading, 'journal'), ['class' => 'journalheader']);
+            $heading = $rowheading;
         }
+        journal_print_user_entry($course, $user, $entry, $teachers, $grades, $cm->id);
     }
 
     // Add hidden input fields.
@@ -313,19 +416,45 @@ if (!$users && !journal_get_users_done($journal, $currentgroup)) {
         'value' => $selecteduser,
     ]);
 
+    echo html_writer::empty_tag('input', [
+        'type' => 'hidden',
+        'name' => 'show',
+        'value' => $show,
+    ]);
+
+    // Stay on the same page when saving feedback.
+    echo html_writer::empty_tag('input', [
+        'type' => 'hidden',
+        'name' => 'page',
+        'value' => $page,
+    ]);
+
+    echo html_writer::empty_tag('input', [
+        'type' => 'hidden',
+        'name' => 'perpage',
+        'value' => $perpage,
+    ]);
+
     // Add the submit button inside a paragraph with class.
-    echo html_writer::tag(
-        'p',
-        html_writer::empty_tag('input', [
+    $savebuttons = html_writer::empty_tag('input', [
+        'type' => 'submit',
+        'value' => get_string('saveallfeedback', 'journal'),
+        'class' => 'btn btn-secondary mt-1',
+    ]);
+    if ($position !== false && isset($gradeableids[$position + 1])) {
+        $savebuttons .= ' ' . html_writer::empty_tag('input', [
             'type' => 'submit',
-            'value' => get_string('saveallfeedback', 'journal'),
-            'class' => 'btn btn-secondary mt-1',
-        ]),
-        ['class' => 'feedbacksave']
-    );
+            'name' => 'savenext',
+            'value' => get_string('savefeedbackandnext', 'journal'),
+            'class' => 'btn btn-primary mt-1',
+        ]);
+    }
+    echo html_writer::tag('p', $savebuttons, ['class' => 'feedbacksave']);
 
     // Close the form.
     echo html_writer::end_tag('form');
+
+    echo $pagingbar;
 }
 
 echo $OUTPUT->footer();

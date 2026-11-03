@@ -16,44 +16,15 @@
 
 namespace mod_journal\external;
 
-defined('MOODLE_INTERNAL') || die();
-
-require_once($CFG->libdir . '/externallib.php');
-
 use coding_exception;
 use context_module;
 use dml_exception;
-use external_function_parameters;
-use external_value;
-use external_single_structure;
+use core_external\external_function_parameters;
+use core_external\external_value;
+use core_external\external_single_structure;
 use invalid_parameter_exception;
-use mod_journal\event\entry_created;
-use mod_journal\event\entry_updated;
+use mod_journal\manager;
 use required_capability_exception;
-use stdClass;
-
-global $CFG;
-
-// Dynamic Class Logic.
-// Ensures compatibility between Moodle 3.9 (global classes) and 4.0+ (core_external namespace).
-if (!class_exists('mod_journal\external\journal_external_api_base')) {
-    if (class_exists('core_external\external_api')) {
-        // Moodle 4.0 and higher.
-        class_alias('core_external\external_api', 'mod_journal\external\journal_external_api_base');
-
-        // Ensure global class aliases exist for the helper types used in this file.
-        if (!class_exists('external_function_parameters')) {
-            class_alias('core_external\external_function_parameters', 'external_function_parameters');
-        }
-        if (!class_exists('external_value')) {
-            class_alias('core_external\external_value', 'external_value');
-        }
-    } else {
-        // Moodle 3.9 - 3.11.
-        require_once($CFG->libdir . '/externallib.php');
-        class_alias('external_api', 'mod_journal\external\journal_external_api_base');
-    }
-}
 
 /**
  * External function to set a journal's text
@@ -72,10 +43,11 @@ class set_text extends journal_external_api_base {
     public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters(
             [
-                'journalid' => new external_value(PARAM_INT, 'course module id of journal'),
+                'journalid' => new external_value(PARAM_INT, 'journal instance id, ignored if cmid is given'),
                 'text' => new external_value(PARAM_RAW, 'text to set'),
                 'format' => new external_value(PARAM_INT, 'format of text'),
                 'itemid' => new external_value(PARAM_INT, 'Draft item id for files', VALUE_DEFAULT, 0),
+                'cmid' => new external_value(PARAM_INT, 'course module id of journal', VALUE_DEFAULT, 0),
             ]
         );
     }
@@ -98,21 +70,32 @@ class set_text extends journal_external_api_base {
     /**
      * Sets the text for the element.
      *
-     * @param int $journalid Journal course module ID
+     * @param int $journalid Journal instance ID, ignored if $cmid is given
      * @param string $text Text parameter
      * @param int|string $format Format constant for the string
      * @param int $itemid Item id for draft area (files)
+     * @param int $cmid Journal course module ID, as taken by mod_journal_get_entry
      * @return array
      */
-    public static function execute(int $journalid, string $text, $format, int $itemid = 0) {
-        global $DB, $USER;
+    public static function execute(int $journalid, string $text, $format, int $itemid = 0, int $cmid = 0) {
+        global $CFG, $DB, $USER;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
 
         $params = self::validate_parameters(
             self::execute_parameters(),
-            ['journalid' => $journalid, 'text' => $text, 'format' => $format, 'itemid' => $itemid]
+            ['journalid' => $journalid, 'text' => $text, 'format' => $format, 'itemid' => $itemid, 'cmid' => $cmid]
         );
 
-        if (!$cm = get_coursemodule_from_instance('journal', $params['journalid'])) {
+        if (!in_array($params['format'], [FORMAT_MOODLE, FORMAT_HTML, FORMAT_PLAIN, FORMAT_MARKDOWN])) {
+            throw new invalid_parameter_exception('Invalid text format: ' . $params['format']);
+        }
+
+        if ($params['cmid']) {
+            $cm = get_coursemodule_from_id('journal', $params['cmid']);
+        } else {
+            $cm = get_coursemodule_from_instance('journal', $params['journalid']);
+        }
+        if (!$cm) {
             throw new invalid_parameter_exception(get_string('incorrectcmid', 'journal'));
         }
 
@@ -128,69 +111,32 @@ class set_text extends journal_external_api_base {
         self::validate_context($context);
         require_capability('mod/journal:addentries', $context);
 
-        $entry = $DB->get_record('journal_entries', ['userid' => $USER->id, 'journal' => $journal->id]);
-
-        $timenow = time();
-        $newentry = new stdClass();
-        $newentry->text = $params['text'];
-        $newentry->format = $params['format'];
-        $newentry->modified = $timenow;
-        $newentry->userid = $USER->id;
-        $newentry->journal = $journal->id;
-
-        if ($entry) {
-            $newentry->id = $entry->id;
-        } else {
-            // Create a record first to get an ID for file storage.
-            $tempentry = clone $newentry;
-            $tempentry->text = '';
-            $newentry->id = $DB->insert_record('journal_entries', $tempentry);
-            $entry = $newentry;
+        if (!journal_is_open($journal, $course, $cm)) {
+            throw new \moodle_exception('journalclosed', 'journal');
         }
 
-        // Handle File Drafts.
-        if ($params['itemid'] > 0) {
-            $newentry->text = file_save_draft_area_files(
-                $params['itemid'],
-                $context->id,
-                'mod_journal',
-                'entry',
-                $newentry->id,
-                ['subdirs' => 0, 'maxbytes' => 0, 'maxfiles' => -1],
-                $newentry->text
-            );
+        if ($params['format'] == FORMAT_PLAIN && !$params['itemid']) {
+            // The mobile app edits the entry as plain text, which must not replace the formatted entry if unchanged.
+            $entry = $DB->get_record('journal_entries', ['journal' => $journal->id, 'userid' => $USER->id]);
+            $text = journal_normalise_plain_text($params['text']);
+            if ($entry && $text === journal_get_plain_text($entry->text, $entry->format, $context)) {
+                return [
+                    'status' => 'ok',
+                    'text' => $entry->text,
+                ];
+            }
         }
 
-        // Final Update.
-        $DB->update_record('journal_entries', $newentry);
-
-        // Trigger events.
-        if ($entry && isset($entry->modified) && $entry->modified > 0) {
-            $event = entry_updated::create([
-                'objectid' => $journal->id,
-                'context' => $context,
-            ]);
-        } else {
-            $event = entry_created::create([
-                'objectid' => $journal->id,
-                'context' => $context,
-            ]);
-        }
-        $event->add_record_snapshot('course_modules', $cm);
-        $event->add_record_snapshot('course', $course);
-        $event->add_record_snapshot('journal', $journal);
-        $event->trigger();
-
-        // Update completion.
-        $completion = new \completion_info($course);
-        if ($completion->is_enabled($cm) && $journal->completion_create_entry) {
-            $completion->update_state($cm, COMPLETION_COMPLETE);
-        }
+        $entry = manager::create_from_coursemodule($cm)->save_entry(
+            $params['text'],
+            $params['format'],
+            $params['itemid']
+        );
 
         // Return array matching execute_returns.
         return [
             'status' => 'ok',
-            'text' => $newentry->text,
+            'text' => $entry->text,
         ];
     }
 }

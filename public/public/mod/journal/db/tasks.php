@@ -28,7 +28,16 @@ $tasks = [
     [
         'classname' => 'mod_journal\task\cron_task',
         'blocking' => 0,
-        'minute' => '*',
+        'minute' => '*/5',
+        'hour' => '*',
+        'day' => '*',
+        'month' => '*',
+        'dayofweek' => '*',
+    ],
+    [
+        'classname' => 'mod_journal\task\send_reminders',
+        'blocking' => 0,
+        'minute' => 'R',
         'hour' => '*',
         'day' => '*',
         'month' => '*',
