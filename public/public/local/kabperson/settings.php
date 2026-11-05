@@ -45,4 +45,13 @@ if ($hassiteconfig) {
         get_string('settings_sources', $p), get_string('settings_sources_desc', $p)));
     $settings->add(new admin_setting_configcheckbox($p . '/enablekabshop',
         get_string('enablekabshop', $p), get_string('enablekabshop_desc', $p), 1));
+
+    $settings->add(new admin_setting_heading($p . '/wpheading',
+        get_string('settings_wp', $p), get_string('settings_wp_desc', $p)));
+    $settings->add(new admin_setting_configcheckbox($p . '/enablewp',
+        get_string('enablewp', $p), get_string('enablewp_desc', $p), 1));
+    $settings->add(new admin_setting_configtext($p . '/wpbase',
+        get_string('wpbase', $p), get_string('wpbase_desc', $p), '', PARAM_URL));
+    $settings->add(new admin_setting_configpasswordunmask($p . '/wptoken',
+        get_string('wptoken', $p), get_string('wptoken_desc', $p), ''));
 }

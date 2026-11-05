@@ -17,10 +17,11 @@
 namespace local_kabperson;
 
 /**
- * Сборка карточки человека: Moodle (идентичность, обучение) + касса local_kabshop.
+ * Сборка карточки человека: Moodle (идентичность, обучение) + касса local_kabshop
+ * + заказы старого WP kabacademy (адаптер source\kabacademy_wp, этап 2).
  *
  * Только чтение. Контракт JSON — §9 спеки spec_person_card_moodle_2026-10.md
- * (репо kabacademy.com). Адаптеры внешних площадок — этап 2, в sources они «off».
+ * (репо kabacademy.com). kabbalah.info и books — этап 5, в sources они «off».
  *
  * @package    local_kabperson
  * @copyright  2026 Kabacademy
@@ -122,7 +123,10 @@ class api {
             }
         }
         $card = self::build($email);
-        $cache->set($key, $card);
+        // Источник упал — карточку не кешируем: следующее открытие попробует снова.
+        if (!in_array('error', $card['sources'], true)) {
+            $cache->set($key, $card);
+        }
         $card['cached'] = false;
         return $card;
     }
@@ -134,12 +138,13 @@ class api {
      * @return array
      */
     public static function build(string $email): array {
+        global $DB;
         $sources = [
             'moodle'        => 'ok',
             'kabshop'       => 'off',
-            'kabacademy_wp' => 'off',   // Этап 2: адаптеры внешних площадок.
-            'kabbalah_info' => 'off',
-            'books'         => 'off',
+            'kabacademy_wp' => 'off',
+            'kabbalah_info' => 'off',   // Этап 5.
+            'books'         => 'off',   // Этап 5.
         ];
         $card = [
             'found'        => false,
@@ -148,15 +153,114 @@ class api {
         ];
 
         $user = self::find_user($email, $dupsignals);
+        $wp = source\kabacademy_wp::fetch($email, $user ? (int) $user->id : 0);
+        $sources['kabacademy_wp'] = $wp['state'];
+
+        // По email Moodle никого не нашёл, а WP знает связь — тот же человек, в Moodle
+        // у него другой адрес (§4: опрашиваем все известные адреса).
+        if (!$user && $wp['found'] && $wp['identity']['moodle_user_id'] > 0) {
+            $linked = $DB->get_record('user', ['id' => $wp['identity']['moodle_user_id'], 'deleted' => 0]);
+            if ($linked) {
+                $user = $linked;
+                $dupsignals[] = 'moodle_email_differs';
+            }
+        }
+
         if (!$user) {
+            if ($wp['found']) {
+                // Нет в общей базе, но есть история оплат на WP — показываем её (§4).
+                $card['identity'] = self::wp_only_identity($wp['identity'], $email);
+                $card['payments'] = [
+                    'orders'        => $wp['orders'],
+                    'subscriptions' => [],
+                    'unfinished'    => [],
+                    'donor_total'   => $wp['donor'] ? $wp['donor'] : new \stdClass(),
+                ];
+            }
+            $card['sources'] = $sources;
             return $card;
         }
         $card['found'] = true;
         $card['identity'] = self::identity($user, $email, $dupsignals);
         $card['learning'] = self::learning((int) $user->id);
         $card['payments'] = self::payments((int) $user->id, $sources);
+        self::merge_wp($card, $wp);
         $card['sources'] = $sources;
         return $card;
+    }
+
+    /**
+     * Влить в карточку данные старого WP: wp_user_id, адрес WP, сигналы, заказы, пожертвования.
+     *
+     * @param array $card (by ref) карточка с identity и payments
+     * @param array $wp результат source\kabacademy_wp::fetch()
+     */
+    protected static function merge_wp(array &$card, array $wp): void {
+        if (empty($wp['found'])) {
+            return;
+        }
+        $wi = $wp['identity'];
+        $id = &$card['identity'];
+        $id['wp_user_id'] = $wi['wp_user_id'];
+        $known = array_map(function ($e) {
+            return \core_text::strtolower((string) $e);
+        }, $id['emails']);
+        if ($wi['email'] !== '' && !in_array($wi['email'], $known, true)) {
+            $id['emails'][] = $wi['email'];
+            $id['possible_duplicates'][] = 'wp_email_differs';
+        }
+        if ($wi['moodle_user_id'] > 0 && $wi['moodle_user_id'] !== (int) $id['moodle_user_id']) {
+            $id['possible_duplicates'][] = 'wp_linked_to_moodle:' . $wi['moodle_user_id'];
+        }
+        foreach ($wi['possible_duplicates'] as $signal) {
+            $id['possible_duplicates'][] = 'wp:' . $signal;
+        }
+        $id['possible_duplicates'] = array_values(array_unique($id['possible_duplicates']));
+        unset($id);
+
+        $pm = &$card['payments'];
+        $pm['orders'] = array_merge($pm['orders'], $wp['orders']);
+        usort($pm['orders'], function ($a, $b) {
+            return strtotime((string) $b['date']) <=> strtotime((string) $a['date']);
+        });
+        $donor = (array) $pm['donor_total'];
+        foreach ($wp['donor'] as $cur => $sum) {
+            $donor[$cur] = round(($donor[$cur] ?? 0) + $sum, 2);
+        }
+        $pm['donor_total'] = $donor ? $donor : new \stdClass();
+    }
+
+    /**
+     * Блок «человек» для того, кого нет в Moodle, но кто есть в WP.
+     *
+     * @param array $wi identity из адаптера WP
+     * @param string $email искомый email
+     * @return array
+     */
+    protected static function wp_only_identity(array $wi, string $email): array {
+        $emails = [$email];
+        if ($wi['email'] !== '' && $wi['email'] !== $email) {
+            $emails[] = $wi['email'];
+        }
+        $signals = [];
+        if ($wi['moodle_user_id'] > 0) {
+            $signals[] = 'wp_linked_to_moodle:' . $wi['moodle_user_id']; // Связь есть, а аккаунта нет.
+        }
+        foreach ($wi['possible_duplicates'] as $signal) {
+            $signals[] = 'wp:' . $signal;
+        }
+        return [
+            'name'                => $wi['name'],
+            'email'               => $wi['email'] !== '' ? $wi['email'] : $email,
+            'emails'              => $emails,
+            'moodle_user_id'      => 0,
+            'wp_user_id'          => $wi['wp_user_id'],
+            'status'              => 'none',
+            'registered_at'       => $wi['registered_at'],
+            'last_login'          => null,
+            'telegram_linked'     => false,
+            'possible_duplicates' => array_values(array_unique($signals)),
+        ];
     }
 
     /**
@@ -243,7 +347,7 @@ class api {
             'email'               => (string) $user->email,
             'emails'              => $emails,
             'moodle_user_id'      => $uid,
-            'wp_user_id'          => 0, // Этап 2 (адаптер kabacademy WP).
+            'wp_user_id'          => 0, // Заполняет merge_wp(), если WP нашёл человека.
             'status'              => $status,
             'registered_at'       => self::iso((int) $user->timecreated),
             'last_login'          => self::iso((int) $user->lastaccess),

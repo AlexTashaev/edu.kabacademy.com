@@ -151,7 +151,10 @@ class gate {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
         $curl = new \curl();
-        $curl->setHeader(['api_access_token: ' . $token]);
+        // Имя заголовка — через дефис: edge перед Chatwoot (nginx) по умолчанию выбрасывает
+        // заголовки с подчёркиванием (api_access_token), а Rails принимает оба написания
+        // (проверено с сервера Moodle 05.11.2026). Так ходим на публичный адрес, без внутреннего.
+        $curl->setHeader(['api-access-token: ' . $token]);
         $body = $curl->get($url, [], ['CURLOPT_TIMEOUT' => 8, 'CURLOPT_CONNECTTIMEOUT' => 5]);
         $code = (int) ($curl->get_info()['http_code'] ?? 0);
         if ($code !== 200) {

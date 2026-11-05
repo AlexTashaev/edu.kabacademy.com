@@ -17,7 +17,7 @@
 /**
  * Карточка человека (Person Card) — только чтение: Moodle + касса local_kabshop.
  *
- * Спека: репо kabacademy.com, .claude/analysis/spec_person_card_moodle_2026-10.md (этап 1).
+ * Спека: репо kabacademy.com, .claude/analysis/spec_person_card_moodle_2026-10.md (этапы 1–2).
  *
  * @package    local_kabperson
  * @copyright  2026 Kabacademy
@@ -27,7 +27,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_kabperson';
-$plugin->version   = 2026110300;
+$plugin->version   = 2026110500;
 $plugin->requires  = 2025041400; // Moodle 5.0+.
 $plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = '0.1.0';
+$plugin->release   = '0.2.0';

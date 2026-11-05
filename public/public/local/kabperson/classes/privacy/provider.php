@@ -48,6 +48,10 @@ class provider implements
         $collection->add_external_location_link('chatwoot', [
             'email' => 'privacy:metadata:chatwoot:email',
         ], 'privacy:metadata:chatwoot');
+        $collection->add_external_location_link('kabacademy_wp', [
+            'email'        => 'privacy:metadata:kabacademy_wp:email',
+            'moodleuserid' => 'privacy:metadata:kabacademy_wp:moodleuserid',
+        ], 'privacy:metadata:kabacademy_wp');
         return $collection;
     }
 
