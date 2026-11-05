@@ -84,7 +84,30 @@ JS;
     $token_js = json_encode($token);
 
     return "
+<style>
+  /* Свой бейдж непрочитанных на пузыре (штатная плашка отключена: прозрачный
+     iframe тонет в тексте; фон контейнеру давал огромный белый прямоугольник). */
+  #kab-cw-badge { position: fixed; right: 14px; bottom: 78px; width: 15px; height: 15px;
+    background: #ffb300; border: 2px solid #fff; border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0,0,0,.25);
+    z-index: 2147483000; display: none; pointer-events: none;
+    animation: kab-cw-pulse 1.6s ease-in-out infinite; }
+  @keyframes kab-cw-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+  /* фокус-обводка браузера на пузыре после клика мышью (чёрная рамка) не нужна */
+  .woot-widget-bubble:focus:not(:focus-visible) { outline: none; }
+</style>
 <script>
+  window.chatwootSettings = Object.assign({ locale: 'ru', showUnreadMessagesDialog: false }, window.chatwootSettings || {});
+  (function () {
+    var opened = false, badge = null;
+    function dot() {
+      if (!badge) { badge = document.createElement('div'); badge.id = 'kab-cw-badge'; document.body.appendChild(badge); }
+      return badge;
+    }
+    window.addEventListener('chatwoot:opened', function () { opened = true; if (badge) badge.style.display = 'none'; });
+    window.addEventListener('chatwoot:closed', function () { opened = false; if (badge) badge.style.display = 'none'; });
+    window.addEventListener('chatwoot:on-message', function () { if (!opened) dot().style.display = 'block'; });
+  })();
   (function (d, t) {
     var BASE_URL = {$base_js};
     var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
