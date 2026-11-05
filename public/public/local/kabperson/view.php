@@ -42,6 +42,7 @@ $contactid  = optional_param('contact_id', 0, PARAM_INT);
 $refresh    = optional_param('refresh', 0, PARAM_BOOL);
 $format     = optional_param('format', 'html', PARAM_ALPHA);
 $unverified = optional_param('unverified', 0, PARAM_BOOL);
+$noemail    = optional_param('noemail', 0, PARAM_BOOL); // Dashboard App: у контакта нет email.
 
 // Кто может встроить страницу в iframe. Пусто — только сам Moodle ('self'): в 0.1 без
 // настройки заголовка не было вовсе, и страницу мог встроить любой сайт.
@@ -92,6 +93,13 @@ function local_kabperson_listener(array $origins, string $email, int $contactid)
     var email = own || alt;
     var cid = parseInt(c.id, 10) || 0;
     if (!email) {
+      // Переключили на диалог без email — карточку прежнего человека не оставляем.
+      if (C.email !== '') {
+        var s = new URL(C.self);
+        s.searchParams.set('noemail', '1');
+        window.location.replace(s.toString());
+        return;
+      }
       var n = document.getElementById('kabp-wait');
       if (n) { n.textContent = C.noemail; }
       return;
@@ -296,7 +304,8 @@ if ($email !== '') {
 echo '</form>';
 
 if ($card === null && $msgorigins) {
-    echo '<p id="kabp-wait" class="muted">' . $str('waitingcontact') . '</p>';
+    echo '<p id="kabp-wait" class="' . ($noemail ? 'warn' : 'muted') . '">' .
+        $str($noemail ? 'nocontactemail' : 'waitingcontact') . '</p>';
 }
 
 if ($card !== null) {
