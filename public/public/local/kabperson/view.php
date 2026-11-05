@@ -234,20 +234,44 @@ function local_kabperson_signal(string $signal): string {
     return $signal;
 }
 
+/** Сколько строк курсов и оплат показывать сразу; остальное — под «ещё N». */
+const LOCAL_KABPERSON_LIST_LIMIT = 10;
+
 /**
- * CSS-класс строки заказа по статусу (касса: ok|revoked; WooCommerce: completed, processing, …).
+ * CSS-класс строки заказа: ждёт — warn, не прошёл — bad (api::order_state).
  *
- * @param string $status
+ * @param array $order
  * @return string
  */
-function local_kabperson_status_class(string $status): string {
-    if (in_array($status, ['ok', 'completed', 'processing', 'active'], true)) {
-        return '';
+function local_kabperson_status_class(array $order): string {
+    return ['pending' => 'warn', 'failed' => 'bad'][\local_kabperson\api::order_state($order)] ?? '';
+}
+
+/**
+ * ISO-дата → «сегодня», «вчера», «5 дн назад», «3 мес назад», «2 г назад» (или «—»).
+ *
+ * @param string|null $iso
+ * @return string
+ */
+function local_kabperson_ago(?string $iso): string {
+    $ts = $iso ? strtotime($iso) : false;
+    if (!$ts) {
+        return get_string('nothing', 'local_kabperson');
     }
-    if (in_array($status, ['pending', 'on-hold'], true)) {
-        return 'warn';
+    $days = (int) floor((time() - $ts) / DAYSECS);
+    if ($days <= 0) {
+        return get_string('ago_today', 'local_kabperson');
     }
-    return 'bad';
+    if ($days === 1) {
+        return get_string('ago_yesterday', 'local_kabperson');
+    }
+    if ($days < 30) {
+        return get_string('ago_days', 'local_kabperson', $days);
+    }
+    if ($days < 365) {
+        return get_string('ago_months', 'local_kabperson', (int) floor($days / 30));
+    }
+    return get_string('ago_years', 'local_kabperson', (int) floor($days / 365));
 }
 
 $str = function (string $id, $a = null): string {
@@ -282,6 +306,13 @@ tr.bad td{color:#b3261e}tr.warn td{color:#b35900}
 .chips span{display:inline-block;border:1px solid #e0e0e0;border-radius:10px;padding:.05rem .5rem;margin-right:.25rem}
 .kv td:first-child{width:12rem;color:#555;background:#fafafa}
 details summary{cursor:pointer;color:#1f6feb;font-size:.85rem;margin:.4rem 0}
+.summary{border:1px solid #e3e3e3;border-radius:8px;padding:.7rem .9rem;margin:0 0 .5rem;background:#fafbfc}
+h2.who{border:0;margin:0;padding:0;font-size:1.05rem}
+.badge{display:inline-block;font-size:.75rem;font-weight:600;padding:.1rem .55rem;border-radius:1rem;margin:.3rem .3rem 0 0}
+.b-dup{background:#ffebe9;color:#cf222e}.b-donor{background:#e6f4ea;color:#1a7f37}
+.facts{display:flex;flex-wrap:wrap;gap:.6rem 1.6rem;margin:.6rem 0 .1rem}
+.fact .k{font-size:.7rem;color:#777;text-transform:uppercase;letter-spacing:.03em}
+.fact .v{font-size:1.05rem;font-weight:700;line-height:1.25}.fact .v small{font-size:.8rem;font-weight:400;color:#777}
 </style></head><body>';
 
 echo '<h1>' . $str('viewtitle') . '</h1>';
@@ -310,7 +341,85 @@ if ($card === null && $msgorigins) {
 
 if ($card !== null) {
     $id = $card['identity'] ?? null;
-    if (empty($card['found'])) {
+    $found = !empty($card['found']);
+
+    // ---- Сводка сверху: что оператору важно за 2 секунды (как у WP-карточки 0.2). ----
+    if ($id) {
+        $badges = '';
+        if (!$found) {
+            $badges .= '<span class="badge b-dup">' . $str('notinmoodle') . '</span>';
+        } else if ($id['status'] !== 'active') {
+            $badges .= '<span class="badge b-dup">' .
+                $str(['suspended' => 'statussuspended', 'deleted' => 'statusdeleted'][$id['status']] ?? 'statusactive') .
+                '</span>';
+        }
+        foreach ($id['possible_duplicates'] as $signal) {
+            $badges .= '<span class="badge b-dup">⚠ ' . s(local_kabperson_signal($signal)) . '</span>';
+        }
+        foreach ((array) ($card['payments']['donor_total'] ?? []) as $cur => $sum) {
+            $badges .= '<span class="badge b-donor">' . $str('donorbadge', $sum . ' ' . $cur) . '</span>';
+        }
+
+        $facts = [];
+        if ($found) {
+            $learning = array_values(array_filter($card['learning']['courses'], function ($c) {
+                return $c['role'] !== 'teacher';
+            }));
+            $teaching = count($card['learning']['courses']) - count($learning);
+            $passed = count(array_filter($learning, function ($c) {
+                return $c['completed'] === true;
+            }));
+            $v = '<span class="ok">' . $passed . '</span>/' . count($learning) . ' <small>' . $str('sum_passed') . '</small>';
+            if ($teaching) {
+                $v .= ' <small>· ' . $str('sum_teaching', $teaching) . '</small>';
+            }
+            $facts[] = [$str('sum_courses'), $v];
+
+            // «Сейчас учит» — последний посещённый курс из ещё не пройденных с активной записью.
+            $current = array_values(array_filter($learning, function ($c) {
+                return $c['enrol_status'] === 'active' && $c['completed'] !== true;
+            }));
+            usort($current, function ($a, $b) {
+                return strtotime((string) $b['last_access']) <=> strtotime((string) $a['last_access']);
+            });
+            if ($current && $current[0]['last_access']) {
+                $c = $current[0];
+                $name = core_text::strlen($c['name']) > 40 ? core_text::substr($c['name'], 0, 40) . '…' : $c['name'];
+                $v = '<span title="' . s($c['name']) . '">' . s($name) . '</span> <small>' .
+                    ($c['progress_pct'] !== null ? (int) $c['progress_pct'] . '%' : '') .
+                    (count($current) > 1 ? ' (+' . (count($current) - 1) . ')' : '') . '</small>';
+            } else {
+                $v = '<small>' . $str('nothing') . '</small>';
+            }
+            $facts[] = [$str('sum_current'), $v];
+            $facts[] = [$str('sum_lastseen'), '<small>' . s(local_kabperson_ago($id['last_login'])) . '</small>'];
+        }
+        if (isset($card['payments']['counts'])) {
+            $n = $card['payments']['counts'];
+            $v = (int) $n['paid'] . ' <small>' . $str('sum_paid') . '</small>';
+            if ($n['pending']) {
+                $v .= ' <small>·</small> <span class="warn">' . (int) $n['pending'] . '</span> <small>' . $str('sum_pending') . '</small>';
+            }
+            if ($n['failed']) {
+                $v .= ' <small>·</small> <span class="muted">' . (int) $n['failed'] . '</span> <small>' . $str('sum_failed') . '</small>';
+            }
+            $facts[] = [$str('sum_payments'), $v];
+        }
+        $facts[] = [$str('sum_since'), '<small>' . s($id['registered_at'] ? substr($id['registered_at'], 0, 10) : '—') . '</small>'];
+        $mid = (int) $id['moodle_user_id'];
+        $moodlecell = $mid ? '<a href="' . s((new moodle_url('/user/profile.php', ['id' => $mid]))->out(false)) .
+            '" target="_blank" rel="noopener">' . $mid . ' ↗</a>' : '—';
+        $facts[] = [$str('sum_ids'), '<small>' . ((int) $id['wp_user_id'] ?: '—') . ' / ' . $moodlecell . '</small>'];
+
+        echo '<div class="summary"><h2 class="who">' . s($id['name'] ?? $id['email']) . '</h2>';
+        echo '<div class="muted">' . s($id['email']) . '</div><div>' . $badges . '</div><div class="facts">';
+        foreach ($facts as [$k, $v]) {
+            echo '<div class="fact"><div class="k">' . $k . '</div><div class="v">' . $v . '</div></div>';
+        }
+        echo '</div></div>';
+    }
+
+    if (!$found) {
         echo '<p class="warn">' . $str('notfound') . '</p>';
         if ($id) {
             // Нет в Moodle, но есть в старом WP: показываем, что знаем, и его оплаты.
@@ -319,16 +428,13 @@ if ($card !== null) {
                 '<span class="muted">wp id ' . (int) $id['wp_user_id'] . '</span></td></tr>';
             echo '<tr><td>' . $str('emaillabel') . '</td><td>' . s(implode(', ', $id['emails'])) . '</td></tr>';
             echo '<tr><td>' . $str('registered') . '</td><td>' . s(local_kabperson_dt($id['registered_at'])) . '</td></tr>';
-            if (!empty($id['possible_duplicates'])) {
-                echo '<tr><td>' . $str('duplicates') . '</td><td class="warn">' .
-                    s(implode('; ', array_map('local_kabperson_signal', $id['possible_duplicates']))) . '</td></tr>';
-            }
             echo '</table>';
         }
     } else {
         $statusclass = ['active' => 'ok', 'suspended' => 'warn', 'deleted' => 'bad'][$id['status']] ?? '';
         $statusstr = ['active' => 'statusactive', 'suspended' => 'statussuspended', 'deleted' => 'statusdeleted'];
-        echo '<h2>' . $str('sec_identity') . '</h2><table class="kv">';
+        // Подробности о человеке — свёрнуты: главное уже в сводке.
+        echo '<details><summary>' . $str('identitydetails') . '</summary><table class="kv">';
         $ids = 'moodle id ' . (int) $id['moodle_user_id'];
         if (!empty($id['wp_user_id'])) {
             $ids .= ' · wp id ' . (int) $id['wp_user_id'];
@@ -344,31 +450,43 @@ if ($card !== null) {
             echo '<tr><td>' . $str('duplicates') . '</td><td class="warn">' .
                 s(implode('; ', array_map('local_kabperson_signal', $id['possible_duplicates']))) . '</td></tr>';
         }
-        echo '</table>';
+        echo '</table></details>';
 
         $lr = $card['learning'];
         echo '<h2>' . $str('sec_learning') . '</h2>';
         if (empty($lr['courses'])) {
             echo '<p class="muted">' . $str('nothing') . '</p>';
         } else {
-            echo '<table><tr><th>' . $str('col_course') . '</th><th>' . $str('col_role') . '</th><th>' .
-                $str('col_enrolstatus') . '</th><th>' . $str('col_progress') . '</th><th>' .
-                $str('col_lastaccess') . '</th><th>' . $str('col_badges') . '</th></tr>';
-            foreach ($lr['courses'] as $c) {
-                $role = $c['role_label'] ?? $c['role'] ?? '—';
-                if (!empty($c['restrictions'])) {
-                    $role .= ' · ' . implode(', ', $c['restrictions']);
+            // Свежие сверху; больше LIST_LIMIT — остальное под «ещё N».
+            $courses = $lr['courses'];
+            usort($courses, function ($a, $b) {
+                return strtotime((string) $b['last_access']) <=> strtotime((string) $a['last_access']);
+            });
+            $coursestable = function (array $rows) use ($str): string {
+                $h = '<table><tr><th>' . $str('col_course') . '</th><th>' . $str('col_role') . '</th><th>' .
+                    $str('col_enrolstatus') . '</th><th>' . $str('col_progress') . '</th><th>' .
+                    $str('col_lastaccess') . '</th><th>' . $str('col_badges') . '</th></tr>';
+                foreach ($rows as $c) {
+                    $role = $c['role_label'] ?? $c['role'] ?? '—';
+                    if (!empty($c['restrictions'])) {
+                        $role .= ' · ' . implode(', ', $c['restrictions']);
+                    }
+                    $badges = $c['badges'] ? implode(', ', array_column($c['badges'], 'name')) : '—';
+                    $progress = $c['progress_pct'] === null ? '—' : $c['progress_pct'] . '%';
+                    if ($c['completed'] === true) {
+                        $progress .= ' ✓';
+                    }
+                    $h .= '<tr><td>' . s($c['name']) . ' <span class="muted">#' . (int) $c['course_id'] . '</span></td><td>' .
+                        s((string) $role) . '</td><td>' . s($c['enrol_status']) . '</td><td>' . s($progress) . '</td><td>' .
+                        s(local_kabperson_dt($c['last_access'])) . '</td><td>' . s($badges) . '</td></tr>';
                 }
-                $badges = $c['badges'] ? implode(', ', array_column($c['badges'], 'name')) : '—';
-                $progress = $c['progress_pct'] === null ? '—' : $c['progress_pct'] . '%';
-                if ($c['completed'] === true) {
-                    $progress .= ' ✓';
-                }
-                echo '<tr><td>' . s($c['name']) . ' <span class="muted">#' . (int) $c['course_id'] . '</span></td><td>' .
-                    s((string) $role) . '</td><td>' . s($c['enrol_status']) . '</td><td>' . s($progress) . '</td><td>' .
-                    s(local_kabperson_dt($c['last_access'])) . '</td><td>' . s($badges) . '</td></tr>';
+                return $h . '</table>';
+            };
+            echo $coursestable(array_slice($courses, 0, LOCAL_KABPERSON_LIST_LIMIT));
+            if (count($courses) > LOCAL_KABPERSON_LIST_LIMIT) {
+                echo '<details><summary>' . $str('morecourses', count($courses) - LOCAL_KABPERSON_LIST_LIMIT) .
+                    '</summary>' . $coursestable(array_slice($courses, LOCAL_KABPERSON_LIST_LIMIT)) . '</details>';
             }
-            echo '</table>';
         }
         if (!empty($lr['cohorts'])) {
             echo '<p><b>' . $str('cohorts') . ':</b> ' . s(implode(', ', $lr['cohorts'])) . '</p>';
@@ -383,14 +501,19 @@ if ($card !== null) {
         $pm = $card['payments'];
         echo '<h2>' . $str('sec_payments') . '</h2>';
 
-        // Реальные оплаты отдельно от бесплатных записей (§3 спеки).
-        $paid = [];
+        // Оплаты и ожидающие — на виду; не прошедшие и бесплатные записи — свёрнуты (§3 спеки,
+        // как у WP-карточки 0.2).
+        $shown = [];
+        $failed = [];
         $free = [];
         foreach ($pm['orders'] as $o) {
-            if ((float) $o['amount'] > 0) {
-                $paid[] = $o;
-            } else {
+            $state = \local_kabperson\api::order_state($o);
+            if ($state === 'free') {
                 $free[] = $o;
+            } else if ($state === 'failed') {
+                $failed[] = $o;
+            } else {
+                $shown[] = $o;
             }
         }
         $orderstable = function (array $rows) use ($str): string {
@@ -398,7 +521,7 @@ if ($card !== null) {
                 $str('col_product') . '</th><th>' . $str('col_kind') . '</th><th>' . $str('col_amount') .
                 '</th><th>' . $str('col_status') . '</th><th>' . $str('col_gateway') . '</th></tr>';
             foreach ($rows as $o) {
-                $cls = local_kabperson_status_class((string) $o['status']);
+                $cls = local_kabperson_status_class($o);
                 $num = !empty($o['number']) ? (string) $o['number'] : (string) (int) $o['id'];
                 $amount = $o['amount'] . ' ' . $o['currency'];
                 if (!empty($o['refunded'])) {
@@ -413,7 +536,14 @@ if ($card !== null) {
         };
 
         echo '<h3>' . $str('orders') . '</h3>';
-        echo $paid ? $orderstable($paid) : '<p class="muted">' . $str('nopaid') . '</p>';
+        echo $shown ? $orderstable(array_slice($shown, 0, LOCAL_KABPERSON_LIST_LIMIT)) : '<p class="muted">' . $str('nopaid') . '</p>';
+        if (count($shown) > LOCAL_KABPERSON_LIST_LIMIT) {
+            echo '<details><summary>' . $str('moreorders', count($shown) - LOCAL_KABPERSON_LIST_LIMIT) . '</summary>' .
+                $orderstable(array_slice($shown, LOCAL_KABPERSON_LIST_LIMIT)) . '</details>';
+        }
+        if ($failed) {
+            echo '<details><summary>' . $str('failedorders', count($failed)) . '</summary>' . $orderstable($failed) . '</details>';
+        }
         if ($free) {
             echo '<details><summary>' . $str('freerecords', count($free)) . '</summary>' . $orderstable($free) . '</details>';
         }

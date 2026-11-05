@@ -176,6 +176,7 @@ class api {
                     'unfinished'    => [],
                     'donor_total'   => $wp['donor'] ? $wp['donor'] : new \stdClass(),
                 ];
+                $card['payments']['counts'] = self::order_counts($card['payments']['orders']);
             }
             $card['sources'] = $sources;
             return $card;
@@ -185,8 +186,46 @@ class api {
         $card['learning'] = self::learning((int) $user->id);
         $card['payments'] = self::payments((int) $user->id, $sources);
         self::merge_wp($card, $wp);
+        $card['payments']['counts'] = self::order_counts($card['payments']['orders']);
         $card['sources'] = $sources;
         return $card;
+    }
+
+    /**
+     * Состояние заказа для сводки: paid | pending | failed | free.
+     * Касса: ok — оплачено, revoked — доступ отозван (возврат). WooCommerce: completed,
+     * processing, active — оплачено; failed, cancelled, refunded — не прошли; остальное
+     * (pending, on-hold, служебные статусы CartFlows) — ждёт, как в WP-карточке 0.2.
+     *
+     * @param array $order заказ из payments.orders
+     * @return string
+     */
+    public static function order_state(array $order): string {
+        if (!((float) ($order['amount'] ?? 0) > 0)) {
+            return 'free';
+        }
+        $status = (string) ($order['status'] ?? '');
+        if (in_array($status, ['ok', 'completed', 'processing', 'active'], true)) {
+            return 'paid';
+        }
+        if (in_array($status, ['failed', 'cancelled', 'refunded', 'revoked'], true)) {
+            return 'failed';
+        }
+        return 'pending';
+    }
+
+    /**
+     * Сводка по заказам: сколько оплачено, ждёт, не прошло и сколько бесплатных записей.
+     *
+     * @param array $orders payments.orders
+     * @return array ['paid' => int, 'pending' => int, 'failed' => int, 'free' => int]
+     */
+    protected static function order_counts(array $orders): array {
+        $counts = ['paid' => 0, 'pending' => 0, 'failed' => 0, 'free' => 0];
+        foreach ($orders as $o) {
+            $counts[self::order_state($o)]++;
+        }
+        return $counts;
     }
 
     /**
@@ -202,6 +241,13 @@ class api {
         $wi = $wp['identity'];
         $id = &$card['identity'];
         $id['wp_user_id'] = $wi['wp_user_id'];
+        // «В базе с» — самая ранняя известная дата: в WP человек обычно появился раньше, чем
+        // в Moodle (аккаунт Moodle заводит синхронизация при первой записи на курс), а у
+        // старых служебных аккаунтов Moodle даты создания нет вовсе.
+        if ($wi['registered_at'] !== null &&
+                ($id['registered_at'] === null || strtotime($wi['registered_at']) < strtotime($id['registered_at']))) {
+            $id['registered_at'] = $wi['registered_at'];
+        }
         $known = array_map(function ($e) {
             return \core_text::strtolower((string) $e);
         }, $id['emails']);
