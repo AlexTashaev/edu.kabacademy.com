@@ -32,40 +32,48 @@ class event_observer {
      * @param \core\event\base $event
      */
     public static function entry_modified(\core\event\base $event) {
-        global $DB, $CFG;
+        global $DB;
 
-        $journalid = $event->objectid;
-        $courseid = $event->courseid;
-        $userid = $event->userid;
-        $cmid = $event->contextinstanceid;
-
-        $journal = $DB->get_record('journal', ['id' => $journalid], '*', MUST_EXIST);
+        $cm = get_coursemodule_from_id('journal', $event->contextinstanceid, $event->courseid);
+        if (!$cm) {
+            return;
+        }
+        $journal = $DB->get_record('journal', ['id' => $cm->instance], '*', MUST_EXIST);
 
         // Check if the instance setting is enabled.
         if (empty($journal->notifyteachers)) {
             return;
         }
+        // Entries that already needed grading before this save were already notified about.
+        if ($journal->notifyteachers == manager::NOTIFY_NEEDSGRADING && empty($event->other['needsgrading'])) {
+            return;
+        }
 
-        $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
-        $cm = get_coursemodule_from_instance('journal', $journalid, $courseid);
+        $course = get_course($event->courseid);
         $context = \context_module::instance($cm->id);
 
         // Get the user who submitted.
+        $userid = $event->relateduserid;
         $user = $DB->get_record('user', ['id' => $userid], '*', MUST_EXIST);
 
         // Find teachers/managers in this context.
-        if (class_exists('\core_user\fields')) {
-            $userfields = \core_user\fields::for_name()->get_sql('u', false, '', '', false)->selects;
-        } else {
-            $userfields = get_all_user_name_fields(true, 'u');
-        }
+        $userfields = \core_user\fields::for_name()->get_sql('u', false, '', '', false)->selects;
 
         // Changed from get_users_by_capability to get_enrolled_users to prevent site admins
         // receiving notifications unless they are explicitly enrolled in the course.
-        $teachers = get_enrolled_users($context, 'mod/journal:manageentries', 0, 'u.id, u.email, u.lang, ' . $userfields);
+        $requiredfields = 'u.id, u.auth, u.mnethostid, u.username, u.email, u.emailstop, '
+            . 'u.mailformat, u.maildisplay, u.lang, u.deleted, u.suspended';
+        $teachers = get_enrolled_users($context, 'mod/journal:manageentries', 0, $requiredfields . ', ' . $userfields);
 
         if (empty($teachers)) {
             return;
+        }
+
+        // In separate groups mode, teachers who cannot access all groups must share a group with the user.
+        $groupmembers = null;
+        if (groups_get_activity_groupmode($cm, $course) == SEPARATEGROUPS) {
+            $usergroups = groups_get_all_groups($course->id, $userid, $cm->groupingid);
+            $groupmembers = $usergroups ? groups_get_groups_members(array_keys($usergroups)) : [];
         }
 
         foreach ($teachers as $teacher) {
@@ -74,15 +82,11 @@ class event_observer {
                 continue;
             }
 
-            // Check if the teacher can actually access this group (if separate groups).
-            $groupmode = groups_get_activity_groupmode($cm, $course);
-            if ($groupmode == SEPARATEGROUPS && !has_capability('moodle/site:accessallgroups', $context, $teacher)) {
-                $usergroups = groups_get_all_groups($course->id, $userid, $cm->groupingid);
-                $teachergroups = groups_get_all_groups($course->id, $teacher->id, $cm->groupingid);
-                $sharedgroups = array_intersect(array_keys($usergroups), array_keys($teachergroups));
-                if (empty($sharedgroups)) {
-                    continue;
-                }
+            if (
+                $groupmembers !== null && !isset($groupmembers[$teacher->id])
+                && !has_capability('moodle/site:accessallgroups', $context, $teacher)
+            ) {
+                continue;
             }
 
             self::send_notification($user, $teacher, $journal, $course, $cm);

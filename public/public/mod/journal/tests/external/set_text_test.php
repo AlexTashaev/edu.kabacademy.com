@@ -84,4 +84,118 @@ final class set_text_test extends advanced_testcase {
 
         $this->assertEquals($journal->id, $result->journal);
     }
+
+    /**
+     * The journal can be given by its course module ID instead, which takes precedence over the instance ID.
+     *
+     * @return void
+     * @covers ::execute
+     */
+    public function test_text_is_set_in_journal_by_cmid(): void {
+        global $DB, $USER;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $journal1 = $this->getDataGenerator()->create_module('journal', ['course' => $course]);
+        $journal2 = $this->getDataGenerator()->create_module('journal', ['course' => $course]);
+
+        $result = set_text::execute(0, 'bycmid', FORMAT_PLAIN, 0, $journal2->cmid);
+        $this->assertEquals('bycmid', $result['text']);
+        $this->assertEquals('bycmid', $DB->get_field('journal_entries', 'text', [
+            'journal' => $journal2->id,
+            'userid' => $USER->id,
+        ]));
+
+        set_text::execute($journal1->id, 'precedence', FORMAT_PLAIN, 0, $journal2->cmid);
+        $this->assertFalse($DB->record_exists('journal_entries', ['journal' => $journal1->id]));
+        $this->assertEquals('precedence', $DB->get_field('journal_entries', 'text', ['journal' => $journal2->id]));
+    }
+
+    /**
+     * Text with an unknown format is rejected.
+     *
+     * @return void
+     * @covers ::execute
+     */
+    public function test_text_with_invalid_format_is_rejected(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $journal = $this->getDataGenerator()->create_module('journal', ['course' => $course]);
+
+        $this->expectException(invalid_parameter_exception::class);
+        try {
+            set_text::execute($journal->id, 'newtext', 99);
+        } finally {
+            $this->assertFalse($DB->record_exists('journal_entries', ['journal' => $journal->id]));
+        }
+    }
+
+    /**
+     * No text can be set once the editing period of the journal has ended.
+     *
+     * @return void
+     * @covers ::execute
+     */
+    public function test_text_is_not_set_after_editing_period(): void {
+        global $DB;
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'weeks', 'startdate' => time() - 4 * WEEKSECS]);
+        $student = $generator->create_and_enrol($course, 'student');
+        $journal = $generator->create_module('journal', ['course' => $course, 'section' => 1, 'days' => 7]);
+        $this->setUser($student);
+
+        try {
+            set_text::execute($journal->id, 'newtext', FORMAT_PLAIN);
+            $this->fail('An exception should have been thrown.');
+        } catch (\moodle_exception $e) {
+            $this->assertEquals('journalclosed', $e->errorcode);
+        }
+
+        $this->assertFalse($DB->record_exists('journal_entries', ['journal' => $journal->id]));
+    }
+
+    /**
+     * An entry saved unchanged as plain text by the mobile app keeps its formatting, other plain text replaces it.
+     *
+     * @return void
+     * @covers ::execute
+     */
+    public function test_plain_text_keeps_unchanged_entry(): void {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $student = $generator->create_and_enrol($course, 'student');
+        $journal = $generator->create_module('journal', ['course' => $course]);
+        $html = '<p>My <strong>formatted</strong> entry</p><p>Second paragraph</p>';
+        $entryid = $generator->get_plugin_generator('mod_journal')->create_entry((object) [
+            'journal' => $journal->id,
+            'userid' => $student->id,
+            'text' => $html,
+            'format' => FORMAT_HTML,
+            'modified' => 1000,
+        ]);
+        $this->setUser($student);
+
+        $plain = journal_get_plain_text($html, FORMAT_HTML, \context_module::instance($journal->cmid));
+        $result = set_text::execute($journal->id, $plain, FORMAT_PLAIN);
+        $this->assertSame($html, $result['text']);
+        $entry = $DB->get_record('journal_entries', ['id' => $entryid], '*', MUST_EXIST);
+        $this->assertSame($html, $entry->text);
+        $this->assertEquals(FORMAT_HTML, $entry->format);
+        $this->assertEquals(1000, $entry->modified);
+
+        set_text::execute($journal->id, $plain . ' Changed', FORMAT_PLAIN);
+        $entry = $DB->get_record('journal_entries', ['id' => $entryid], '*', MUST_EXIST);
+        $this->assertSame($plain . ' Changed', $entry->text);
+        $this->assertEquals(FORMAT_PLAIN, $entry->format);
+    }
 }

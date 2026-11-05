@@ -43,16 +43,28 @@ function diary_add_instance($diary) {
 
     $metricrequirements = diary_extract_metric_requirements_from_form($diary);
 
-    $diary->promptmode = isset($diary->promptmode) ? (int)$diary->promptmode : 0;
-    if ($diary->promptmode < 0 || $diary->promptmode > 4) {
-        $diary->promptmode = 0;
+    $diary->promptmode = isset($diary->promptmode)
+        ? (int)$diary->promptmode
+        : prompts::PROMPTMODE_SEQUENTIAL;
+    if (
+        $diary->promptmode < prompts::PROMPTMODE_SEQUENTIAL
+        || $diary->promptmode > prompts::PROMPTMODE_SEQUENTIALGRADED
+    ) {
+        $diary->promptmode = prompts::PROMPTMODE_SEQUENTIAL;
     }
+
+    $diary->sequentialgradedpacing = isset($diary->sequentialgradedpacing)
+        ? (int)$diary->sequentialgradedpacing
+        : 1;
 
     $diary->requiredpromptcount = isset($diary->requiredpromptcount) ? (int)$diary->requiredpromptcount : 0;
     if ($diary->requiredpromptcount < 0) {
         $diary->requiredpromptcount = 0;
     }
-    if ($diary->promptmode !== 4) {
+    if (
+        $diary->promptmode !== prompts::PROMPTMODE_CHOICECOMPLETE
+        && $diary->promptmode !== prompts::PROMPTMODE_RANDOMCOMPLETE
+    ) {
         $diary->requiredpromptcount = 0;
     }
 
@@ -117,16 +129,28 @@ function diary_update_instance($diary) {
 
     $metricrequirements = diary_extract_metric_requirements_from_form($diary);
 
-    $diary->promptmode = isset($diary->promptmode) ? (int)$diary->promptmode : 0;
-    if ($diary->promptmode < 0 || $diary->promptmode > 4) {
-        $diary->promptmode = 0;
+    $diary->promptmode = isset($diary->promptmode)
+        ? (int)$diary->promptmode
+        : prompts::PROMPTMODE_SEQUENTIAL;
+    if (
+        $diary->promptmode < prompts::PROMPTMODE_SEQUENTIAL
+        || $diary->promptmode > prompts::PROMPTMODE_SEQUENTIALGRADED
+    ) {
+        $diary->promptmode = prompts::PROMPTMODE_SEQUENTIAL;
     }
+
+    $diary->sequentialgradedpacing = isset($diary->sequentialgradedpacing)
+        ? (int)$diary->sequentialgradedpacing
+        : 1;
 
     $diary->requiredpromptcount = isset($diary->requiredpromptcount) ? (int)$diary->requiredpromptcount : 0;
     if ($diary->requiredpromptcount < 0) {
         $diary->requiredpromptcount = 0;
     }
-    if ($diary->promptmode !== 4) {
+    if (
+        $diary->promptmode !== prompts::PROMPTMODE_CHOICECOMPLETE
+        && $diary->promptmode !== prompts::PROMPTMODE_RANDOMCOMPLETE
+    ) {
         $diary->requiredpromptcount = 0;
     }
 
@@ -602,7 +626,6 @@ function diary_get_inline_attachment_previews($diaryid) {
  * @uses FEATURE_GRADE_OUTCOMES
  * @uses FEATURE_GROUPS
  * @uses FEATURE_GROUPINGS
- * @uses FEATURE_GROUPMEMBERSONLY
  * @uses FEATURE_MOD_INTRO
  * @uses FEATURE_RATE
  * @uses FEATURE_SHOW_DESCRIPTION
@@ -624,8 +647,6 @@ function diary_supports($feature) {
         case FEATURE_GROUPS:
             return true;
         case FEATURE_GROUPINGS:
-            return true;
-        case FEATURE_GROUPMEMBERSONLY:
             return true;
         case FEATURE_MOD_INTRO:
             return true;
@@ -730,6 +751,7 @@ function diary_get_coursemodule_info($coursemodule) {
                 3 => get_string('promptmodecompleteall', 'diary'),
                 4 => get_string('promptmodechoicecomplete', 'diary'),
                 5 => get_string('promptmoderandomcomplete', 'diary'),
+                6 => get_string('promptmodesequentialgraded', 'diary'),
             ];
             if ($mode === 4) {
                 $required = isset($diary->requiredpromptcount) ? (int)$diary->requiredpromptcount : 0;
@@ -1682,4 +1704,111 @@ function diary_sync_completion_state($course, $cm, $userid = 0, $diary = null) {
     $current->timemodified = time();
     $current->overrideby = null;
     $completion->internal_set_data($cm, $current);
+}
+
+/**
+ * Validate comment parameter before performing operations.
+ *
+ * @param stdClass $commentparam
+ * @return boolean
+ */
+function diary_comment_validate($commentparam) {
+    global $DB;
+
+    // Validate comment area.
+    if ($commentparam->commentarea !== 'diary_entries') {
+        throw new comment_exception('invalidcommentarea');
+    }
+
+    // Validate itemid (diary_entries id).
+    if (!$entry = $DB->get_record('diary_entries', ['id' => $commentparam->itemid])) {
+        throw new comment_exception('invalidcommentitemid');
+    }
+
+    // Validate diary instance.
+    if (!$diary = $DB->get_record('diary', ['id' => $entry->diary])) {
+        throw new comment_exception('invalidid', 'data');
+    }
+
+    // Validate course.
+    if (!$course = $DB->get_record('course', ['id' => $diary->course])) {
+        throw new comment_exception('coursemisconf');
+    }
+
+    // Validate course module.
+    if (!$cm = get_coursemodule_from_instance('diary', $diary->id, $course->id)) {
+        throw new comment_exception('invalidcoursemodule');
+    }
+
+    $context = context_module::instance($cm->id);
+
+    // Validate context id.
+    if ($context->id != $commentparam->context->id) {
+        throw new comment_exception('invalidcontext');
+    }
+
+    // Validation for comment deletion.
+    if (!empty($commentparam->commentid)) {
+        if ($comment = $DB->get_record('comments', ['id' => $commentparam->commentid])) {
+            if ($comment->commentarea !== 'diary_entries') {
+                throw new comment_exception('invalidcommentarea');
+            }
+            if ($comment->contextid != $commentparam->context->id) {
+                throw new comment_exception('invalidcontext');
+            }
+            if ($comment->itemid != $commentparam->itemid) {
+                throw new comment_exception('invalidcommentitemid');
+            }
+        } else {
+            throw new comment_exception('invalidcommentid');
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Running additional permission check on plugin.
+ *
+ * @param stdClass $commentparam {
+ *              context  => context the context object
+ *              courseid => int course id
+ *              cm       => stdClass course module object
+ *              commentarea => string comment area
+ *              itemid      => int itemid
+ * }
+ * @return array
+ */
+function diary_comment_permissions($commentparam) {
+    global $DB, $USER;
+
+    if ($commentparam->commentarea !== 'diary_entries') {
+        return ['post' => false, 'view' => false];
+    }
+
+    if (!$entry = $DB->get_record('diary_entries', ['id' => $commentparam->itemid], 'id, diary, userid')) {
+        return ['post' => false, 'view' => false];
+    }
+
+    if (!$diary = $DB->get_record('diary', ['id' => $entry->diary], 'id, enablecomments')) {
+        return ['post' => false, 'view' => false];
+    }
+
+    if (empty($diary->enablecomments)) {
+        return ['post' => false, 'view' => false];
+    }
+
+    $canmanage = has_capability('mod/diary:manageentries', $commentparam->context);
+    $isowner = ((int)$USER->id === (int)$entry->userid);
+    $canadd = has_capability('mod/diary:addentries', $commentparam->context);
+
+    if ($canmanage) {
+        return ['post' => true, 'view' => true];
+    }
+
+    if ($isowner && $canadd) {
+        return ['post' => true, 'view' => true];
+    }
+
+    return ['post' => false, 'view' => false];
 }

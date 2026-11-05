@@ -36,9 +36,10 @@ final class entry_test extends \advanced_testcase {
      * @throws dml_exception
      */
     public function test_get_recordset_by_timestamp(): void {
-        global $DB, $USER;
+        global $DB;
         $this->resetAfterTest();
         $this->setAdminUser();
+        $generator = $this->getDataGenerator();
 
         $time = time();
         // Create journal entries.
@@ -54,7 +55,7 @@ final class entry_test extends \advanced_testcase {
             'journal_entries',
             [
                 'journal' => $journalid,
-                'userid' => $USER->id,
+                'userid' => $generator->create_user()->id,
                 'modified' => $time,
                 'text' => 'text',
             ],
@@ -64,7 +65,7 @@ final class entry_test extends \advanced_testcase {
             'journal_entries',
             [
                 'journal' => $journalid,
-                'userid' => $USER->id,
+                'userid' => $generator->create_user()->id,
                 'modified' => $time + 1000,
                 'text' => 'text',
             ],
@@ -74,7 +75,7 @@ final class entry_test extends \advanced_testcase {
             'journal_entries',
             [
                 'journal' => $journalid,
-                'userid' => $USER->id,
+                'userid' => $generator->create_user()->id,
                 'modified' => $time - 1000,
                 'text' => 'text',
             ],
@@ -93,5 +94,38 @@ final class entry_test extends \advanced_testcase {
         }
 
         $this->assertFalse(in_array($je3, $ids));
+    }
+
+    /**
+     * In separate groups mode, graders only have access to the entries of users in their groups.
+     *
+     * @covers ::check_access
+     */
+    public function test_check_access_separate_groups(): void {
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator();
+
+        $course = $generator->create_course(['groupmode' => SEPARATEGROUPS, 'groupmodeforce' => 1]);
+        $journal = $generator->create_module('journal', ['course' => $course->id]);
+        $group1 = $generator->create_group(['courseid' => $course->id]);
+        $group2 = $generator->create_group(['courseid' => $course->id]);
+        $teacher = $generator->create_and_enrol($course, 'teacher');
+        $student1 = $generator->create_and_enrol($course, 'student');
+        $student2 = $generator->create_and_enrol($course, 'student');
+        $generator->create_group_member(['groupid' => $group1->id, 'userid' => $teacher->id]);
+        $generator->create_group_member(['groupid' => $group1->id, 'userid' => $student1->id]);
+        $generator->create_group_member(['groupid' => $group2->id, 'userid' => $student2->id]);
+
+        $journalgenerator = $generator->get_plugin_generator('mod_journal');
+        $entry1 = $journalgenerator->create_entry((object) ['journal' => $journal->id, 'userid' => $student1->id]);
+        $entry2 = $journalgenerator->create_entry((object) ['journal' => $journal->id, 'userid' => $student2->id]);
+
+        $area = new entry();
+        $this->setUser($teacher);
+        $this->assertEquals(\core_search\manager::ACCESS_GRANTED, $area->check_access($entry1));
+        $this->assertEquals(\core_search\manager::ACCESS_DENIED, $area->check_access($entry2));
+        $this->setUser($student2);
+        $this->assertEquals(\core_search\manager::ACCESS_GRANTED, $area->check_access($entry2));
+        $this->assertEquals(\core_search\manager::ACCESS_DENIED, $area->check_access($entry1));
     }
 }

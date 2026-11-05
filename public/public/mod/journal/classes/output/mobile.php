@@ -84,7 +84,13 @@ class mobile {
             $currentgroup = groups_get_activity_group($cm, true);
 
             // Get list of users who have submitted entries.
-            $users = journal_get_users_done($journal, $currentgroup);
+            // In separate groups mode, a grader who is in no group and cannot access all groups must not see any entries.
+            $groupmode = groups_get_activity_groupmode($cm);
+            if ($groupmode == SEPARATEGROUPS && !$currentgroup && !has_capability('moodle/site:accessallgroups', $context)) {
+                $users = [];
+            } else {
+                $users = journal_get_users_done($journal, $currentgroup);
+            }
             $submissions = [];
 
             // Prepare grading options for the dropdown.
@@ -97,13 +103,9 @@ class mobile {
                         continue;
                     }
 
-                    // Process text for display.
-                    $entrytextraw = (string) ($entry->text ?? '');
-                    $feedbackrawtext = (string) ($entry->entrycomment ?? '');
-
                     // Rewrite pluginfile URLs to ensure images load in the app.
                     $entrytext = file_rewrite_pluginfile_urls(
-                        $entrytextraw,
+                        (string) ($entry->text ?? ''),
                         'pluginfile.php',
                         $context->id,
                         'mod_journal',
@@ -111,18 +113,9 @@ class mobile {
                         $entry->id
                     );
 
-                    $feedbackhtml = file_rewrite_pluginfile_urls(
-                        $feedbackrawtext,
-                        'pluginfile.php',
-                        $context->id,
-                        'mod_journal',
-                        'feedback',
-                        $entry->id
-                    );
-
                     // Convert HTML feedback to plain text for the simple textarea editor.
-                    $feedbackplain = trim(html_to_text($feedbackhtml, 0, false));
-                    $feedbackplain = str_replace("\xc2\xa0", ' ', $feedbackplain);
+                    // The feedback is kept as it is if it is saved unchanged, see mod_journal_save_feedback.
+                    $feedbackplain = journal_get_plain_text($entry->entrycomment, FORMAT_HTML, $context);
 
                     // Format grade options for the Mustache template.
                     $studentgradeoptions = [];
@@ -146,7 +139,7 @@ class mobile {
                         'rating_minus_one' => ($entry->rating == -1) ? 'selected' : '', // Helper for "No Grade" selection.
                         'feedback_plain' => $feedbackplain, // Plain text for the <textarea>.
                         'journalid' => $journal->id,
-                        'commentformat' => FORMAT_HTML,
+                        'commentformat' => FORMAT_PLAIN,
                     ];
                 }
             }
@@ -157,29 +150,14 @@ class mobile {
         // STUDENT VIEW LOGIC.
         // Calculate open/close dates.
         $timenow = time();
-        $timestart = 0;
-        $timefinish = 0;
-        $journalopen = false;
-
-        if ($course->format == 'weeks' && $journal->days) {
-            $modinfo = get_fast_modinfo($course);
-            $section = $modinfo->get_section_info_by_id($cm->section);
-            $sectionnum = $section->sectionnum;
-            $timestart = $course->startdate + (($sectionnum - 1) * 604800);
-            $timefinish = $timestart + (3600 * 24 * (int) $journal->days);
-        } else {
-            $journal->days = 0;
-        }
-
-        if ($journal->days == 0 || ($timenow > $timestart && $timenow < $timefinish)) {
-            $journalopen = true;
-        }
+        $period = journal_get_editing_period($journal, $course, $cm);
+        $journalopen = journal_is_open($journal, $course, $cm, $timenow);
 
         // Populate warning messages if journal is closed or not open yet.
-        if ($timenow < $timestart) {
-            $data['warning'] = get_string('notopenuntil', 'journal') . ': ' . userdate($timestart);
-        } else if ($journal->days && $timenow > $timefinish) {
-            $data['warning'] = get_string('editingended', 'journal') . ': ' . userdate($timefinish);
+        if ($period && $timenow < $period[0]) {
+            $data['warning'] = get_string('notopenuntil', 'journal') . ': ' . userdate($period[0]);
+        } else if ($period && $period[1] && $timenow >= $period[1]) {
+            $data['warning'] = get_string('editingended', 'journal') . ': ' . userdate($period[1]);
         }
 
         // Fetch student entry.
@@ -201,7 +179,7 @@ class mobile {
             $data['text'] = format_text($text, $entry->format, ['context' => $context]);
 
             // Check for feedback.
-            if (!empty($entry->entrycomment) || (!empty($entry->rating) && $entry->rating != -1)) {
+            if (journal_entry_has_feedback($entry)) {
                 $data['hasfeedback'] = true;
 
                 $feedbacktext = file_rewrite_pluginfile_urls(
@@ -220,7 +198,7 @@ class mobile {
                     $data['teacherpic'] = $OUTPUT->user_picture($teacher, ['size' => 35]);
                 }
 
-                if (!empty($entry->rating) && $entry->rating != -1) {
+                if (isset($entry->rating) && $entry->rating != -1) {
                     $gradinginfo = grade_get_grades($course->id, 'mod', 'journal', $entry->journal, [$USER->id]);
                     if (!empty($gradinginfo->items[0]->grades[$USER->id]->str_long_grade)) {
                         $data['grade'] = $gradinginfo->items[0]->grades[$USER->id]->str_long_grade;
@@ -233,8 +211,8 @@ class mobile {
 
         // Determine if editing is allowed.
         $data['canedit'] = $canadd && $journalopen;
-        if ($data['canedit'] && !empty($journal->days)) {
-            $data['info'] = get_string('editingends', 'journal') . ': ' . userdate($timefinish);
+        if ($data['canedit'] && $period && $period[1]) {
+            $data['info'] = get_string('editingends', 'journal') . ': ' . userdate($period[1]);
         }
 
         // JS INJECTION:
@@ -287,62 +265,41 @@ class mobile {
 
         // Calculate timing to ensure edit capability is still valid.
         $timenow = time();
-        $timestart = 0;
-        $timefinish = 0;
-        $journalopen = false;
-
-        if ($course->format == 'weeks' && $journal->days) {
-            $modinfo = get_fast_modinfo($course);
-            $section = $modinfo->get_section_info_by_id($cm->section);
-            $sectionnum = $section->sectionnum;
-            $timestart = $course->startdate + (($sectionnum - 1) * 604800);
-            $timefinish = $timestart + (3600 * 24 * (int) $journal->days);
-        } else {
-            $journal->days = 0;
-        }
-
-        if ($journal->days == 0 || ($timenow > $timestart && $timenow < $timefinish)) {
-            $journalopen = true;
-        }
+        $period = journal_get_editing_period($journal, $course, $cm);
+        $journalopen = journal_is_open($journal, $course, $cm, $timenow);
 
         $data = [
             'cmid' => $cmid,
             'courseid' => $courseid,
-            'format' => FORMAT_MOODLE, // Using FORMAT_MOODLE (0) preserves newlines from the textarea properly.
+            // The entry is kept as it is if it is saved unchanged, see mod_journal_set_text.
+            'format' => FORMAT_PLAIN,
             'canedit' => $canadd && $journalopen,
             'text_plain' => '',
-            'journalid' => $journal->id, // Note: The WebService actually expects CMID in the journalid param, checked in template.
+            'journalid' => $journal->id, // The mod_journal_set_text web service expects the journal instance ID.
         ];
 
         // Warnings logic.
-        if ($timenow < $timestart) {
-            $data['warning'] = get_string('notopenuntil', 'journal') . ': ' . userdate($timestart);
-        } else if ($journal->days && $timenow > $timefinish) {
-            $data['warning'] = get_string('editingended', 'journal') . ': ' . userdate($timefinish);
+        if ($period && $timenow < $period[0]) {
+            $data['warning'] = get_string('notopenuntil', 'journal') . ': ' . userdate($period[0]);
+        } else if ($period && $period[1] && $timenow >= $period[1]) {
+            $data['warning'] = get_string('editingended', 'journal') . ': ' . userdate($period[1]);
         }
 
-        if ($data['canedit'] && !empty($journal->days)) {
-            $data['info'] = get_string('editingends', 'journal') . ': ' . userdate($timefinish);
+        if ($data['canedit'] && $period && $period[1]) {
+            $data['info'] = get_string('editingends', 'journal') . ': ' . userdate($period[1]);
+        }
+        if ($data['canedit']) {
+            $wordlimit = \mod_journal\manager::create_from_coursemodule($cm)->get_word_limit();
+            if ($wordlimit) {
+                $data['wordlimit'] = get_string('wordlimit', 'journal') . ': ' . $wordlimit;
+            }
         }
 
         // Load existing entry.
         $entry = $DB->get_record('journal_entries', ['userid' => $USER->id, 'journal' => $journal->id]);
         if ($entry) {
-            $texthtml = file_rewrite_pluginfile_urls(
-                (string) $entry->text,
-                'pluginfile.php',
-                $context->id,
-                'mod_journal',
-                'entry',
-                $entry->id
-            );
-
-            // Convert HTML to Plain Text for the <textarea>.
-            // We use html_to_text to convert <br> tags to actual newlines.
-            $plain = trim(html_to_text($texthtml, 0, false));
-            $plain = str_replace("\xc2\xa0", ' ', $plain);
-
-            $data['text_plain'] = $plain;
+            // Convert the entry to plain text for the <textarea>.
+            $data['text_plain'] = journal_get_plain_text($entry->text, $entry->format, $context);
         }
 
         // JS INJECTION:

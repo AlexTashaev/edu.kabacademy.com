@@ -16,34 +16,12 @@
 
 namespace mod_journal\external;
 
-defined('MOODLE_INTERNAL') || die();
-
-require_once($CFG->libdir . '/externallib.php');
-
-
 use context_module;
-use external_function_parameters;
-use external_single_structure;
-use external_value;
+use core_external\external_function_parameters;
+use core_external\external_single_structure;
+use core_external\external_value;
 use invalid_parameter_exception;
-
-global $CFG;
-
-// Dynamic Class Logic for compatibility.
-if (!class_exists('mod_journal\external\journal_external_api_base')) {
-    if (class_exists('core_external\external_api')) {
-        class_alias('core_external\external_api', 'mod_journal\external\journal_external_api_base');
-        if (!class_exists('external_function_parameters')) {
-            class_alias('core_external\external_function_parameters', 'external_function_parameters');
-        }
-        if (!class_exists('external_value')) {
-            class_alias('core_external\external_value', 'external_value');
-        }
-    } else {
-        require_once($CFG->libdir . '/externallib.php');
-        class_alias('external_api', 'mod_journal\external\journal_external_api_base');
-    }
-}
+use mod_journal\manager;
 
 /**
  * External function to save feedback and grade for a journal entry.
@@ -65,6 +43,12 @@ class save_feedback extends journal_external_api_base {
             'grade' => new external_value(PARAM_INT, 'Grade (-1 = no grade)'),
             'feedback' => new external_value(PARAM_RAW, 'Feedback text', VALUE_DEFAULT, ''),
             'itemid' => new external_value(PARAM_INT, 'Draft item id', VALUE_DEFAULT, 0),
+            'feedbackformat' => new external_value(
+                PARAM_INT,
+                'Format of the feedback, FORMAT_HTML or FORMAT_PLAIN to keep the feedback if its plain text is unchanged',
+                VALUE_DEFAULT,
+                FORMAT_HTML
+            ),
         ]);
     }
 
@@ -77,6 +61,7 @@ class save_feedback extends journal_external_api_base {
      * @param int $grade
      * @param string $feedback
      * @param int $itemid
+     * @param int $feedbackformat
      * @return array
      * @throws \coding_exception
      * @throws \core_external\restricted_context_exception
@@ -93,9 +78,11 @@ class save_feedback extends journal_external_api_base {
         int $userid,
         int $grade,
         string $feedback = '',
-        int $itemid = 0
+        int $itemid = 0,
+        int $feedbackformat = FORMAT_HTML
     ): array {
-        global $DB, $USER;
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
 
         $params = self::validate_parameters(self::execute_parameters(), [
             'cmid' => $cmid,
@@ -104,7 +91,12 @@ class save_feedback extends journal_external_api_base {
             'grade' => $grade,
             'feedback' => $feedback,
             'itemid' => $itemid,
+            'feedbackformat' => $feedbackformat,
         ]);
+
+        if (!in_array($params['feedbackformat'], [FORMAT_HTML, FORMAT_PLAIN])) {
+            throw new invalid_parameter_exception('Invalid feedback format: ' . $params['feedbackformat']);
+        }
 
         $cm = get_coursemodule_from_id('journal', $params['cmid'], 0, false, MUST_EXIST);
         $course = get_course($cm->course);
@@ -115,7 +107,6 @@ class save_feedback extends journal_external_api_base {
         require_capability('mod/journal:manageentries', $context);
 
         $journal = $DB->get_record('journal', ['id' => $cm->instance], '*', MUST_EXIST);
-        $journal->cmidnumber = $cm->idnumber;
 
         // Entry must exist and must match both journal + user.
         $entry = $DB->get_record('journal_entries', [
@@ -124,57 +115,27 @@ class save_feedback extends journal_external_api_base {
             'userid' => $params['userid'],
         ], '*', MUST_EXIST);
 
-        $newgrade = (int) $params['grade'];
-        if ($newgrade < -1) {
-            $newgrade = -1;
+        if (!groups_user_groups_visible($course, $entry->userid, $cm)) {
+            throw new \moodle_exception('nopermissions', 'error', '', get_string('savefeedback', 'journal'));
         }
 
-        $newfeedback = clean_text((string) $params['feedback'], FORMAT_HTML);
-
-        // Only attempt draft file save if itemid > 0.
-        if (!empty($params['itemid'])) {
-            $newfeedback = file_save_draft_area_files(
-                $params['itemid'],
-                $context->id,
-                'mod_journal',
-                'feedback',
-                $entry->id,
-                [],
-                $newfeedback
-            );
+        $feedback = (string) $params['feedback'];
+        if ($params['feedbackformat'] == FORMAT_PLAIN) {
+            // The mobile app edits the feedback as plain text, which must not replace the HTML feedback if unchanged.
+            $feedback = journal_normalise_plain_text($feedback);
+            if ($feedback === journal_get_plain_text($entry->entrycomment, FORMAT_HTML, $context)) {
+                $feedback = (string) $entry->entrycomment;
+            } else {
+                $feedback = nl2br(s($feedback));
+            }
         }
 
-        $changed = ((int) $entry->rating !== $newgrade) || ((string) $entry->entrycomment !== (string) $newfeedback);
-
-        if ($changed) {
-            $timenow = time();
-
-            $updated = (object) [
-                'id' => $entry->id,
-                'rating' => $newgrade,
-                'entrycomment' => $newfeedback,
-                'teacher' => $USER->id,
-                'timemarked' => $timenow,
-                'mailed' => 0,
-            ];
-
-            $transaction = $DB->start_delegated_transaction();
-
-            $DB->update_record('journal_entries', $updated);
-            journal_update_grades($journal, $entry->userid);
-
-            // Teaching-level event.
-            $event = \mod_journal\event\feedback_updated::create([
-                'objectid' => $journal->id,
-                'context' => $context,
-            ]);
-            $event->add_record_snapshot('course_modules', $cm);
-            $event->add_record_snapshot('course', $course);
-            $event->add_record_snapshot('journal', $journal);
-            $event->trigger();
-
-            $transaction->allow_commit();
-        }
+        $changed = manager::create_from_coursemodule($cm)->save_feedback(
+            $entry,
+            $params['grade'],
+            $feedback,
+            $params['itemid']
+        );
 
         return [
             'status' => 'ok',
