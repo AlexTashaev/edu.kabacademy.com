@@ -15,7 +15,21 @@
 -o          — куда положить xlsx-копию (в ней ПДн: только вне репозитория); без -o не пишется;
 --push      — config.json вне репо: {"url": "<exec-URL Apps Script>", "secret": "..."};
               выгрузка ложится в таблицу новой вкладкой с датой (см. kk1_activity.gs);
---local-sql — SQL через локальную обёртку moodle_sql.sh (на самом web-18), а не через ssh.
+--local-sql — SQL через локальную обёртку moodle_sql.sh (на самом web-18), а не через ssh;
+--state     — накопитель входов (JSON); по умолчанию state.json рядом со скриптом, если он есть
+              (на web-18 есть, cron-строку менять не надо). Без накопителя входы считаются только
+              по журналу — то есть за последние 35 дней, о чём скрипт пишет предупреждение.
+
+Журнал Moodle (mdl_logstore_standard_log) хранит 35 дней. Поэтому:
+- архив берётся не из журнала, а из mdl_course_modules_viewed: у страниц архива выполнение
+  «по просмотру», и Moodle хранит отметку о первом просмотре бессрочно;
+- для входов постоянного следа в Moodle нет — их копит state.json:
+  {"logins_upto": unix-время, "logins": {"userid": число}}. Каждый запуск прибавляет события
+  входа из (logins_upto, сейчас − 60 с] и сдвигает logins_upto. В файле только id и числа, без ПДн;
+  права 600. Начало положено снимком 18.10.2026 13:39:12 (xlsx-копия выгрузки, тогда журнал был
+  полным). Если между запусками пройдёт больше 35 дней — входы за разрыв потеряются, скрипт
+  предупредит. Ручной запуск с машины владельца — без накопителя (он живёт на web-18);
+  копию state.json локально не обновлять и обратно не заливать.
 
 Уроки попадают в выгрузку, когда вебинар урока уже начался (по mdl_zoom.start_time).
 
@@ -26,14 +40,15 @@
 - лекция пройдена — отметка о выполнении лекции (completion: дочитана до конца);
 - Zoom — студент есть в отчёте Zoom (mdl_zoom_meeting_participants, к пользователю
   его привязывает сам mod_zoom по email и похожести имени);
-- архив — открывал страницу «Запись вебинара N (архив)»: ролики на YouTube/Drive,
-  их просмотр Moodle не видит;
-- заходы — события входа на сайт (user_loggedin) с даты начала курса; вход в
-  мобильное приложение события не даёт;
+- архив — открывал страницу «Запись вебинара N (архив)» (mdl_course_modules_viewed):
+  ролики на YouTube/Drive, их просмотр Moodle не видит;
+- заходы — события входа на сайт (user_loggedin) с даты начала курса, накопитель
+  state.json + журнал; вход в мобильное приложение события не даёт;
 - последнее посещение — mdl_user.lastaccess (любое действие, и из приложения тоже).
 """
 import argparse
 import json
+import os
 import re
 import subprocess
 import time
@@ -58,6 +73,7 @@ LESSONS = {
 }
 SQL_CMD = ["ssh", "web-18", '/tmp/kab_moodle_sql2.sh "$(cat)"']
 LOCAL_SQL = None  # путь к moodle_sql.sh, когда скрипт работает на самом web-18
+STATE_DEFAULT = Path(__file__).with_name("state.json")
 
 
 def ids(xs):
@@ -94,14 +110,13 @@ WHERE d.zoomid IN ({ZOOMS}) AND p.userid IS NOT NULL""",
 SELECT coursemoduleid, userid FROM mdl_course_modules_completion
 WHERE coursemoduleid IN ({LECTURES}) AND completionstate IN (1, 2)""",
     "archives": f"""
-SELECT DISTINCT contextinstanceid, userid
-FROM mdl_logstore_standard_log
-WHERE contextlevel = 70 AND contextinstanceid IN ({ARCHIVES})
-  AND eventname LIKE '%mod_page%course_module_viewed'""",
-    # timecreated подставляется после запроса course
+SELECT coursemoduleid, userid FROM mdl_course_modules_viewed
+WHERE coursemoduleid IN ({ARCHIVES})""",
+    "oldest": "SELECT MIN(timecreated) t FROM mdl_logstore_standard_log",
+    # since и cut подставляются после запроса course и чтения накопителя
     "logins": """
 SELECT userid, COUNT(*) n FROM mdl_logstore_standard_log
-WHERE timecreated >= {start} AND eventname LIKE '%core%user_loggedin'
+WHERE timecreated > {since} AND timecreated <= {cut} AND eventname LIKE '%core%user_loggedin'
 GROUP BY userid""",
 }
 
@@ -126,18 +141,38 @@ def query(sql):
     return [dict(zip(head, map(unescape, ln.split("\t")))) for ln in lines[1:]]
 
 
-def fetch():
-    data = {k: query(sql) for k, sql in QUERIES.items() if k != "logins"}
-    start = int(data["course"][0]["startdate"])
-    data["logins"] = query(QUERIES["logins"].format(start=start))
-    return data, start
-
-
 def day(ts):
     return datetime.fromtimestamp(ts, TZ).strftime("%d.%m.%Y")
 
 
-def build(data, start):
+def fetch(state):
+    """Данные из БД и входы с начала курса: накопитель + события журнала после него."""
+    data = {k: query(sql) for k, sql in QUERIES.items() if k != "logins"}
+    start = int(data["course"][0]["startdate"])
+    since = state["logins_upto"] if state else start - 1
+    cut = int(time.time()) - 60  # событие входа пишется в конце запроса — минута на запоздавшие
+    rows = query(QUERIES["logins"].format(since=since, cut=cut))
+    oldest = int(data["oldest"][0]["t"])
+    if oldest > since + 1:
+        print(f"ВНИМАНИЕ: журнал Moodle начинается с {day(oldest)} — входы с {day(since + 1)} "
+              f"до {day(oldest)} потеряны, «заходил на сайт» занижено", flush=True)
+    logins = {int(k): n for k, n in (state or {}).get("logins", {}).items()}
+    for r in rows:
+        uid = int(r["userid"])
+        logins[uid] = logins.get(uid, 0) + int(r["n"])
+    new_state = {**(state or {}), "logins_upto": cut, "logins": {str(k): logins[k] for k in sorted(logins)}}
+    return data, start, logins, new_state
+
+
+def save_state(path, state):
+    tmp = Path(f"{path}.tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False)
+    os.replace(tmp, path)
+
+
+def build(data, start, logins):
     now = datetime.now(timezone.utc).timestamp()
     zstart = {int(z["id"]): int(z["start_time"]) for z in data["zooms"]}
     lessons = [n for n, (zid, _, _) in LESSONS.items() if zstart.get(zid, now + 1) <= now]
@@ -146,9 +181,8 @@ def build(data, start):
     archive_lesson = {v[1]: n for n, v in LESSONS.items()}
     lecture_lesson = {v[2]: n for n, v in LESSONS.items()}
     zoom = {(zoom_lesson[int(r["zoomid"])], int(r["userid"])) for r in data["zoom"]}
-    archive = {(archive_lesson[int(r["contextinstanceid"])], int(r["userid"])) for r in data["archives"]}
+    archive = {(archive_lesson[int(r["coursemoduleid"])], int(r["userid"])) for r in data["archives"]}
     lecture = {(lecture_lesson[int(r["coursemoduleid"])], int(r["userid"])) for r in data["lectures"]}
-    logins = {int(r["userid"]): int(r["n"]) for r in data["logins"]}
 
     head = ["Имя Фамилия", "Имейл", "Группа", "Ссылка на профиль"]
     notes = [f"Выгрузка из edu.kabacademy.com, курс {COURSE}, на {datetime.now(TZ):%d.%m.%Y %H:%M} (время Израиля).",
@@ -269,12 +303,19 @@ def main():
     ap.add_argument("-o", "--outdir", help="папка для xlsx-копии (нужен openpyxl)")
     ap.add_argument("--push", metavar="CONFIG", help="config.json с url и secret Apps Script")
     ap.add_argument("--local-sql", metavar="SH", help="moodle_sql.sh — SQL на самом web-18, без ssh")
+    ap.add_argument("--state", metavar="JSON", help="накопитель входов (по умолчанию state.json рядом со скриптом, если есть)")
     args = ap.parse_args()
     LOCAL_SQL = args.local_sql
     stamp = datetime.now(TZ)
     print(f"=== {stamp:%d.%m.%Y %H:%M} (Израиль)", flush=True)
-    data, start = fetch()
-    head, notes, rows, lessons = build(data, start)
+    state_path = Path(args.state) if args.state else STATE_DEFAULT
+    state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else None
+    if state is None:
+        print(f"накопителя входов {state_path} нет — входы только по журналу Moodle", flush=True)
+    data, start, logins, new_state = fetch(state)
+    if state is not None or args.state:
+        save_state(state_path, new_state)
+    head, notes, rows, lessons = build(data, start, logins)
     if args.outdir:
         print(save_xlsx(head, notes, rows, args.outdir, stamp))
     print("студентов:", len(rows), "уроков:", lessons)
