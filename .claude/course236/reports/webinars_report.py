@@ -15,7 +15,9 @@
 - «вход из Moodle» — нажал «Войти» на странице вебинара (оценка zoom = 100),
   но в отчёте Zoom не найден (зашёл под другим именем или не дошёл);
 - архив — открывал страницу «Запись вебинара N (архив)»: сами ролики на
-  YouTube/Drive, их просмотр Moodle не видит;
+  YouTube/Drive, их просмотр Moodle не видит. Журнал Moodle хранит 35 дней
+  (logstore_standard loglifetime), поэтому просмотры добираются из прошлых
+  выгрузок в папке -o: их не удалять и запускать отчёт чаще раза в 35 дней;
 - баллы опыта — блок «Опыт!» (block_xp, «капли живой воды»).
 """
 import argparse
@@ -27,7 +29,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -136,7 +138,25 @@ def date_str(ts):
     return datetime.fromtimestamp(ts, TZ).strftime("%d.%m.%Y") if ts else ""
 
 
-def build(data, outdir):
+def prior_archive(outdir):
+    """(урок, email) с «Архив N: открывал» = «да» из прошлых выгрузок."""
+    seen, files = set(), sorted(Path(outdir).glob(f"Курс {COURSE} — вебинары, архив, баллы (*).xlsx"))
+    for f in files:
+        wb = load_workbook(f, read_only=True)
+        rows = wb["Студенты"].iter_rows(values_only=True)
+        head = next(rows)
+        email = head.index("Email")
+        cols = {i: int(m.group(1)) for i, h in enumerate(head)
+                if h and (m := re.fullmatch(r"Архив (\d+): открывал", h))}
+        for r in rows:
+            for i, n in cols.items():
+                if r[i] == "да" and r[email]:
+                    seen.add((n, r[email].lower()))
+        wb.close()
+    return seen, len(files)
+
+
+def build(data, outdir, prev_archive=frozenset()):
     now = datetime.now(timezone.utc).timestamp()
     zooms = {int(z["id"]): z for z in data["zooms"]}
     lessons = [n for n, (zid, _, _) in LESSONS.items() if zid in zooms and int(zooms[zid]["start_time"]) <= now]
@@ -211,7 +231,7 @@ def build(data, outdir):
                 stats[f"w{n}j"] += 1
             else:
                 label, mins, fill = "", None, None
-            arch = "да" if (n, uid) in views else ""
+            arch = "да" if (n, uid) in views or (n, (u["email"] or "").lower()) in prev_archive else ""
             if arch:
                 stats[f"a{n}"] += 1
                 if not slots:
@@ -295,7 +315,8 @@ def build(data, outdir):
         "«вход из Moodle» — нажал «Войти» на странице вебинара, но в отчёте Zoom его нет:",
         "   зашёл под другим именем/почтой (тогда он на листе «Zoom без привязки») или не дошёл.",
         "Архив · открывал — открывал страницу «Запись вебинара N (архив)». Сами ролики на YouTube/Drive,",
-        "   досмотрел ли — Moodle не знает; это лучшее, что видно.",
+        "   досмотрел ли — Moodle не знает; это лучшее, что видно. Журнал Moodle хранит 35 дней —",
+        "   более старые просмотры взяты из прошлых выгрузок этой таблицы.",
         "Тест — оценка за «Проверьте себя: тест по уроку N», из 10.",
         "Баллы опыта — «капли живой воды» блока «Опыт!» за любую активность в курсе; уровень по ним же.",
         "   Капли даются только за действия внутри Moodle. Был на вебинаре, а баллов 0 и «Последний вход» пуст —",
@@ -320,9 +341,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-o", "--outdir", default=".")
     args = ap.parse_args()
+    prev, nfiles = prior_archive(args.outdir)
     data = {k: query(sql) for k, sql in QUERIES.items()}
-    fname, stats, total, lessons = build(data, args.outdir)
+    fname, stats, total, lessons = build(data, args.outdir, prev)
     print(fname)
+    print(f"архив из прошлых выгрузок: {nfiles} файлов, {len(prev)} отметок")
     print("студентов:", total)
     for n in lessons:
         print(f"вебинар {n}:", {k: v for k, v in stats.items() if re.match(rf"[wajq]{n}(\D|$)", k)})
