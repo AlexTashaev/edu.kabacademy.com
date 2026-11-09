@@ -54,9 +54,13 @@
     color: var(--kabshop-text);
 }
 
-/* Тема зажимает контент в 830px — витрине нужна ширина под 3–4 карточки. */
+/* Тема зажимает контент в 830px — витрине нужна ширина под 3–4 карточки.
+   Вариант с .limitedwidth — для главной: там Boost ставит боди этот класс,
+   и его правило (body.limitedwidth #page.drawers .main-inner) побеждало. */
 body #page.drawers .main-inner:has(.kabshop-catalog),
-body #page.drawers .main-inner:has(.kabshop-product) {
+body #page.drawers .main-inner:has(.kabshop-product),
+body.limitedwidth #page.drawers .main-inner:has(.kabshop-catalog),
+body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     max-width: 1240px;
 }
 
