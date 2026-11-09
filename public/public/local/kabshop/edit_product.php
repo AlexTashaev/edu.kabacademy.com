@@ -69,4 +69,8 @@ $PAGE->set_title(get_string($id ? 'editproduct' : 'addproduct', 'local_kabshop')
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string($id ? 'editproduct' : 'addproduct', 'local_kabshop'));
 $form->display();
+if ($id) {
+    echo html_writer::div(html_writer::link(new moodle_url('/local/kabshop/delete.php', ['type' => 'product', 'id' => $id]),
+        get_string('delete_product', 'local_kabshop'), ['class' => 'btn btn-outline-danger']), 'mt-4');
+}
 echo $OUTPUT->footer();

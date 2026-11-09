@@ -387,4 +387,102 @@ class catalog {
             'manageurl' => (new moodle_url('/local/kabshop/manage.php'))->out(false),
         ];
     }
+
+    /**
+     * Почему раздел нельзя удалить. Пусто — можно.
+     *
+     * Удаляется только пустой раздел: товары удалённого раздела пропали бы и с витрины, и из управления.
+     *
+     * @param int $id
+     * @return string[]
+     */
+    public static function section_delete_blockers(int $id): array {
+        global $DB;
+        $n = $DB->count_records('local_kabshop_product', ['sectionid' => $id]);
+        return $n ? [get_string('delblock_products', 'local_kabshop', $n)] : [];
+    }
+
+    /**
+     * Удалить раздел. Проверку section_delete_blockers() делает вызывающий.
+     *
+     * @param int $id
+     */
+    public static function delete_section(int $id): void {
+        global $DB;
+        $DB->delete_records('local_kabshop_section', ['id' => $id]);
+    }
+
+    /**
+     * Почему товар нельзя удалить. Пусто — можно.
+     *
+     * Удаляется только товар, которого не касались деньги: без покупок и ручных выдач, подписок и
+     * попыток оплаты. Иначе заказы и продление подписки остались бы без товара, а платёж, дошедший
+     * после удаления, — без выдачи. Купон, действующий только на этот товар, после удаления
+     * стал бы купоном на все товары.
+     *
+     * @param int $id
+     * @return string[]
+     */
+    public static function product_delete_blockers(int $id): array {
+        global $DB;
+        $p = 'local_kabshop';
+        $out = [];
+        if ($n = $DB->count_records('local_kabshop_purchase', ['productid' => $id])) {
+            $out[] = get_string('delblock_purchases', $p, $n);
+        }
+        if ($n = $DB->count_records('local_kabshop_sub', ['productid' => $id])) {
+            $out[] = get_string('delblock_subs', $p, $n);
+        }
+        // Оплата суммы на выбор и со скидкой начинается с intent, по цене товара — с платежа в зоне 'product';
+        // незавершённые заказы kbb1 есть только в его таблице.
+        $area = ['component' => 'local_kabshop', 'paymentarea' => 'product', 'itemid' => $id];
+        $n = $DB->count_records('local_kabshop_intent', ['productid' => $id]) + $DB->count_records('payments', $area);
+        if ($DB->get_manager()->table_exists('paygw_kbb1')) {
+            $n += $DB->count_records('paygw_kbb1', $area);
+        }
+        if ($n) {
+            $out[] = get_string('delblock_attempts', $p, $n);
+        }
+        foreach (self::coupons_with_product($id) as $c) {
+            if (!array_diff($c->ids, [$id])) {
+                $out[] = get_string('delblock_coupon', $p, s($c->code));
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Купоны, где товар указан в списке товаров.
+     *
+     * @param int $id
+     * @return \stdClass[] купоны с полем ids — товары купона
+     */
+    public static function coupons_with_product(int $id): array {
+        global $DB;
+        $out = [];
+        foreach ($DB->get_records('local_kabshop_coupon', null, 'code', 'id, code, productids') as $c) {
+            $c->ids = array_values(array_unique(array_filter(array_map('intval', explode(',', (string) $c->productids)))));
+            if (in_array($id, $c->ids, true)) {
+                $out[] = $c;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Удалить товар с картинкой и убрать его из купонов. Проверку product_delete_blockers() делает вызывающий.
+     *
+     * @param int $id
+     */
+    public static function delete_product(int $id): void {
+        global $DB;
+        $tx = $DB->start_delegated_transaction();
+        foreach (self::coupons_with_product($id) as $c) {
+            $DB->update_record('local_kabshop_coupon', (object) ['id' => $c->id,
+                'productids' => implode(',', array_diff($c->ids, [$id])), 'timemodified' => time()]);
+        }
+        $DB->delete_records('local_kabshop_product', ['id' => $id]);
+        $tx->allow_commit();
+        get_file_storage()->delete_area_files(context_system::instance()->id, 'local_kabshop', 'image', $id);
+    }
 }

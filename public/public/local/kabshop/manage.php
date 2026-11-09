@@ -51,14 +51,15 @@ echo html_writer::div(
 foreach (catalog::get_sections(true) as $s) {
     $title = format_string($s->name) . ($s->visible ? '' : ' (' . get_string('hidden', 'local_kabshop') . ')');
     echo $OUTPUT->heading(html_writer::link(new moodle_url('/local/kabshop/edit_section.php', ['id' => $s->id]),
-        $title), 3);
+        $title) . ' ' . $OUTPUT->action_icon(new moodle_url('/local/kabshop/delete.php', ['type' => 'section', 'id' => $s->id]),
+        new pix_icon('t/delete', get_string('delete_section', $p))), 3);
     if (!$s->products) {
         echo html_writer::tag('p', get_string('noproducts', $p), ['class' => 'text-muted']);
         continue;
     }
     $table = new html_table();
     $table->head = ['#', get_string('name'), get_string('kind', $p), get_string('price', $p),
-        get_string('courseid', $p), get_string('paymentaccount', 'payment'), get_string('visible')];
+        get_string('courseid', $p), get_string('paymentaccount', 'payment'), get_string('visible'), ''];
     $table->attributes['class'] = 'generaltable';
     foreach ($s->products as $pr) {
         $table->data[] = [
@@ -73,6 +74,8 @@ foreach (catalog::get_sections(true) as $s) {
                 $pr->courseid) : '—',
             $pr->accountid ?: '—',
             $pr->visible ? get_string('yes') : get_string('no'),
+            $OUTPUT->action_icon(new moodle_url('/local/kabshop/delete.php', ['type' => 'product', 'id' => $pr->id]),
+                new pix_icon('t/delete', get_string('delete_product', $p))),
         ];
     }
     echo html_writer::table($table);
