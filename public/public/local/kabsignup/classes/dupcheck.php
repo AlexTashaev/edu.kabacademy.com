@@ -121,7 +121,8 @@ class dupcheck {
     }
 
     /**
-     * Candidates for duplicates of a user.
+     * Candidates for duplicates of a user among older accounts (lower id), so a
+     * pair that signs up within the same cron minute is reported once.
      *
      * @param \stdClass $user needs id, email, phone1, phone2
      * @return array of ['user' => \stdClass, 'signal' => email|typo|local|phone]
@@ -139,7 +140,7 @@ class dupcheck {
             [$local, $domain] = $parts;
             $rows = $DB->get_records_sql(
                 "SELECT $fields FROM {user}
-                  WHERE deleted = 0 AND id <> :id
+                  WHERE deleted = 0 AND id < :id
                     AND REPLACE(SUBSTRING_INDEX(LOWER(email), '@', 1), '.', '') = :local",
                 ['id' => $user->id, 'local' => $local], 0, self::LIMIT);
             $typo = self::typo_target($domain);
@@ -177,7 +178,7 @@ class dupcheck {
             [$insql2, $params2] = $DB->get_in_or_equal(array_values($keys), SQL_PARAMS_NAMED, 'kb');
             $rows = $DB->get_records_sql(
                 "SELECT $fields FROM {user}
-                  WHERE deleted = 0 AND id <> :id
+                  WHERE deleted = 0 AND id < :id
                     AND (" . $clean('phone1') . " $insql1 OR " . $clean('phone2') . " $insql2)",
                 ['id' => $user->id] + $params1 + $params2, 0, self::LIMIT);
             foreach ($rows as $row) {
