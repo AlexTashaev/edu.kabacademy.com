@@ -50,9 +50,13 @@ class provider implements
             'newuser'     => 'privacy:metadata:log:newuser',
             'campaign'    => 'privacy:metadata:log:campaign',
             'status'      => 'privacy:metadata:log:status',
+            'flags'       => 'privacy:metadata:log:flags',
             'ip'          => 'privacy:metadata:log:ip',
             'timecreated' => 'privacy:metadata:log:timecreated',
         ], 'privacy:metadata:log');
+        $collection->add_external_location_link('ipinfo', [
+            'ip' => 'privacy:metadata:ipinfo:ip',
+        ], 'privacy:metadata:ipinfo');
         return $collection;
     }
 
@@ -104,6 +108,7 @@ class provider implements
                     'courseid'    => $record->courseid,
                     'campaign'    => $record->campaign,
                     'status'      => $record->status,
+                    'flags'       => $record->flags,
                     'newuser'     => transform::yesno($record->newuser),
                     'ip'          => $record->ip,
                     'timecreated' => transform::datetime($record->timecreated),

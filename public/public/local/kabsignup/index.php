@@ -18,11 +18,12 @@
  * Public course signup page.
  *
  * ?id=<courseid>&camp=<campaign slug>&utm_*=... — the course must be listed in
- * the plugin's "courses open for signup" setting. A guest fills in a name and
- * an e-mail: a free address gets a new account (and is logged in right away),
- * a taken one is enrolled as the existing account (or asked to log in,
- * depending on the setting). A logged-in visitor is enrolled without the form.
- * Everybody ends up on the thank-you page of the campaign/course.
+ * the plugin's "courses open for signup" setting. A guest fills in a name, an
+ * e-mail and a phone: a free address gets a new account (and is logged in
+ * right away), a taken one is enrolled as the existing account (or asked to
+ * log in, depending on the setting). A logged-in visitor is enrolled without
+ * the form. Everybody ends up on the thank-you page of the campaign/course;
+ * somebody already enrolled — on the plugin's "you are already enrolled" page.
  *
  * @package    local_kabsignup
  * @copyright  2026 Kabbalah Academy
@@ -79,7 +80,7 @@ if (isloggedin() && !isguestuser()) {
     \local_kabsignup\manager::log($course->id, (int)$USER->id,
         \local_kabsignup\manager::email_hash((string)$USER->email),
         0, $campaign, $status === 'already' ? 'already' : 'loggedin', (string)getremoteaddr());
-    redirect(\local_kabsignup\manager::thankyou_url($course, $campaign, $utm));
+    redirect(\local_kabsignup\manager::thankyou_url($course, $campaign, $utm, $status === 'already'));
 }
 
 // Honeypot: bots fill the invisible field; people never see it.
@@ -87,11 +88,11 @@ if (data_submitted() && optional_param('kab_website', '', PARAM_RAW) !== '') {
     redirect(\local_kabsignup\manager::thankyou_url($course, $campaign, $utm));
 }
 
-$form = new \local_kabsignup\form\signup_form($pageurl);
+$form = new \local_kabsignup\form\signup_form($pageurl, ['phonerequired' => $config->phonerequired]);
 
 if ($data = $form->get_data()) {
     $result = \local_kabsignup\manager::signup($course, $data->firstname, (string)($data->lastname ?? ''),
-        $data->email, $campaign, (string)getremoteaddr());
+        $data->email, (string)($data->phone ?? ''), $campaign, (string)getremoteaddr());
 
     if ($result['status'] === 'throttled') {
         echo $OUTPUT->header();
@@ -134,7 +135,7 @@ if ($data = $form->get_data()) {
         complete_user_login($newuser);
         \core\session\manager::apply_concurrent_login_limit($newuser->id, session_id());
     }
-    redirect(\local_kabsignup\manager::thankyou_url($course, $campaign, $utm));
+    redirect(\local_kabsignup\manager::thankyou_url($course, $campaign, $utm, $result['status'] === 'already'));
 }
 
 echo $OUTPUT->header();

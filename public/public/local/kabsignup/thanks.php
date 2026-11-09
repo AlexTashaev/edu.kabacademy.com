@@ -16,7 +16,7 @@
 
 /**
  * Built-in thank-you page: used when neither the campaign nor the course has
- * its own page configured.
+ * its own page configured, and always for "you are already enrolled".
  *
  * @package    local_kabsignup
  * @copyright  2026 Kabbalah Academy
@@ -26,6 +26,7 @@
 require(__DIR__ . '/../../config.php');
 
 $courseid = required_param('id', PARAM_INT);
+$already = optional_param('already', 0, PARAM_BOOL);
 
 $PAGE->set_url(new moodle_url('/local/kabsignup/thanks.php', ['id' => $courseid]));
 $PAGE->set_pagelayout('login');
@@ -42,12 +43,19 @@ if ($course) {
     $PAGE->set_context(context_system::instance());
     $PAGE->set_heading(format_string($SITE->fullname));
 }
-$PAGE->set_title(get_string('thanksheading', 'local_kabsignup'));
+
+$loggedin = isloggedin() && !isguestuser();
+$heading = get_string($already ? 'alreadyheading' : 'thanksheading', 'local_kabsignup');
+$PAGE->set_title($heading);
 
 echo $OUTPUT->header();
-echo $OUTPUT->heading(get_string('thanksheading', 'local_kabsignup'), 2, 'text-center mb-3');
+echo $OUTPUT->heading($heading, 2, 'text-center mb-3');
 if ($course) {
-    $stringid = (isloggedin() && !isguestuser()) ? 'thankstextloggedin' : 'thankstext';
+    if ($already) {
+        $stringid = $loggedin ? 'alreadytext' : 'alreadytextguest';
+    } else {
+        $stringid = $loggedin ? 'thankstextloggedin' : 'thankstext';
+    }
     echo $OUTPUT->box(get_string($stringid, 'local_kabsignup', $coursename), 'generalbox boxwidthnormal boxaligncenter');
     echo html_writer::div(
         $OUTPUT->single_button(new moodle_url('/course/view.php', ['id' => $course->id]),

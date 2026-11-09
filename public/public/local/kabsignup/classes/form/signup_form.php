@@ -21,7 +21,8 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->libdir . '/formslib.php');
 
 /**
- * The signup form: first name, last name (optional), e-mail.
+ * The signup form: first name, last name (optional), e-mail, phone
+ * (required unless the phonerequired setting is off).
  *
  * Also carries an invisible honeypot field (not a moodleform element, so bots
  * that fill every input give themselves away); index.php checks it.
@@ -63,6 +64,18 @@ class signup_form extends \moodleform {
         $mform->setType('email', PARAM_RAW_TRIMMED);
         $mform->addRule('email', get_string('required'), 'required', null, 'client');
 
+        $mform->addElement('text', 'phone', get_string('phonelabel', 'local_kabsignup'), [
+            'size' => 40,
+            'maxlength' => 30,
+            'autocomplete' => 'tel',
+            'inputmode' => 'tel',
+            'placeholder' => '+7 999 123-45-67',
+        ]);
+        $mform->setType('phone', PARAM_RAW_TRIMMED);
+        if (!empty($this->_customdata['phonerequired'])) {
+            $mform->addRule('phone', get_string('required'), 'required', null, 'client');
+        }
+
         $mform->addElement('html', \html_writer::div(
             \html_writer::empty_tag('input', [
                 'type' => 'text',
@@ -96,6 +109,14 @@ class signup_form extends \moodleform {
             $errors['email'] = get_string('invalidemail');
         } else if (\core_text::strlen($data['email']) > 100) {
             $errors['email'] = get_string('emailtoolong', 'local_kabsignup');
+        }
+        $phone = trim($data['phone'] ?? '');
+        if ($phone === '') {
+            if (!empty($this->_customdata['phonerequired'])) {
+                $errors['phone'] = get_string('required');
+            }
+        } else if (\local_kabsignup\manager::normalise_phone($phone) === '') {
+            $errors['phone'] = get_string('invalidphone', 'local_kabsignup');
         }
         return $errors;
     }

@@ -25,7 +25,7 @@ defined('MOODLE_INTERNAL') || die();
  * happen to them here are a manual enrolment into a whitelisted course and an
  * e-mail with a login link (issued by auth_kabmagic under its own rules).
  * New accounts are created by the standard user_create_user() with auth
- * "manual" and a random password nobody is told.
+ * "manual" and a generated password that is e-mailed to the address.
  *
  * @package    local_kabsignup
  * @copyright  2026 Kabbalah Academy
@@ -43,8 +43,8 @@ class manager {
      * Plugin settings with defaults applied.
      *
      * @return \stdClass courses (id => thank-you URL or ''), campaigns (slug => URL),
-     *                   defaultthankyou, existingpolicy ('enrol'|'login'),
-     *                   ratelimit, ratewindow (min), retentiondays
+     *                   defaultthankyou, existingpolicy ('enrol'|'login'), phonerequired,
+     *                   ipinfotoken, dupalertto, ratelimit, ratewindow (min), retentiondays
      */
     public static function config(): \stdClass {
         // A setting that is missing, empty or zero means "use the default": the admin
@@ -55,6 +55,10 @@ class manager {
         $out->campaigns = self::parse_campaigns((string)($raw->campaigns ?? ''));
         $out->defaultthankyou = self::clean_target((string)($raw->defaultthankyou ?? ''));
         $out->existingpolicy = (($raw->existingpolicy ?? '') === 'login') ? 'login' : 'enrol';
+        // Settings added in 1.1.0 stay unset until the settings page is saved: unset means default.
+        $out->phonerequired = isset($raw->phonerequired) ? (bool)$raw->phonerequired : true;
+        $out->ipinfotoken = trim((string)($raw->ipinfotoken ?? ''));
+        $out->dupalertto = isset($raw->dupalertto) ? trim((string)$raw->dupalertto) : dupcheck::DEFAULT_TO;
         $out->ratelimit = (int)($raw->ratelimit ?? 0) > 0 ? (int)$raw->ratelimit : 5;
         $out->ratewindow = (int)($raw->ratewindow ?? 0) > 0 ? (int)$raw->ratewindow : 60;
         $retention = trim((string)($raw->retentiondays ?? ''));
@@ -155,6 +159,61 @@ class manager {
     }
 
     /**
+     * Phone as stored in phone1: digits with a leading "+" when the number was
+     * typed international ("+…" or "00…"); '' when it is not a phone number.
+     *
+     * @param string $raw
+     * @return string
+     */
+    public static function normalise_phone(string $raw): string {
+        $raw = trim($raw);
+        $digits = preg_replace('/\D/', '', $raw);
+        $plus = (strpos($raw, '+') === 0);
+        if (!$plus && strpos($digits, '00') === 0) {
+            $digits = substr($digits, 2);
+            $plus = true;
+        }
+        if (strlen($digits) < 7 || strlen($digits) > 15) {
+            return '';
+        }
+        return ($plus ? '+' : '') . $digits;
+    }
+
+    /**
+     * Password for a new account, to be e-mailed. With the site password
+     * policy on, the core generator (checked against the policy); otherwise
+     * 10 characters from random_int without look-alikes (0/O, 1/l/I), with at
+     * least one digit, one lower- and one upper-case letter.
+     *
+     * @return string
+     */
+    public static function new_password(): string {
+        global $CFG;
+        if (!empty($CFG->passwordpolicy)) {
+            $length = max(10, (int)($CFG->minpasswordlength ?? 0));
+            $password = generate_password($length);
+            for ($i = 0; $i < 20; $i++) {
+                $error = '';
+                if (check_password_policy($password, $error)) {
+                    break;
+                }
+                $password = generate_password($length);
+            }
+            return $password;
+        }
+        $alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $max = strlen($alphabet) - 1;
+        do {
+            $password = '';
+            for ($i = 0; $i < 10; $i++) {
+                $password .= $alphabet[random_int(0, $max)];
+            }
+        } while (!preg_match('/\d/', $password) || !preg_match('/[a-z]/', $password)
+            || !preg_match('/[A-Z]/', $password));
+        return $password;
+    }
+
+    /**
      * Hash used for rate limiting; the address itself is not stored.
      *
      * @param string $email
@@ -241,18 +300,22 @@ class manager {
     }
 
     /**
-     * Create the account: auth "manual", confirmed, site language, a random
-     * password nobody is told (the account is entered by the login link).
+     * Create the account: auth "manual", confirmed, site language, the phone
+     * in phone1 and a generated password that goes to the welcome e-mail.
+     * The user_created event fires as usual (local_kabgender sets the gender
+     * from the name, the Edwiser bridge tells WordPress).
      *
      * @param string $firstname
      * @param string $lastname may be empty
      * @param string $email
-     * @return \stdClass the new user table row
+     * @param string $phone already normalised, may be empty
+     * @return array [\stdClass the new user table row, string the plain password]
      */
-    public static function create_user(string $firstname, string $lastname, string $email): \stdClass {
+    public static function create_user(string $firstname, string $lastname, string $email, string $phone): array {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/user/lib.php');
 
+        $password = self::new_password();
         $user = new \stdClass();
         $user->auth = 'manual';
         $user->confirmed = 1;
@@ -261,11 +324,12 @@ class manager {
         $user->username = self::unique_username($email);
         $user->firstname = \core_text::substr(trim($firstname), 0, 100);
         $user->lastname = \core_text::substr(trim($lastname), 0, 100);
-        $user->password = random_string(40);
+        $user->phone1 = \core_text::substr($phone, 0, 20);
+        $user->password = $password;
         $user->lang = $CFG->lang;
 
         $userid = user_create_user($user, true, true);
-        return $DB->get_record('user', ['id' => $userid], '*', MUST_EXIST);
+        return [$DB->get_record('user', ['id' => $userid], '*', MUST_EXIST), $password];
     }
 
     /**
@@ -316,12 +380,13 @@ class manager {
      * @param string $firstname
      * @param string $lastname
      * @param string $email as typed
+     * @param string $phone as typed, may be empty
      * @param string $campaign camp= slug ('' when none)
      * @param string $ip requester's IP
      * @return array ['status' => created|enrolled|already|exists|throttled, 'user' => \stdClass|null]
      */
     public static function signup(\stdClass $course, string $firstname, string $lastname,
-            string $email, string $campaign, string $ip): array {
+            string $email, string $phone, string $campaign, string $ip): array {
         $config = self::config();
         $ip = \core_text::substr($ip, 0, 45);
         $emailhash = self::email_hash($email);
@@ -337,31 +402,59 @@ class manager {
         }
 
         $new = false;
+        $password = null;
         if ($user === null) {
-            $user = self::create_user($firstname, $lastname, $email);
+            [$user, $password] = self::create_user($firstname, $lastname, $email, self::normalise_phone($phone));
             $new = true;
         }
 
         $enrolled = self::enrol($user, $course);
-        self::send_welcome($user, $course, $campaign, $ip);
+        self::send_welcome($user, $course, $campaign, $ip, $password);
 
         $status = $new ? 'created' : $enrolled;
-        self::log($course->id, (int)$user->id, $emailhash, $new ? 1 : 0, $campaign, $status, $ip);
+        $logid = self::log($course->id, (int)$user->id, $emailhash, $new ? 1 : 0, $campaign, $status, $ip);
+        if ($new) {
+            self::queue_after_signup($logid, (int)$user->id, (int)$course->id, $ip);
+        }
         return ['status' => $status, 'user' => $user];
     }
 
     /**
-     * The welcome e-mail: "you are enrolled" plus a one-time login link that
-     * opens the course (issued by auth_kabmagic; without it — the login page).
-     * Tagged for SendGrid statistics per course and campaign.
+     * Hand the slow part (ipinfo.io, duplicate search, alert e-mail) to cron.
+     * A failure here never breaks the signup itself.
+     *
+     * @param int $logid
+     * @param int $userid
+     * @param int $courseid
+     * @param string $ip
+     */
+    public static function queue_after_signup(int $logid, int $userid, int $courseid, string $ip): void {
+        try {
+            $task = new \local_kabsignup\task\after_signup();
+            $task->set_custom_data(['logid' => $logid, 'userid' => $userid, 'courseid' => $courseid, 'ip' => $ip]);
+            \core\task\manager::queue_adhoc_task($task);
+        } catch (\Throwable $e) {
+            debugging('local_kabsignup: could not queue after_signup: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
+
+    /**
+     * The welcome e-mail "you are enrolled". A new account gets its login and
+     * password: the person is already signed in, and a one-time link would be
+     * dead by the next visit. An existing account (password unknown to us)
+     * gets a one-time login link that opens the course (issued by
+     * auth_kabmagic; without it — the login page). Tagged for SendGrid
+     * statistics per course and campaign.
      *
      * @param \stdClass $user
      * @param \stdClass $course
      * @param string $campaign
      * @param string $ip goes into the auth_kabmagic token log
+     * @param string|null $password plain password of a just-created account
      * @return bool
      */
-    public static function send_welcome(\stdClass $user, \stdClass $course, string $campaign, string $ip): bool {
+    public static function send_welcome(\stdClass $user, \stdClass $course, string $campaign, string $ip,
+            ?string $password = null): bool {
         global $SITE;
 
         $sitename = format_string($SITE->fullname, true, ['context' => \context_system::instance(), 'escape' => false]);
@@ -371,7 +464,7 @@ class manager {
 
         $link = null;
         $minutes = 0;
-        if (class_exists('\auth_kabmagic\manager') && is_enabled_auth('kabmagic')) {
+        if ($password === null && class_exists('\auth_kabmagic\manager') && is_enabled_auth('kabmagic')) {
             $link = \auth_kabmagic\manager::issue_link($user, $courseurl, $ip);
             $minutes = \auth_kabmagic\manager::config()->lifetime;
         }
@@ -382,22 +475,24 @@ class manager {
         $a->sitename = $sitename;
         $a->link = $link;
         $a->minutes = $minutes;
+        $a->courseurl = $courseurl;
+        $a->username = $user->username;
+        $a->password = (string)$password;
         $a->requesturl = (new \moodle_url('/auth/kabmagic/request.php'))->out(false);
         $a->loginurl = (new \moodle_url('/login/index.php'))->out(false);
 
         $ahtml = new \stdClass();
-        $ahtml->firstname = s($user->firstname);
-        $ahtml->coursename = s($coursename);
-        $ahtml->sitename = s($sitename);
-        $ahtml->link = s((string)$link);
-        $ahtml->minutes = $minutes;
-        $ahtml->requesturl = s($a->requesturl);
-        $ahtml->loginurl = s($a->loginurl);
+        foreach ((array)$a as $key => $value) {
+            $ahtml->$key = s((string)$value);
+        }
 
         $lang = !empty($user->lang) ? $user->lang : current_language();
         $sm = get_string_manager();
         $subject = $sm->get_string('emailsubject', 'local_kabsignup', $a, $lang);
-        if ($link !== null) {
+        if ($password !== null) {
+            $text = $sm->get_string('emailnewtext', 'local_kabsignup', $a, $lang);
+            $html = $sm->get_string('emailnewhtml', 'local_kabsignup', $ahtml, $lang);
+        } else if ($link !== null) {
             $text = $sm->get_string('emailtext', 'local_kabsignup', $a, $lang);
             $html = $sm->get_string('emailhtml', 'local_kabsignup', $ahtml, $lang);
         } else {
@@ -419,12 +514,20 @@ class manager {
      * course page, else the default, else the plugin's built-in thanks.php.
      * UTM parameters and the campaign slug ride along.
      *
+     * Somebody already enrolled gets the built-in "you are already enrolled"
+     * page instead: the campaign page fires the ad pixels, and a repeat signup
+     * must not count as a new registration (same as kab-already-enrolled on WP).
+     *
      * @param \stdClass $course
      * @param string $campaign
      * @param array $utm
+     * @param bool $already
      * @return \moodle_url
      */
-    public static function thankyou_url(\stdClass $course, string $campaign, array $utm): \moodle_url {
+    public static function thankyou_url(\stdClass $course, string $campaign, array $utm, bool $already = false): \moodle_url {
+        if ($already) {
+            return new \moodle_url('/local/kabsignup/thanks.php', ['id' => $course->id, 'already' => 1] + $utm);
+        }
         $config = self::config();
         $base = '';
         if ($campaign !== '' && isset($config->campaigns[$campaign])) {
@@ -458,9 +561,10 @@ class manager {
      * @param string $campaign
      * @param string $status
      * @param string $ip
+     * @return int row id
      */
     public static function log(int $courseid, int $userid, string $emailhash, int $newuser,
-            string $campaign, string $status, string $ip): void {
+            string $campaign, string $status, string $ip): int {
         global $DB;
         $record = (object)[
             'courseid' => $courseid,
@@ -472,7 +576,23 @@ class manager {
             'ip' => \core_text::substr($ip, 0, 45),
             'timecreated' => time(),
         ];
-        $DB->insert_record('local_kabsignup_log', $record);
+        return (int)$DB->insert_record('local_kabsignup_log', $record);
+    }
+
+    /**
+     * Add markers to a log row's flags (comma-separated, up to 100 chars).
+     *
+     * @param int $logid
+     * @param string[] $flags
+     */
+    public static function add_flags(int $logid, array $flags): void {
+        global $DB;
+        if ($logid <= 0 || !$flags) {
+            return;
+        }
+        $current = (string)$DB->get_field('local_kabsignup_log', 'flags', ['id' => $logid]);
+        $all = array_values(array_unique(array_merge(array_filter(explode(';', $current)), $flags)));
+        $DB->set_field('local_kabsignup_log', 'flags', \core_text::substr(implode(';', $all), 0, 100), ['id' => $logid]);
     }
 
     /**

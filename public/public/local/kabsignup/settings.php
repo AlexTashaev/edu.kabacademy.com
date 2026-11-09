@@ -69,6 +69,28 @@ if ($hassiteconfig) {
         ]
     ));
 
+    $settings->add(new admin_setting_configcheckbox(
+        'local_kabsignup/phonerequired',
+        new lang_string('phonerequired', 'local_kabsignup'),
+        new lang_string('phonerequired_desc', 'local_kabsignup'),
+        1
+    ));
+
+    $settings->add(new admin_setting_configpasswordunmask(
+        'local_kabsignup/ipinfotoken',
+        new lang_string('ipinfotoken', 'local_kabsignup'),
+        new lang_string('ipinfotoken_desc', 'local_kabsignup'),
+        ''
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'local_kabsignup/dupalertto',
+        new lang_string('dupalertto', 'local_kabsignup'),
+        new lang_string('dupalertto_desc', 'local_kabsignup'),
+        \local_kabsignup\dupcheck::DEFAULT_TO,
+        PARAM_RAW_TRIMMED
+    ));
+
     $settings->add(new admin_setting_configtext(
         'local_kabsignup/ratelimit',
         new lang_string('ratelimit', 'local_kabsignup'),
