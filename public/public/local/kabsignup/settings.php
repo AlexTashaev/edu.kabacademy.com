@@ -50,6 +50,14 @@ if ($hassiteconfig) {
         PARAM_RAW
     ));
 
+    $settings->add(new admin_setting_configtextarea(
+        'local_kabsignup/prerequisites',
+        new lang_string('prerequisites', 'local_kabsignup'),
+        new lang_string('prerequisites_desc', 'local_kabsignup'),
+        '',
+        PARAM_RAW
+    ));
+
     $settings->add(new admin_setting_configtext(
         'local_kabsignup/defaultthankyou',
         new lang_string('defaultthankyou', 'local_kabsignup'),

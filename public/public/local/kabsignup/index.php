@@ -71,10 +71,48 @@ $coursename = format_string($course->fullname, true, ['context' => $coursecontex
 $PAGE->set_title(get_string('signuptitle', 'local_kabsignup'));
 $PAGE->set_heading($coursename);
 
+// Signup conditions: part 2 of a course only for those enrolled in part 1.
+$prereqnames = \local_kabsignup\manager::prerequisite_names((int)$course->id, $config);
+
+/**
+ * "Signup is open only to part-1 students" page, then exit.
+ *
+ * @param bool $loggedin
+ */
+$noprereqpage = function(bool $loggedin) use ($OUTPUT, $USER, $coursename, $prereqnames, $pageurl, $course) {
+    global $SESSION;
+    $a = (object)['course' => $coursename, 'required' => $prereqnames,
+        'email' => $loggedin ? s($USER->email) : ''];
+    echo $OUTPUT->header();
+    echo $OUTPUT->heading(get_string('noprereqheading', 'local_kabsignup'), 2, 'text-center mb-3');
+    echo $OUTPUT->box(get_string($loggedin ? 'noprereqtextloggedin' : 'noprereqtext', 'local_kabsignup', $a),
+        'generalbox boxwidthnormal boxaligncenter');
+    if (!$loggedin) {
+        // Studied under this address but the form still said no? Logging in
+        // brings them back here, and the logged-in branch re-checks.
+        $SESSION->wantsurl = $pageurl->out(false);
+        $buttons = $OUTPUT->single_button($pageurl, get_string('tryagain', 'local_kabsignup'), 'get');
+        if (is_enabled_auth('kabmagic')) {
+            $buttons .= ' ' . $OUTPUT->single_button(
+                new moodle_url('/auth/kabmagic/request.php', ['wantsurl' => $pageurl->out(false)]),
+                get_string('magicbutton', 'local_kabsignup'), 'get');
+        }
+        echo html_writer::div($buttons, 'text-center');
+    }
+    echo $OUTPUT->footer();
+    exit;
+};
+
 if (isloggedin() && !isguestuser()) {
     if (is_siteadmin() || has_capability('moodle/course:update', $coursecontext)) {
         // Admins and the course's teachers preview the flow without enrolling themselves.
         redirect(\local_kabsignup\manager::thankyou_url($course, $campaign, $utm));
+    }
+    if (!\local_kabsignup\manager::prerequisite_ok((int)$USER->id, (int)$course->id, $config)) {
+        \local_kabsignup\manager::log($course->id, (int)$USER->id,
+            \local_kabsignup\manager::email_hash((string)$USER->email),
+            0, $campaign, 'noprereq', (string)getremoteaddr());
+        $noprereqpage(true);
     }
     $status = \local_kabsignup\manager::enrol($USER, $course);
     \local_kabsignup\manager::log($course->id, (int)$USER->id,
@@ -109,6 +147,10 @@ if ($data = $form->get_data()) {
         exit;
     }
 
+    if ($result['status'] === 'noprereq') {
+        $noprereqpage(false);
+    }
+
     if ($result['status'] === 'exists') {
         // "Ask to log in" mode: after the login Moodle returns here and the
         // logged-in branch above finishes the enrolment.
@@ -141,5 +183,9 @@ if ($data = $form->get_data()) {
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('signupheading', 'local_kabsignup', $coursename), 2, 'text-center mb-3');
 echo $OUTPUT->box(get_string('signupintro', 'local_kabsignup'), 'generalbox boxwidthnormal boxaligncenter');
+if ($prereqnames !== '') {
+    echo $OUTPUT->notification(get_string('prereqintro', 'local_kabsignup', $prereqnames),
+        \core\output\notification::NOTIFY_INFO, false);
+}
 $form->display();
 echo $OUTPUT->footer();

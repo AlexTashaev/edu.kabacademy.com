@@ -53,6 +53,7 @@ class manager {
         $out = new \stdClass();
         $out->courses = self::parse_courses((string)($raw->courses ?? ''));
         $out->campaigns = self::parse_campaigns((string)($raw->campaigns ?? ''));
+        $out->prerequisites = self::parse_prerequisites((string)($raw->prerequisites ?? ''));
         $out->defaultthankyou = self::clean_target((string)($raw->defaultthankyou ?? ''));
         $out->existingpolicy = (($raw->existingpolicy ?? '') === 'login') ? 'login' : 'enrol';
         // Settings added in 1.1.0 stay unset until the settings page is saved: unset means default.
@@ -87,6 +88,88 @@ class manager {
             $out[$id] = self::clean_target($parts[1] ?? '');
         }
         return $out;
+    }
+
+    /**
+     * "Signup conditions" lines: "courseid|required courseid[,courseid...]" —
+     * signup for the first course is open only to those enrolled in any of the
+     * listed ones (part 2 only after part 1; several ids for several streams of
+     * part 1).
+     *
+     * @param string $raw
+     * @return array courseid => int[] required course ids
+     */
+    public static function parse_prerequisites(string $raw): array {
+        $out = [];
+        foreach (preg_split('/\R+/', $raw) as $line) {
+            $line = trim($line);
+            if ($line === '' || $line[0] === '#') {
+                continue;
+            }
+            $parts = array_map('trim', explode('|', $line, 2));
+            $id = (int)$parts[0];
+            $required = array_values(array_unique(array_filter(
+                array_map('intval', preg_split('/[\s,;]+/', $parts[1] ?? '')),
+                function(int $r) use ($id): bool {
+                    return $r > 0 && $r !== $id;
+                }
+            )));
+            if ($id > 0 && $required) {
+                $out[$id] = array_merge($out[$id] ?? [], $required);
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * May this user sign up for the course under the "signup conditions"?
+     * True when the course has no condition, when the user is already enrolled
+     * in it (then the flow says "already enrolled"), or when the user has an
+     * enrolment — any method, active or suspended — in one of the required
+     * courses. An unenrolled user has no row left, hence "suspend, do not
+     * unenrol" for part-1 students who should keep the right to part 2.
+     *
+     * @param int $userid 0 for a not yet existing account
+     * @param int $courseid
+     * @param \stdClass $config
+     * @return bool
+     */
+    public static function prerequisite_ok(int $userid, int $courseid, \stdClass $config): bool {
+        global $DB;
+        $required = $config->prerequisites[$courseid] ?? [];
+        if (!$required) {
+            return true;
+        }
+        if ($userid <= 0) {
+            return false;
+        }
+        [$insql, $params] = $DB->get_in_or_equal(array_merge([$courseid], $required), SQL_PARAMS_NAMED);
+        return $DB->record_exists_sql(
+            "SELECT 1
+               FROM {user_enrolments} ue
+               JOIN {enrol} e ON e.id = ue.enrolid
+              WHERE ue.userid = :userid AND e.courseid $insql",
+            ['userid' => $userid] + $params);
+    }
+
+    /**
+     * Names of the courses a conditional course requires, for the messages.
+     *
+     * @param int $courseid
+     * @param \stdClass $config
+     * @return string «A», «B»
+     */
+    public static function prerequisite_names(int $courseid, \stdClass $config): string {
+        global $DB;
+        $required = $config->prerequisites[$courseid] ?? [];
+        if (!$required) {
+            return '';
+        }
+        $names = [];
+        foreach ($DB->get_records_list('course', 'id', $required, 'id', 'id, fullname') as $c) {
+            $names[] = '«' . format_string($c->fullname, true, ['context' => \context_course::instance($c->id)]) . '»';
+        }
+        return implode(', ', array_unique($names));
     }
 
     /**
@@ -383,7 +466,7 @@ class manager {
      * @param string $phone as typed, may be empty
      * @param string $campaign camp= slug ('' when none)
      * @param string $ip requester's IP
-     * @return array ['status' => created|enrolled|already|exists|throttled, 'user' => \stdClass|null]
+     * @return array ['status' => created|enrolled|already|exists|throttled|noprereq, 'user' => \stdClass|null]
      */
     public static function signup(\stdClass $course, string $firstname, string $lastname,
             string $email, string $phone, string $campaign, string $ip): array {
@@ -396,19 +479,35 @@ class manager {
         }
 
         $user = self::find_user($email);
+        // Signup conditions (part 2 only after part 1): checked before anything is
+        // created — a stranger gets no account, since there is no course for it.
+        if (!self::prerequisite_ok($user ? (int)$user->id : 0, (int)$course->id, $config)) {
+            self::log($course->id, $user ? (int)$user->id : 0, $emailhash, 0, $campaign, 'noprereq', $ip);
+            return ['status' => 'noprereq', 'user' => null];
+        }
         if ($user !== null && $config->existingpolicy === 'login') {
             self::log($course->id, (int)$user->id, $emailhash, 0, $campaign, 'exists', $ip);
             return ['status' => 'exists', 'user' => null];
         }
 
+        // Rule of 09.11.2026: an account exists only together with an enrolment —
+        // without a course there is nothing to do on the site. A new account and
+        // its enrolment are one transaction, so a failed enrolment leaves no
+        // course-less account behind (events go out after the commit).
+        global $DB;
         $new = false;
         $password = null;
-        if ($user === null) {
-            [$user, $password] = self::create_user($firstname, $lastname, $email, self::normalise_phone($phone));
-            $new = true;
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            if ($user === null) {
+                [$user, $password] = self::create_user($firstname, $lastname, $email, self::normalise_phone($phone));
+                $new = true;
+            }
+            $enrolled = self::enrol($user, $course);
+            $transaction->allow_commit();
+        } catch (\Throwable $e) {
+            $transaction->rollback($e);
         }
-
-        $enrolled = self::enrol($user, $course);
         self::send_welcome($user, $course, $campaign, $ip, $password);
 
         $status = $new ? 'created' : $enrolled;
