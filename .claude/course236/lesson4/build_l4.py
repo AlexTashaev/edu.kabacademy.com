@@ -219,17 +219,20 @@ book_ch1 += '<div class="kab-kicker">Ответы на вопросы по те�
 book_ch1 += yt('Ответы на вопросы по теме «Строение мироздания»', 'MLSOjg7XR5E', '1TnIEbwJ6NZiu_Yo7ZY_e8Wc2Eburv8hA')
 book_ch1 += '</div>\n'
 
+# У книги customtitles=1: страница название главы не печатает, поэтому оно стоит над плеером (владелец, 11.11.2026).
+BOOK_T2 = 'Урок «Схема мироздания. Четыре стадии развития желания» (курс «Основы каббалы», 2011)'
 book_ch2 = '''<div class="kab-page">
+<div class="kab-kicker">%s</div>
 <div class="kab-quote">Урок курса «Основы каббалы» 2011 года, 58 минут. Схема мироздания и четыре стадии развития желания: кто создал желание отдавать, идея сокращения, точка в сердце.</div>
 <div style="position: relative; width: 100%; aspect-ratio: 16 / 9; margin: 16px 0;">
 <iframe src="https://kabbalahmedia.info/lessons/cu/AtE3Ww80?mediaType=video&amp;shareLang=ru&amp;embed=1&amp;autoPlay=0" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0;" scrolling="no" allowfullscreen=""></iframe>
 </div>
 </div>
-'''
+'''.replace('%s', BOOK_T2, 1)
 
 # Фильмы в «Дополнительные материалы» не включаем (правило владельца 14.10): мультфильм из Факультатива дока не ставится.
 BOOK = [('Лекции урока в записи', book_ch1),
-        ('Урок «Схема мироздания. Четыре стадии развития желания» (курс «Основы каббалы», 2011)', book_ch2)]
+        (BOOK_T2, book_ch2)]
 
 # ---------------- Семинар: текст темы (пост публикует владелец, как в уроках 1–3) ----------------
 seminar_post = '''<div class="kab-text">
