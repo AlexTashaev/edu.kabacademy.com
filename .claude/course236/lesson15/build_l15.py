@@ -273,12 +273,14 @@ book_ch1 += yt('Ответы на вопросы', 'Dq2U2Kul5Yg', '1axaUs9bhMujZ
 book_ch1 += '<div class="kab-kicker">Краткое повторение изученного материала</div>\n'
 book_ch1 += yt('Краткое повторение изученного материала', 'XTkJCrmK3C4', '1RqxPMN-rl-gKVWNZIOQLuYccFr9PLloK')
 book_ch1 += '</div>\n'
-book_ch2 = '<div class="kab-page">\n'
+BOOK_T2 = 'Ещё один фрагмент об Общем Законе'
+# the book has customtitles=1: the page does not print the chapter title, so it stands above the clip (owner, 11.11.2026)
+book_ch2 = '<div class="kab-page">\n<div class="kab-kicker">%s</div>\n' % BOOK_T2
 book_ch2 += clip('Lesson-15-clip-K9', title='«Учение Десяти Сфирот», урок 2: подобие свойств — основной закон каббалы', source=ML + ', 2022',
                  quote='«Если мы желаем Его ощущать, – пожалуйста, – измени себя со злого существа на доброе, и в мере подобия Творцу, когда ты станешь таким же добрым, как Он, ты будешь ощущать Его. Подобие свойств и есть основной закон каббалы».')
 book_ch2 += '</div>\n'
 BOOK = [('Лекция урока и ответы на вопросы', book_ch1),
-        ('Ещё один фрагмент об Общем Законе', book_ch2)]
+        (BOOK_T2, book_ch2)]
 
 PAGES = {'p_toc': toc, 'p_intro': intro, 'p_ch1': ch1, 'p_ch2': ch2, 'p_ch3': ch3, 'p_ch4': ch4, 'p_ch5': ch5,
          'page_resume': resume, 'forum_otklik': otklik, 'book_ch1': book_ch1, 'book_ch2': book_ch2}

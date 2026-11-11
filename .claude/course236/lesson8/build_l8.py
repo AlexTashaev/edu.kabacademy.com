@@ -97,13 +97,15 @@ def h4(t):
 
 
 
-def archive_prog(uid):
-    """Embedded archive player of a program chapter (programs/cu): no link and no editorial note."""
+def archive_prog(uid, title):
+    """Embedded archive player of a program chapter (programs/cu) under its title: no link and no editorial note.
+    The title is the chapter title: the book has customtitles=1, so the page itself does not print it (owner, 11.11.2026)."""
     return ('<div class="kab-page">\n'
-            '<div style="position: relative; width: 100%%; aspect-ratio: 16 / 9; margin: 16px 0;">\n'
+            '<div class="kab-kicker">%s</div>\n'
+            '<div style="position: relative; width: 100%%; aspect-ratio: 16 / 9; margin: 8px 0 16px;">\n'
             '<iframe src="https://kabbalahmedia.info/programs/cu/%s?mediaType=video&amp;shareLang=ru&amp;embed=1&amp;autoPlay=0" '
             'style="position: absolute; inset: 0; width: 100%%; height: 100%%; border: 0;" scrolling="no" allowfullscreen=""></iframe>\n</div>\n</div>\n'
-            % uid)
+            % (title, uid))
 
 
 INTRO = 'О чём этот урок'
@@ -264,11 +266,13 @@ book_ch1 += '<p><strong>Учитель</strong></p>\n' + yt('Факторы ду
 book_ch1 += '<div class="kab-kicker">Ответы на вопросы по теме. Преподаватель Дани Половец</div>\n'
 book_ch1 += yt('Ответы на вопросы по теме «Три фактора духовного развития»', '_-gQcpWNnvc', '1PirHdlPDX3f3sL6p_uXe1xwyYAa5L3gs')
 book_ch1 += '</div>\n'
-book_ch2 = archive_prog('GUo21ol0')
-book_ch3 = archive_prog('RbJPpuzw')
+BOOK_T2 = '«Влияние общественного мнения на сознание человека» (2020)'
+BOOK_T3 = '«Основы каббалы. Методика изучения каббалы» (2018)'
+book_ch2 = archive_prog('GUo21ol0', BOOK_T2)
+book_ch3 = archive_prog('RbJPpuzw', BOOK_T3)
 BOOK = [('Лекции урока в записи', book_ch1),
-        ('«Влияние общественного мнения на сознание человека» (2020)', book_ch2),
-        ('«Основы каббалы. Методика изучения каббалы» (2018)', book_ch3)]
+        (BOOK_T2, book_ch2),
+        (BOOK_T3, book_ch3)]
 
 PAGES = {'p_toc': toc, 'p_intro': intro, 'p_ch1': ch1, 'p_ch2': ch2, 'p_ch3': ch3, 'p_ch4': ch4,
          'page_resume': resume, 'forum_otklik': otklik, 'book_ch1': book_ch1, 'book_ch2': book_ch2, 'book_ch3': book_ch3}

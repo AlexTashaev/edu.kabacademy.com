@@ -230,7 +230,9 @@ book_ch1 += '<div class="kab-kicker">Ответы на вопросы по те�
 book_ch1 += yt('Ответы на вопросы по теме «Восприятие реальности»', '0R7EN9lP9pE', '1v_TBwNKxGnJHmyIkC_avWMVQmhgw89XM')
 book_ch1 += '</div>\n'
 
+# the book has customtitles=1: the page does not print the chapter title, so it stands above the player (owner, 11.11.2026)
 book_ch2 = '''<div class="kab-page">
+<div class="kab-kicker">Беседа «Восприятие реальности» (курс «Основы каббалы», 2018)</div>
 <div class="kab-quote">Беседа «Восприятие реальности» из курса «Основы каббалы», урок 5. 22 ноября 2018 г. Открывается разбором Ньютона, теории относительности и квантовой физики. Стенограмма — в следующей главе.</div>
 <div style="position: relative; width: 100%; aspect-ratio: 16 / 9; margin: 16px 0;">
 <iframe src="https://kabbalahmedia.info/programs/cu/kGtOXaK0?mediaType=video&amp;shareLang=ru&amp;embed=1&amp;autoPlay=0" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0;" scrolling="no" allowfullscreen=""></iframe>
