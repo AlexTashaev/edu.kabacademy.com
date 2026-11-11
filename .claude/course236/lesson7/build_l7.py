@@ -61,13 +61,15 @@ def yt(title, ytid, driveid=None):
     return out
 
 
-def archive(uid):
-    """Embedded archive player only: no link to kabbalahmedia.info and no editorial note (owner, 14–15.10.2026)."""
+def archive(uid, title):
+    """Embedded archive player under its title: no link to kabbalahmedia.info and no editorial note (owner, 14–15.10.2026).
+    The title is the chapter title: the book has customtitles=1, so the page itself does not print it (owner, 11.11.2026)."""
     return ('<div class="kab-page">\n'
-            '<div style="position: relative; width: 100%%; aspect-ratio: 16 / 9; margin: 16px 0;">\n'
+            '<div class="kab-kicker">%s</div>\n'
+            '<div style="position: relative; width: 100%%; aspect-ratio: 16 / 9; margin: 8px 0 16px;">\n'
             '<iframe src="https://kabbalahmedia.info/lessons/cu/%s?mediaType=video&amp;shareLang=ru&amp;embed=1&amp;autoPlay=0" '
             'style="position: absolute; inset: 0; width: 100%%; height: 100%%; border: 0;" scrolling="no" allowfullscreen=""></iframe>\n</div>\n</div>\n'
-            % uid)
+            % (title, uid))
 
 
 def srcquote(body, who=None):
@@ -242,11 +244,11 @@ book_ch1 += yt('Свобода выбора (преподаватель Алек
 book_ch1 += '<div class="kab-kicker">Ответы на вопросы по теме</div>\n'
 book_ch1 += yt('Ответы на вопросы по теме «Свобода выбора и окружение»', 'pmS__pNil8A', '1tXLLceqAmAmI4SB1lmNb4XiP74ShgcTq')
 book_ch1 += '</div>\n'
-book_ch2 = archive('QQCBSjfL')
-book_ch3 = archive('SPnFEm5I')
-BOOK = [('Лекции урока в записи', book_ch1),
-        ('Вебинар «Свобода — главный закон природы» (2019)', book_ch2),
-        ('Урок «Бааль Сулам. Свобода воли» (2004)', book_ch3)]
+BOOK_T2 = 'Вебинар «Свобода — главный закон природы» (2019)'
+BOOK_T3 = 'Урок «Бааль Сулам. Свобода воли» (2004)'
+book_ch2 = archive('QQCBSjfL', BOOK_T2)
+book_ch3 = archive('SPnFEm5I', BOOK_T3)
+BOOK = [('Лекции урока в записи', book_ch1), (BOOK_T2, book_ch2), (BOOK_T3, book_ch3)]
 
 PAGES = {'p_toc': toc, 'p_intro': intro, 'p_ch1': ch1, 'p_ch2': ch2, 'p_ch3': ch3,
          'page_resume': resume, 'forum_otklik': otklik, 'book_ch1': book_ch1, 'book_ch2': book_ch2, 'book_ch3': book_ch3}
