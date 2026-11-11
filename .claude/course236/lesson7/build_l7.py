@@ -42,15 +42,16 @@ def clip(name, ar='16 / 9', maxw=None, title=None, source=None, quote=None):
     return out
 
 
-def figure(code, n, w, h, alt, caption):
+def figure(code, n, w, h, alt, caption, v=1):
+    """v: cache-busting version of the scheme files (Cloudflare caches /kab/img/); bump it when a file is replaced."""
     return ('<div class="kab-figure" style="border: 1px solid #D9E8F2; border-radius: 12px; background: #fff; padding: 12px 12px 10px; margin: 20px 0;">\n'
-            '<a href="%(i)sschemes/%(c)s.webp?v=1" target="_blank" rel="noopener" style="display: block;">\n<picture>\n'
-            '<source media="(prefers-reduced-motion: reduce)" srcset="%(i)sschemes/%(c)s-static.png?v=1" width="%(w)d" height="%(h)d">\n'
-            '<source type="image/webp" srcset="%(i)sschemes/%(c)s.webp?v=1" width="%(w)d" height="%(h)d">\n'
-            '<img src="%(i)sschemes/%(c)s-static.png?v=1" width="%(w)d" height="%(h)d" alt="Схема %(n)d. %(alt)s" style="display: block; width: auto; max-width: 100%%; height: auto; margin: 0 auto; border-radius: 8px;">\n'
+            '<a href="%(i)sschemes/%(c)s.webp?v=%(v)d" target="_blank" rel="noopener" style="display: block;">\n<picture>\n'
+            '<source media="(prefers-reduced-motion: reduce)" srcset="%(i)sschemes/%(c)s-static.png?v=%(v)d" width="%(w)d" height="%(h)d">\n'
+            '<source type="image/webp" srcset="%(i)sschemes/%(c)s.webp?v=%(v)d" width="%(w)d" height="%(h)d">\n'
+            '<img src="%(i)sschemes/%(c)s-static.png?v=%(v)d" width="%(w)d" height="%(h)d" alt="Схема %(n)d. %(alt)s" style="display: block; width: auto; max-width: 100%%; height: auto; margin: 0 auto; border-radius: 8px;">\n'
             '</picture>\n</a>\n'
             '<div style="border-top: 1px solid #EFF7FA; margin-top: 12px; padding-top: 10px; font-size: 13.5px; line-height: 1.6; color: #7A7A7A;"><span style="font-weight: 700; color: #3C5D90;">Схема %(n)d.</span> %(cap)s</div>\n'
-            '</div>\n' % dict(i=IMG, c=code, n=n, w=w, h=h, alt=alt, cap=caption))
+            '</div>\n' % dict(i=IMG, c=code, n=n, w=w, h=h, alt=alt, cap=caption, v=v))
 
 
 def yt(title, ytid, driveid=None):
@@ -190,7 +191,8 @@ ch3 += p('Отсюда место, где что-то зависит от чел
 ch3 += p('<strong>Человек всегда является производным этих четырёх параметров.</strong> Если он хочет выйти из-под автоматического управления, единственное, что ему доступно, — подставить себя под управление той среды, которую он выбрал сам. <strong>Единственная возможность изменить себя состоит в выборе окружения.</strong>')
 ch3 += figure('L07-03', 21, 800, 509,
               'Выбор человека и факторы воздействия на него: четыре фактора действуют на человека, его собственный выбор — среда, а выбранная среда влияет на его свойства',
-              'Выбор человека и факторы воздействия на него. Все четыре фактора действуют на человека; его собственный выбор — это выбор среды, а выбранная среда влияет на его свойства.')
+              'Выбор человека и факторы воздействия на него. Все четыре фактора действуют на человека; его собственный выбор — это выбор среды, а выбранная среда влияет на его свойства.',
+              v=2)   # 11.11.2026: caption «одна стрелка наружу» removed from the picture (fix_scheme21.py)
 ch3 += p('Бааль Сулам пишет:')
 ch3 += srcquote(
     '<p>«Однако, с самого начала существует свобода желания выбрать среду из таких книг и учителей, которые вызовут у него хорошие мысли. И если не сделает этого, а будет готов войти в любую случайную среду и читать любую случайную книгу, то, конечно, попадет в плохое окружение или будет проводить время за чтением бесполезных книг, которых больше, и они ему намного приятнее, в результате чего образование его обязательно станет ужасным и плохим, что приведет к греху и злодеянию. И конечно, наказание понесет не за плохие мысли и дела, в которых у него нет выбора, а за то, что не выбрал хорошее окружение, т. к. в этом, безусловно, есть возможность выбора.</p>\n'
