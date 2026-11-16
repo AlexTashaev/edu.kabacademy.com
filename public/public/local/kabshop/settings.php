@@ -44,3 +44,34 @@ if ($hassiteconfig || has_capability('local/kabshop:manage', context_system::ins
         'local/kabshop:manage'
     ));
 }
+
+if ($hassiteconfig) {
+    // Продавцы и контакты юридического блока витрины. Пока не сохранены — действуют значения
+    // по умолчанию из \local_kabshop\legal::DEFAULTS.
+    $page = new admin_settingpage('local_kabshop_legal', get_string('legalsettings', 'local_kabshop'));
+    $defaults = \local_kabshop\legal::DEFAULTS;
+    foreach (['main', 'ru'] as $market) {
+        $page->add(new admin_setting_configtextarea(
+            'local_kabshop/seller_' . $market,
+            get_string('setting_seller_' . $market, 'local_kabshop'),
+            get_string('setting_seller_desc', 'local_kabshop'),
+            $defaults['seller_' . $market],
+            PARAM_TEXT
+        ));
+        $page->add(new admin_setting_configtext(
+            'local_kabshop/email_' . $market,
+            get_string('setting_email_' . $market, 'local_kabshop'),
+            '',
+            $defaults['email_' . $market],
+            PARAM_EMAIL
+        ));
+        $page->add(new admin_setting_configtext(
+            'local_kabshop/phone_' . $market,
+            get_string('setting_phone_' . $market, 'local_kabshop'),
+            '',
+            $defaults['phone_' . $market],
+            PARAM_TEXT
+        ));
+    }
+    $ADMIN->add('localplugins', $page);
+}

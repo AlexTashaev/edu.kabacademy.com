@@ -18,13 +18,20 @@
     @template local_kabshop/product
 
     Страница товара: обложка слева, панель покупки справа (на десктопе —
-    липнет при прокрутке), описание ниже.
+    липнет при прокрутке), описание ниже. altaction — вторая кнопка: оплата
+    парным товаром на другом рынке (рубли ↔ карта и PayPal). Внизу — продавец,
+    контакты и оферта рынка этого товара.
 
     Example context (json):
     {"name": "Система мироздания", "summary": "Спецкурс", "description": "<p>Описание</p>",
      "price": "70,00 $", "free": false, "image": null, "paid": false, "nopayment": false,
      "canmanage": false, "editurl": "#", "catalogurl": "#",
-     "action": {"href": "#", "label": "Войти и купить"}
+     "action": {"href": "#", "label": "Войти и купить"},
+     "altaction": {"href": "#", "label": "Оплатить в рублях", "price": "5 250,00 ₽"},
+     "legal": {"paylabel": "Продавец:", "seller": "Ассоциация", "email": "a@example.com",
+               "phone": "1-700-509-209", "phonehref": "1700509209", "offerurl": "#",
+               "offerlabel": "Публичная оферта", "privacyurl": "#",
+               "privacylabel": "Политика конфиденциальности"}
     }
 }}
 <div class="kabshop-product">
@@ -62,6 +69,9 @@
                         data-description="{{description}}">{{label}}</button>
                 {{/payment}}
             {{/action}}
+            {{#altaction}}
+            <a class="kabshop-altpay" href="{{href}}">{{label}}{{#price}} <span class="kabshop-altpay-price">{{price}}</span>{{/price}}</a>
+            {{/altaction}}
             {{#couponform}}
             <details class="kabshop-coupon">
                 <summary>{{#str}} couponlabel, local_kabshop {{/str}}</summary>
@@ -112,4 +122,7 @@
     <div class="kabshop-product-description">{{{description}}}</div>
     {{/description}}
     <p class="kabshop-back"><a href="{{catalogurl}}">← {{#str}} backtocatalog, local_kabshop {{/str}}</a></p>
+    {{#legal}}
+    {{> local_kabshop/legal }}
+    {{/legal}}
 </div>

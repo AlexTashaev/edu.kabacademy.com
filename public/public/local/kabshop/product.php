@@ -44,7 +44,11 @@ $PAGE->set_pagelayout('standard');
 $name = format_string($product->name, true, ['context' => $context]);
 $PAGE->set_title($name);
 $PAGE->set_heading($name);
-$PAGE->navbar->add(get_string('catalog', 'local_kabshop'), new moodle_url('/local/kabshop/index.php'));
+// Рынок товара (рубли — российская витрина) и парный товар того же курса на другом рынке.
+$market = catalog::market($product);
+$twin = catalog::twin($product);
+$catalogurl = catalog::catalog_url($market);
+$PAGE->navbar->add(get_string($market === 'ru' ? 'catalogru' : 'catalog', 'local_kabshop'), $catalogurl);
 $PAGE->navbar->add($name);
 
 $loggedin = isloggedin() && !isguestuser();
@@ -152,9 +156,30 @@ if ($product->kind === 'external') {
     ];
 }
 
+// Вторая кнопка — оплата на другом рынке (рубли ↔ карта/PayPal): ведёт на парный товар,
+// он записывает в тот же курс. Если курс уже куплен, вторая кнопка не нужна.
+$altaction = null;
+if ($twin && !$owned && !$activesub) {
+    $altaction = [
+        'href' => (new moodle_url('/local/kabshop/product.php', ['id' => $twin->id]))->out(false),
+        'label' => get_string($market === 'ru' ? 'paybycard' : 'payinrub', 'local_kabshop'),
+        'price' => catalog::price_string($twin),
+    ];
+}
+
+// Рублёвый товар без своего описания показывает описание пары.
+$description = (string) ($product->description ?? '');
+$descriptionformat = $product->descriptionformat;
+if ($market === 'ru' && $twin && trim(strip_tags($description)) === '') {
+    $description = (string) ($twin->description ?? '');
+    $descriptionformat = $twin->descriptionformat;
+}
+
 $data = catalog::card($product);
-$data['description'] = format_text($product->description ?? '', $product->descriptionformat, ['context' => $context]);
+$data['description'] = format_text($description, $descriptionformat, ['context' => $context]);
 $data['action'] = $action;
+$data['altaction'] = $altaction;
+$data['legal'] = \local_kabshop\legal::export($market);
 $data['donateform'] = $donateform;
 $data['couponform'] = $couponform;
 $data['couponinfo'] = $couponinfo;
@@ -166,7 +191,7 @@ $data['nopayment'] = !$free && !$product->accountid && $product->kind !== 'exter
 $data['paid'] = $paid;
 $data['canmanage'] = $canmanage;
 $data['editurl'] = (new moodle_url('/local/kabshop/edit_product.php', ['id' => $id]))->out(false);
-$data['catalogurl'] = (new moodle_url('/local/kabshop/index.php'))->out(false);
+$data['catalogurl'] = $catalogurl->out(false);
 
 echo $OUTPUT->header();
 echo $OUTPUT->render_from_template('local_kabshop/product', $data);

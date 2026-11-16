@@ -32,13 +32,96 @@ class catalog {
     /** Виды товара. */
     const KINDS = ['course', 'donation', 'service', 'external'];
 
+    /** Валюта российской витрины. */
+    const RU_CURRENCY = 'RUB';
+
+    /**
+     * Рынок товара: 'ru' — цена в рублях (российская витрина, продавец в РФ), иначе 'main'.
+     *
+     * @param \stdClass $product
+     * @return string
+     */
+    public static function market(\stdClass $product): string {
+        return strtoupper((string) $product->currency) === self::RU_CURRENCY ? 'ru' : 'main';
+    }
+
+    /**
+     * Адрес каталога рынка.
+     *
+     * @param string $market
+     * @return moodle_url
+     */
+    public static function catalog_url(string $market): moodle_url {
+        return new moodle_url($market === 'ru' ? '/local/kabshop/ru.php' : '/local/kabshop/index.php');
+    }
+
+    /**
+     * Парный товар на другом рынке: видимый платный товар того же курса. Из нескольких —
+     * сначала из того же раздела, затем по порядку. У товаров без курса пары нет.
+     *
+     * @param \stdClass $product
+     * @return \stdClass|null
+     */
+    public static function twin(\stdClass $product): ?\stdClass {
+        global $DB;
+        if (empty($product->courseid) || $product->kind === 'external') {
+            return null;
+        }
+        $other = self::market($product) === 'ru' ? 'currency <> :cur' : 'currency = :cur';
+        $sql = "SELECT *
+                  FROM {local_kabshop_product}
+                 WHERE courseid = :courseid AND id <> :id AND visible = 1 AND kind <> 'external'
+                       AND (price > 0 OR customamount = 1) AND $other
+              ORDER BY CASE WHEN sectionid = :sectionid THEN 0 ELSE 1 END, sortorder, id";
+        $recs = $DB->get_records_sql($sql, [
+            'courseid' => $product->courseid,
+            'id' => $product->id,
+            'cur' => self::RU_CURRENCY,
+            'sectionid' => $product->sectionid,
+        ], 0, 1);
+        return $recs ? reset($recs) : null;
+    }
+
+    /**
+     * Есть ли на рынке видимые товары.
+     *
+     * @param string $market
+     * @return bool
+     */
+    public static function has_products(string $market): bool {
+        foreach (self::get_sections(false, $market) as $s) {
+            if ($s->products) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Ссылка на витрину другого рынка. На основной витрине её нет, пока нет рублёвых товаров.
+     *
+     * @param string $market текущий рынок
+     * @return array|null
+     */
+    public static function switch_link(string $market): ?array {
+        $other = $market === 'ru' ? 'main' : 'ru';
+        if ($other === 'ru' && !self::has_products('ru')) {
+            return null;
+        }
+        return [
+            'url' => self::catalog_url($other)->out(false),
+            'label' => get_string($other === 'ru' ? 'switchtoru' : 'switchtomain', 'local_kabshop'),
+        ];
+    }
+
     /**
      * Разделы с товарами для каталога.
      *
      * @param bool $all true — включая скрытые (для управления)
+     * @param string|null $market только товары этого рынка; null — все
      * @return array
      */
-    public static function get_sections(bool $all = false): array {
+    public static function get_sections(bool $all = false, ?string $market = null): array {
         global $DB;
         $where = $all ? [] : ['visible' => 1];
         $sections = $DB->get_records('local_kabshop_section', $where, 'sortorder, id');
@@ -47,6 +130,9 @@ class catalog {
             $s->products = [];
         }
         foreach ($products as $p) {
+            if ($market !== null && self::market($p) !== $market) {
+                continue;
+            }
             if (isset($sections[$p->sectionid])) {
                 $sections[$p->sectionid]->products[] = $p;
             }
@@ -342,10 +428,15 @@ class catalog {
         $url = $product->kind === 'external' && !empty($product->externalurl)
             ? $product->externalurl
             : (new moodle_url('/local/kabshop/product.php', ['id' => $product->id]))->out(false);
+        // Рублёвый товар без своего «Коротко» берёт текст пары — описание ведётся в одном месте.
+        $summary = (string) ($product->summary ?? '');
+        if (trim($summary) === '' && self::market($product) === 'ru' && ($twin = self::twin($product))) {
+            $summary = (string) ($twin->summary ?? '');
+        }
         return [
             'id' => $product->id,
             'name' => format_string($product->name, true, ['context' => $context]),
-            'summary' => format_text($product->summary ?? '', FORMAT_PLAIN, ['context' => $context, 'para' => false]),
+            'summary' => format_text($summary, FORMAT_PLAIN, ['context' => $context, 'para' => false]),
             'price' => self::price_string($product),
             'free' => self::is_free($product) && $product->kind !== 'external',
             'image' => self::image_url($product),
@@ -358,11 +449,12 @@ class catalog {
     /**
      * Контекст каталога для шаблона.
      *
+     * @param string $market 'main' — основная витрина, 'ru' — российская (товары в рублях)
      * @return array
      */
-    public static function export_catalog(): array {
+    public static function export_catalog(string $market = 'main'): array {
         $out = [];
-        foreach (self::get_sections() as $s) {
+        foreach (self::get_sections(false, $market) as $s) {
             if (!$s->products) {
                 continue;
             }
@@ -385,6 +477,9 @@ class catalog {
             'shownav' => count($out) > 1,
             'canmanage' => has_capability('local/kabshop:manage', context_system::instance()),
             'manageurl' => (new moodle_url('/local/kabshop/manage.php'))->out(false),
+            'isru' => $market === 'ru',
+            'switch' => self::switch_link($market),
+            'legal' => legal::export($market),
         ];
     }
 

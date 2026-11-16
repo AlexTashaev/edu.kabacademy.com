@@ -18,12 +18,19 @@
     @template local_kabshop/catalog
 
     Каталог витрины: навигация по разделам, герой (первый товар первого
-    раздела — крупно), дальше разделы с карточками.
+    раздела — крупно), дальше разделы с карточками. Вверху — ссылка на витрину
+    другого рынка (рубли ↔ карта и PayPal), внизу — продавец, контакты и оферта.
 
     Example context (json):
     {
         "canmanage": true,
         "manageurl": "#",
+        "isru": false,
+        "switch": {"url": "#", "label": "Оплата в рублях для России"},
+        "legal": {"paylabel": "Продавец:", "seller": "Ассоциация", "email": "a@example.com",
+                  "phone": "1-700-509-209", "phonehref": "1700509209", "offerurl": "#",
+                  "offerlabel": "Публичная оферта", "privacyurl": "#",
+                  "privacylabel": "Политика конфиденциальности"},
         "shownav": true,
         "sections": [
             {"id": 1, "name": "Начать обучение", "description": "", "featured": true,
@@ -43,6 +50,12 @@
         <a class="btn btn-outline-secondary btn-sm" href="{{manageurl}}">{{#str}} manage, local_kabshop {{/str}}</a>
     </div>
     {{/canmanage}}
+    {{#isru}}
+    <p class="kabshop-ru-intro">{{#str}} ruintro, local_kabshop {{/str}}</p>
+    {{/isru}}
+    {{#switch}}
+    <p class="kabshop-switch"><a href="{{url}}">{{label}} →</a></p>
+    {{/switch}}
     {{#shownav}}
     <nav class="kabshop-nav" aria-label="{{#str}} catalog, local_kabshop {{/str}}">
         {{#sections}}
@@ -86,4 +99,7 @@
     {{^sections}}
     <p class="kabshop-empty">{{#str}} emptycatalog, local_kabshop {{/str}}</p>
     {{/sections}}
+    {{#legal}}
+    {{> local_kabshop/legal }}
+    {{/legal}}
 </div>

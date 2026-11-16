@@ -1,0 +1,41 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_kabshop/legal
+
+    Юридический блок внизу каталога и страницы товара: продавец с реквизитами,
+    контакты, ссылки на оферту и политику конфиденциальности. Виден без кликов —
+    платёжные системы проверяют, что эти сведения есть на странице продажи.
+
+    Example context (json):
+    {"paylabel": "Оплата в рублях. Продавец:",
+     "seller": "Некоммерческий фонд «Институт», ИНН 0000000000, ОГРН 0000000000000",
+     "email": "support@example.com", "phone": "+7 (495) 0000000", "phonehref": "+74950000000",
+     "offerurl": "#", "offerlabel": "Публичная оферта (для РФ)",
+     "privacyurl": "#", "privacylabel": "Политика конфиденциальности"}
+}}
+<div class="kabshop-legal">
+    <p class="kabshop-legal-seller"><span class="kabshop-legal-label">{{paylabel}}</span> {{seller}}</p>
+    <p class="kabshop-legal-contacts">
+        <span class="kabshop-legal-label">{{#str}} legal_contacts, local_kabshop {{/str}}</span>
+        <a href="mailto:{{email}}">{{email}}</a>{{#phone}}, <a href="tel:{{phonehref}}">{{phone}}</a>{{/phone}}
+    </p>
+    <p class="kabshop-legal-links">
+        <a href="{{offerurl}}">{{offerlabel}}</a>
+        <a href="{{privacyurl}}">{{privacylabel}}</a>
+    </p>
+</div>

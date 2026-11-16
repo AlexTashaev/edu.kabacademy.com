@@ -34,7 +34,8 @@
 }
 
 .kabshop-catalog,
-.kabshop-product {
+.kabshop-product,
+.kabshop-doc {
     --kabshop-blue: #52b0d8;
     --kabshop-navy: #3c5d90;
     --kabshop-navy-dark: #33517e;
@@ -145,6 +146,29 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 .kabshop-manage-link {
     float: right;
     margin: .2rem 0 .5rem 1rem;
+}
+
+/* --- Две витрины: пояснение российской и ссылка на другую --- */
+.kabshop-ru-intro {
+    color: var(--kabshop-muted);
+    font-size: .95rem;
+    margin: 0 0 .4rem;
+}
+
+.kabshop-switch {
+    margin: 0 0 .9rem;
+    font-size: .92rem;
+}
+
+.kabshop-switch a {
+    color: var(--kabshop-link);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.kabshop-switch a:hover,
+.kabshop-switch a:focus-visible {
+    text-decoration: underline;
 }
 
 /* --- Герой: первый товар первого раздела --- */
@@ -567,6 +591,44 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     margin: .9rem 0 0;
 }
 
+/* Вторая кнопка оплаты — парный товар на другой витрине (рубли ↔ карта и PayPal).
+   Тише основной: выбор есть, но главное действие остаётся одно. */
+.kabshop-buy .kabshop-altpay {
+    display: block;
+    width: 100%;
+    margin-top: .7rem;
+    padding: .7rem 1rem;
+    border: 1px solid var(--kabshop-border);
+    border-radius: 12px;
+    background: var(--kabshop-tint);
+    color: var(--kabshop-navy);
+    font-weight: 600;
+    font-size: .95rem;
+    line-height: 1.35;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.kabshop-buy .kabshop-altpay:hover,
+.kabshop-buy .kabshop-altpay:focus-visible {
+    background: var(--bs-body-bg, #fff);
+    border-color: var(--kabshop-blue);
+    color: var(--kabshop-navy-dark);
+    text-decoration: none;
+}
+
+.kabshop-buy .kabshop-altpay:focus-visible {
+    outline: 2px solid var(--kabshop-blue);
+    outline-offset: 2px;
+}
+
+.kabshop-altpay-price {
+    font-weight: 500;
+    color: var(--kabshop-muted);
+    white-space: nowrap;
+}
+
 .kabshop-changeamount {
     margin-top: .7rem;
     font-size: .9rem;
@@ -764,6 +826,73 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     border-color: var(--kabshop-blue);
     color: var(--kabshop-navy);
     text-decoration: none;
+}
+
+/* --- Юридический блок: продавец, контакты, оферта --- */
+.kabshop-legal {
+    clear: both;
+    margin-top: 3rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--kabshop-border);
+    max-width: 48rem;
+    font-size: .86rem;
+    line-height: 1.6;
+    color: var(--kabshop-muted);
+}
+
+.kabshop-legal p {
+    margin: 0 0 .3rem;
+}
+
+.kabshop-legal-label {
+    font-weight: 600;
+    color: var(--kabshop-text);
+}
+
+.kabshop-legal a {
+    color: var(--kabshop-link);
+}
+
+.kabshop-legal-links a {
+    margin-right: 1.1rem;
+    white-space: nowrap;
+}
+
+/* --- Страница документа (оферта, политика) --- */
+.kabshop-doc-body {
+    max-width: 48rem;
+    font-size: 1rem;
+    line-height: 1.68;
+    color: #2e3a46;
+}
+
+.kabshop-doc-body h2,
+.kabshop-doc-body h3,
+.kabshop-doc-body h4 {
+    font-family: inherit;
+    color: var(--kabshop-ink);
+    font-weight: 700;
+    margin: 1.5em 0 .5em;
+}
+
+.kabshop-doc-body h2 {
+    font-size: 1.3rem;
+}
+
+.kabshop-doc-body h3 {
+    font-size: 1.15rem;
+}
+
+.kabshop-doc-body h4 {
+    font-size: 1.02rem;
+}
+
+.kabshop-doc-body p {
+    margin: 0 0 .9em;
+}
+
+.kabshop-doc-body a {
+    color: var(--kabshop-link);
 }
 
 /* ============================ Мобильные ============================ */

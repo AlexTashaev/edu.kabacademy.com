@@ -72,6 +72,8 @@ class product_form extends \moodleform {
         $currencymenu = array_combine($currencies, $currencies);
         $mform->addElement('select', 'currency', get_string('currency'), $currencymenu);
         $mform->setDefault('currency', 'USD');
+        // Рубли — российская витрина; остальное — основная. Объяснение — в подсказке.
+        $mform->addHelpButton('currency', 'currency', $p);
 
         $mform->addElement('text', 'pricelabel', get_string('pricelabel', $p), ['size' => 20]);
         $mform->setType('pricelabel', PARAM_TEXT);
