@@ -105,6 +105,10 @@ class product_form extends \moodleform {
         $mform->setType('courseid', PARAM_INT);
         $mform->addHelpButton('courseid', 'courseid', $p);
 
+        $mform->addElement('text', 'requirecourses', get_string('requirecourses', $p), ['size' => 20]);
+        $mform->setType('requirecourses', PARAM_SEQUENCE);
+        $mform->addHelpButton('requirecourses', 'requirecourses', $p);
+
         $mform->addElement('duration', 'enrolperiod', get_string('enrolperiod', $p), ['optional' => true,
             'defaultunit' => DAYSECS]);
         $mform->addHelpButton('enrolperiod', 'enrolperiod', $p);
@@ -134,6 +138,15 @@ class product_form extends \moodleform {
         $errors = parent::validation($data, $files);
         if ($data['courseid'] && !$DB->record_exists('course', ['id' => $data['courseid']])) {
             $errors['courseid'] = get_string('coursenotfound', 'local_kabshop');
+        }
+        $required = \local_kabshop\catalog::parse_courseids((string) ($data['requirecourses'] ?? ''));
+        if ($required) {
+            $missing = array_diff($required, array_keys($DB->get_records_list('course', 'id', $required, '', 'id')));
+            if ($missing) {
+                $errors['requirecourses'] = get_string('coursenotfound', 'local_kabshop') . ': ' . implode(', ', $missing);
+            } else if ($data['courseid'] && in_array((int) $data['courseid'], $required, true)) {
+                $errors['requirecourses'] = get_string('requireself', 'local_kabshop');
+            }
         }
         if ($data['price'] < 0) {
             $errors['price'] = get_string('invalidprice', 'local_kabshop');

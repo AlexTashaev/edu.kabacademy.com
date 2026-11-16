@@ -59,7 +59,8 @@ foreach (catalog::get_sections(true) as $s) {
     }
     $table = new html_table();
     $table->head = ['#', get_string('name'), get_string('kind', $p), get_string('price', $p),
-        get_string('courseid', $p), get_string('paymentaccount', 'payment'), get_string('visible'), ''];
+        get_string('courseid', $p), get_string('requirecourses_short', $p), get_string('paymentaccount', 'payment'),
+        get_string('visible'), ''];
     $table->attributes['class'] = 'generaltable';
     foreach ($s->products as $pr) {
         $table->data[] = [
@@ -72,6 +73,7 @@ foreach (catalog::get_sections(true) as $s) {
             catalog::price_string($pr),
             $pr->courseid ? html_writer::link(new moodle_url('/course/view.php', ['id' => $pr->courseid]),
                 $pr->courseid) : '—',
+            implode(', ', catalog::required_courses($pr)) ?: '—',
             $pr->accountid ?: '—',
             $pr->visible ? get_string('yes') : get_string('no'),
             $OUTPUT->action_icon(new moodle_url('/local/kabshop/delete.php', ['type' => 'product', 'id' => $pr->id]),

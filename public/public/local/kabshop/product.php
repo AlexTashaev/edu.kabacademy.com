@@ -56,6 +56,16 @@ $owned = $loggedin && catalog::is_owned($product, $USER->id);
 $activesub = ($loggedin && !empty($product->recurmonths))
     ? \local_kabshop\subscriptions::get_active($product->id, $USER->id) : null;
 $free = catalog::is_free($product);
+// Условие записи (часть 2 — только учившимся на части 1). Купленному и подписчику не мешает.
+$prereqok = $owned || $activesub || $product->kind === 'external'
+    || catalog::prerequisite_ok($product, $loggedin ? (int) $USER->id : 0);
+$prereqnotice = null;
+if (!$prereqok) {
+    $names = catalog::prerequisite_names($product);
+    $prereqnotice = $loggedin
+        ? get_string('prereqdenied', 'local_kabshop', (object) ['required' => $names, 'email' => s($USER->email)])
+        : get_string('prereqguest', 'local_kabshop', $names);
+}
 
 $action = null;
 $donateform = null;
@@ -86,6 +96,9 @@ if ($product->kind === 'external') {
         'href' => (new moodle_url('/local/kabshop/enrol.php', ['id' => $id]))->out(false),
         'label' => get_string($free ? 'loginandenrol' : ($custom ? 'loginanddonate' : 'loginandbuy'), 'local_kabshop'),
     ];
+} else if (!$prereqok) {
+    // Вошёл, но условие не выполнено: только объяснение, без оплаты и промокода.
+    $action = null;
 } else if ($intent && $product->accountid && (float) $intent->amount > 0) {
     // Сумма выбрана или купон применён — кнопка оплаты, окно оплаты открывается сразу.
     $amountstr = \core_payment\helper::get_cost_as_string((float)$intent->amount, $intent->currency);
@@ -159,7 +172,7 @@ if ($product->kind === 'external') {
 // Вторая кнопка — оплата на другом рынке (рубли ↔ карта/PayPal): ведёт на парный товар,
 // он записывает в тот же курс. Если курс уже куплен, вторая кнопка не нужна.
 $altaction = null;
-if ($twin && !$owned && !$activesub) {
+if ($twin && !$owned && !$activesub && ($prereqok || !$loggedin)) {
     $altaction = [
         'href' => (new moodle_url('/local/kabshop/product.php', ['id' => $twin->id]))->out(false),
         'label' => get_string($market === 'ru' ? 'paybycard' : 'payinrub', 'local_kabshop'),
@@ -187,7 +200,8 @@ $data['subinfo'] = $activesub ? get_string('subactive', 'local_kabshop',
     userdate($activesub->nextcharge, get_string('strftimedate', 'langconfig'))) : null;
 $data['changeurl'] = !empty($action['autopay']) ? $changeurl : null;
 $data['changelabel'] = get_string($couponinfo ? 'couponremove' : 'changeamount', 'local_kabshop');
-$data['nopayment'] = !$free && !$product->accountid && $product->kind !== 'external';
+$data['prereqnotice'] = $prereqnotice;
+$data['nopayment'] = $prereqok && !$free && !$product->accountid && $product->kind !== 'external';
 $data['paid'] = $paid;
 $data['canmanage'] = $canmanage;
 $data['editurl'] = (new moodle_url('/local/kabshop/edit_product.php', ['id' => $id]))->out(false);

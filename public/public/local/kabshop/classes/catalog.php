@@ -122,15 +122,21 @@ class catalog {
      * @return array
      */
     public static function get_sections(bool $all = false, ?string $market = null): array {
-        global $DB;
+        global $DB, $USER;
         $where = $all ? [] : ['visible' => 1];
         $sections = $DB->get_records('local_kabshop_section', $where, 'sortorder, id');
         $products = $DB->get_records('local_kabshop_product', $where, 'sortorder, id');
+        // Товар с условием записи видят только прошедшие его; управляющий витриной — все.
+        $viewer = ($all || has_capability('local/kabshop:manage', context_system::instance()))
+            ? null : (int) ($USER->id ?? 0);
         foreach ($sections as $s) {
             $s->products = [];
         }
         foreach ($products as $p) {
             if ($market !== null && self::market($p) !== $market) {
+                continue;
+            }
+            if ($viewer !== null && !self::prerequisite_ok($p, $viewer)) {
                 continue;
             }
             if (isset($sections[$p->sectionid])) {
@@ -289,6 +295,98 @@ class catalog {
         }
         // Пожертвования и сервисы можно оплачивать повторно.
         return false;
+    }
+
+    /** @var array courseid => int[] — курсы-условия всех товаров курса, на время запроса */
+    protected static $courserequirements = [];
+
+    /**
+     * ID курсов из строки вида «236, 231».
+     *
+     * @param string $raw
+     * @return int[]
+     */
+    public static function parse_courseids(string $raw): array {
+        $ids = array_map('intval', preg_split('/[\s,;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY));
+        return array_values(array_unique(array_filter($ids, function(int $id): bool {
+            return $id > 0;
+        })));
+    }
+
+    /**
+     * Курсы-условия товара: купить или записаться может только записанный на один из них.
+     *
+     * Условие относится к курсу товара: списки всех товаров курса объединяются, иначе часть 2
+     * купили бы через парный товар на другом рынке, у которого условие забыли задать.
+     *
+     * @param \stdClass $product
+     * @return int[]
+     */
+    public static function required_courses(\stdClass $product): array {
+        global $DB;
+        $ids = self::parse_courseids((string) ($product->requirecourses ?? ''));
+        $courseid = (int) $product->courseid;
+        if ($courseid) {
+            if (!array_key_exists($courseid, self::$courserequirements)) {
+                $all = [];
+                foreach ($DB->get_fieldset_select('local_kabshop_product', 'requirecourses', 'courseid = ?',
+                        [$courseid]) as $raw) {
+                    $all = array_merge($all, self::parse_courseids((string) $raw));
+                }
+                self::$courserequirements[$courseid] = $all;
+            }
+            $ids = array_merge($ids, self::$courserequirements[$courseid]);
+        }
+        return array_values(array_diff(array_unique($ids), [$courseid]));
+    }
+
+    /**
+     * Проходит ли человек условие записи товара: есть запись на любой из курсов-условий или на
+     * сам курс товара — любым способом, активная или приостановленная (так же считает «Условия
+     * записи» local_kabsignup). Отчисленный право теряет: Moodle удаляет запись целиком.
+     *
+     * @param \stdClass $product
+     * @param int $userid 0 — гость
+     * @return bool
+     */
+    public static function prerequisite_ok(\stdClass $product, int $userid): bool {
+        global $DB;
+        $required = self::required_courses($product);
+        if (!$required) {
+            return true;
+        }
+        if ($userid <= 0 || isguestuser($userid)) {
+            return false;
+        }
+        if ($product->courseid) {
+            $required[] = (int) $product->courseid;
+        }
+        [$insql, $params] = $DB->get_in_or_equal($required, SQL_PARAMS_NAMED);
+        return $DB->record_exists_sql(
+            "SELECT 1
+               FROM {user_enrolments} ue
+               JOIN {enrol} e ON e.id = ue.enrolid
+              WHERE ue.userid = :userid AND e.courseid $insql",
+            ['userid' => $userid] + $params);
+    }
+
+    /**
+     * Названия курсов-условий для сообщений: «Часть первая», «Часть 1 (весна)».
+     *
+     * @param \stdClass $product
+     * @return string HTML
+     */
+    public static function prerequisite_names(\stdClass $product): string {
+        global $DB;
+        $required = self::required_courses($product);
+        if (!$required) {
+            return '';
+        }
+        $names = [];
+        foreach ($DB->get_records_list('course', 'id', $required, 'id', 'id, fullname') as $c) {
+            $names[] = '«' . format_string($c->fullname, true, ['context' => context_course::instance($c->id)]) . '»';
+        }
+        return implode(', ', array_unique($names));
     }
 
     /**

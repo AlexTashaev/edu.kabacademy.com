@@ -54,6 +54,8 @@ if ($form->is_cancelled()) {
     $data = file_postupdate_standard_editor($data, 'description', $editoroptions, $context);
     $data->enrolperiod = (int)($data->enrolperiod ?? 0);
     $data->courseid = (int)$data->courseid;
+    $data->requirecourses = implode(',', \local_kabshop\catalog::parse_courseids((string) ($data->requirecourses ?? '')))
+        ?: null;
     $data->timemodified = time();
     if ($data->id) {
         $DB->update_record('local_kabshop_product', $data);

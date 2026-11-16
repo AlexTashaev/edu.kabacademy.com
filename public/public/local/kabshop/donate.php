@@ -33,7 +33,8 @@ $producturl = new moodle_url('/local/kabshop/product.php', ['id' => $id]);
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url(new moodle_url('/local/kabshop/donate.php', ['id' => $id]));
 require_login(null, false);
-if (isguestuser() || !$product->visible || empty($product->customamount)) {
+if (isguestuser() || !$product->visible || empty($product->customamount)
+        || !catalog::prerequisite_ok($product, $USER->id)) {
     redirect($producturl);
 }
 require_sesskey();

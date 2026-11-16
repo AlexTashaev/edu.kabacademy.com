@@ -60,7 +60,16 @@ class service_provider implements \core_payment\local\callback\service_provider 
      * @return \core_payment\local\entities\payable
      */
     public static function get_payable(string $paymentarea, int $itemid): \core_payment\local\entities\payable {
+        global $USER;
         [$product, $amount] = self::resolve($paymentarea, $itemid);
+        // Начать оплату товара с условием записи может только прошедший его — так часть 2 не купить
+        // в обход страницы товара. Проверяется только живой покупатель: автосписания (свои и
+        // рекуррент Robokassa из cron, где $USER — админ) и колбэки шлюзов без входа не трогаем.
+        if ($paymentarea !== 'renewal' && !CLI_SCRIPT && isloggedin() && !isguestuser()
+                && !has_capability('local/kabshop:manage', \context_system::instance())
+                && !catalog::prerequisite_ok($product, (int) $USER->id)) {
+            throw new \moodle_exception('noprereq', 'local_kabshop', '', catalog::prerequisite_names($product));
+        }
         return new \core_payment\local\entities\payable($amount, $product->currency, (int)$product->accountid);
     }
 

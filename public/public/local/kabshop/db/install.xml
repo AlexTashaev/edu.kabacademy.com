@@ -34,6 +34,7 @@
         <FIELD NAME="recurmonths" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Автосписание раз в N месяцев; 0 = разово"/>
         <FIELD NAME="accountid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="payment_accounts.id"/>
         <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Курс, куда записывает"/>
+        <FIELD NAME="requirecourses" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Только для записанных на один из курсов: ID через запятую"/>
         <FIELD NAME="enrolperiod" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Срок доступа, сек; 0 = бессрочно"/>
         <FIELD NAME="externalurl" TYPE="char" LENGTH="1333" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>

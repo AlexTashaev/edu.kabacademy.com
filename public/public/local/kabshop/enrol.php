@@ -42,7 +42,9 @@ if (!data_submitted() || !confirm_sesskey()) {
     redirect($producturl);
 }
 
-if (!$product->visible || !catalog::is_free($product) || $product->kind === 'external') {
+if (!$product->visible || !catalog::is_free($product) || $product->kind === 'external'
+        || !catalog::prerequisite_ok($product, $USER->id)) {
+    // Не прошедшему условие записи страница товара объяснит, почему.
     redirect($producturl);
 }
 

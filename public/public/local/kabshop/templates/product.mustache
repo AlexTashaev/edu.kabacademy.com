@@ -19,8 +19,9 @@
 
     Страница товара: обложка слева, панель покупки справа (на десктопе —
     липнет при прокрутке), описание ниже. altaction — вторая кнопка: оплата
-    парным товаром на другом рынке (рубли ↔ карта и PayPal). Внизу — продавец,
-    контакты и оферта рынка этого товара.
+    парным товаром на другом рынке (рубли ↔ карта и PayPal). prereqnotice —
+    объяснение условия записи (HTML: названия курсов уже прошли format_string).
+    Внизу — продавец, контакты и оферта рынка этого товара.
 
     Example context (json):
     {"name": "Система мироздания", "summary": "Спецкурс", "description": "<p>Описание</p>",
@@ -48,6 +49,7 @@
             {{#price}}<div class="kabshop-price-lg{{#free}} kabshop-price-lg-free{{/free}}">{{price}}</div>{{/price}}
             {{#subinfo}}<div class="alert alert-info">{{subinfo}}</div>{{/subinfo}}
             {{#couponinfo}}<div class="alert alert-success">{{couponinfo}}</div>{{/couponinfo}}
+            {{#prereqnotice}}<div class="alert alert-info kabshop-prereq">{{{prereqnotice}}}</div>{{/prereqnotice}}
             {{#action}}
                 {{#href}}<a class="btn btn-primary btn-lg" href="{{href}}">{{label}}</a>{{/href}}
                 {{#post}}
