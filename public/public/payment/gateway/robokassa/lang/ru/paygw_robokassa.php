@@ -21,7 +21,7 @@
  * @copyright  2024 Alex Orlov <snickser@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-$string['abouttopay'] = 'Вы собираетесь пожертвовать на';
+$string['abouttopay'] = 'Вы оплачиваете';
 $string['amount'] = 'Сумма:';
 $string['callback_help'] = 'Скопируйте это и поместите в URL-адреса технических настроек магазина Robokassa, метод отсылки - POST.';
 $string['callback_url'] = 'ResultURL:';
@@ -31,16 +31,7 @@ $string['cost'] = 'Стоимость записи';
 $string['crypto'] = 'Алгоритм расчета хеша';
 $string['crypto_help'] = 'Метод используемый для рассчёта хеша контролных сумм параметров оплаты, который обеспечивает безопасность при прохождении платежа и целостность передаваемых данных. <b>Убедитесь, что именно этот алгоритм указан в настройках магазина, иначе ничего работать не будет!</b>';
 $string['currency'] = 'Валюта';
-$string['donate'] = '<div>Версия плагина: {$a->release} ({$a->versiondisk})<br>
-Новые версии плагина вы можете найти на <a href=https://github.com/Snickser/moodle-paygw_robokassa>GitHub.com</a>
-<img src="https://img.shields.io/github/v/release/Snickser/moodle-paygw_robokassa.svg"><br>
-Пожалуйста, отправьте мне немножко <a href="https://yoomoney.ru/fundraise/143H2JO3LLE.240720">доната</a>😊</div>
-<iframe src="https://yoomoney.ru/quickpay/fundraise/button?billNumber=143H2JO3LLE.240720"
-width="330" height="35" frameborder="0" allowtransparency="true" scrolling="no"></iframe><br>
-TRX TRGMc3b63Lus6ehLasbbHxsb2rHky5LbPe<br>
-BTC 1GFTTPCgRTC8yYL1gU7wBZRfhRNRBdLZsq<br>
-ETH 0x1bce7aadef39d328d262569e6194febe597cb2c9<br>
-';
+$string['donate'] = '<div>Версия плагина: {$a->release} ({$a->versiondisk}). Копия kabacademy; исходный плагин — <a href="https://github.com/Snickser/moodle-paygw_robokassa">Snickser/moodle-paygw_robokassa</a>.</div>';
 $string['enrolperiod'] = 'Продолжительность обучения ({$a->desc}): {$a->count}';
 $string['error_txdatabase'] = 'Error write TX data to database';
 $string['fixcost'] = 'Режим фиксированной цены';
@@ -73,10 +64,10 @@ $string['message_recurrent_notify'] = 'Здравствуйте, {$a->firstname}
 Пожалуйста, обеспечьте наличие указанной суммы на счёте, иначе подписка не будет продлена.
 Отключить регулярные платежи можно в разделе Отчёты (оплата) в личном профиле {$a->url}/user/profile.php';
 $string['message_success_completed'] = 'Здравствуйте, {$a->firstname}!
-Ваша платёжная транзакция № {$a->orderid} на {$a->fee} {$a->currency} успешно завершена. Спасибо за ваше пожертвование.
+Ваша платёжная транзакция № {$a->orderid} на {$a->fee} {$a->currency} успешно завершена. Спасибо за оплату.
 Если элемент курса недоступен, обратитесь в техподдержку сайта.';
 $string['message_success_recurrent'] = 'Здравствуйте, {$a->firstname}!
-Регулярная платёжная транзакция № {$a->orderid} на {$a->localizedcost} успешно создана. Спасибо за ваше пожертвование.
+Регулярная платёжная транзакция № {$a->orderid} на {$a->localizedcost} успешно создана. Спасибо за оплату.
 Следующий автоматический платёж назначен на {$a->nextpay}.
 Отключить регулярные платежи можно в разделе Отчёты (оплата) в личном профиле {$a->url}/user/profile.php';
 $string['messagesubject'] = 'Уведомление о платеже ({$a})';
@@ -88,13 +79,13 @@ $string['password_error'] = 'Введён неверный платёжный п
 $string['password_help'] = 'С помощью этого пароля можно обойти процесс отплаты. Может быть полезен когда нет возможности произвести оплату.';
 $string['password_mode'] = 'Разрешить ввод резервного пароля';
 $string['password_success'] = 'Платёжный пароль принят';
-$string['password_text'] = 'Если у вас нет возможности сделать пожертвование, то попросите у вашего куратора пароль и введите его.';
-$string['payment'] = 'Пожертвование';
+$string['password_text'] = 'Если у вас нет возможности оплатить, то попросите у вашего куратора пароль и введите его.';
+$string['payment'] = 'Оплата';
 $string['payment_error'] = 'Ошибка создания платежа, попробуйте ещё раз или обратитесь в тех.поддержку.';
 $string['payment_success'] = 'Оплата успешно произведена';
 $string['paymentserver'] = 'URL сервера оплаты';
 $string['paymentsystem'] = 'Платёжная система';
-$string['paymore'] = 'Если вы хотите пожертвовать больше, то просто впишите свою сумму вместо указанной.';
+$string['paymore'] = 'Если хотите заплатить больше, впишите свою сумму вместо указанной.';
 $string['plastic'] = 'VISA, MasterCard, МИР';
 $string['pluginname'] = 'Платежи Robokassa';
 $string['pluginname_desc'] = 'Плагин позволяет получать платежи через Robokassa.';
@@ -121,19 +112,19 @@ $string['robokassa'] = 'Robokassa';
 $string['sbp'] = 'СБП';
 $string['sendlinkmsg'] = 'Отправлять ссылку оплаты на почту';
 $string['sendlinkmsg_help'] = 'Если включено, то ссылка на счёт для оплаты будет отправляться на почту пользователя.';
-$string['sendpaymentbutton'] = 'Пожертвовать!';
+$string['sendpaymentbutton'] = 'Перейти к оплате';
 $string['showduration'] = 'Показывать длительность обучения на странице';
 $string['skipmode'] = 'Показать кнопку обхода платежа';
 $string['skipmode_help'] = 'Эта настройка разрешает кнопку обхода платежа, может быть полезна в публичных курсах с необязательной оплатой.';
-$string['skipmode_text'] = 'Если вы не имеете возможности совершить пожертвование через платёжную систему, то можете нажать на кнопку ниже.';
+$string['skipmode_text'] = 'Если вы не имеете возможности оплатить через платёжную систему, то можете нажать на кнопку ниже.';
 $string['skippaymentbutton'] = 'Не имею возможности :(';
 $string['sno'] = 'Тип налогообложения';
-$string['sno_help'] = 'Тип системы налогообложения для формирования чеков:<br>
-1 - Общая система налогообложения<br>
-2 - Упрощенная (УСН, доходы)<br>
-3 - Упрощенная (УСН, доходы минус расходы)<br>
-4 - Единый сельскохозяйственный налог (ЕСН)<br>
-5 - Патентная система налогообложения';
+$string['sno_esn'] = 'Единый сельскохозяйственный налог (ЕСХН)';
+$string['sno_help'] = 'Система налогообложения продавца для формирования чеков.';
+$string['sno_osn'] = 'Общая система налогообложения';
+$string['sno_patent'] = 'Патентная система налогообложения';
+$string['sno_usn_income'] = 'Упрощённая (УСН, доходы)';
+$string['sno_usn_income_outcome'] = 'Упрощённая (УСН, доходы минус расходы)';
 $string['suggest'] = 'Рекомендуемая цена';
 $string['suggesterror'] = 'Рекомендуемая цена должна быть указана для включенного регулярного платежа';
 $string['tax'] = 'Ставка НДС';
@@ -143,4 +134,4 @@ $string['testpassword2'] = 'Тестовый Пароль2';
 $string['uninterrupted_desc'] = 'Цена за курс сформирована с учётом пропущенного времени неоплаченного вами периода.';
 $string['usedetails'] = 'Показывать свёрнутым';
 $string['usedetails_help'] = 'Прячет кнопку или пароль под сворачиваемый блок, если они включены.';
-$string['usedetails_text'] = 'Нажмите тут если у вас нет возможности совершить пожертвование';
+$string['usedetails_text'] = 'Нажмите тут, если у вас нет возможности оплатить';

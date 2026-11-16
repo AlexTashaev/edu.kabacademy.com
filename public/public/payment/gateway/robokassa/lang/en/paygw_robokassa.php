@@ -31,16 +31,7 @@ When creating, it is checked that such payment does not exist.
 And upon receipt of payment, a request is made to verify payment of the invoice.';
 $string['crypto'] = 'Hash calculation algorithm';
 $string['crypto_help'] = 'The method used to calculate the checksum of the payment parameters hash, which ensures security during payment and the integrity of the transmitted data. <b>Make sure this algorithm is specified in the store settings, otherwise nothing will work!</b>';
-$string['donate'] = '<div>Plugin version: {$a->release} ({$a->versiondisk})<br>
-You can find new versions of the plugin at <a href=https://github.com/Snickser/moodle-paygw_robokassa>GitHub.com</a>
-<img src="https://img.shields.io/github/v/release/Snickser/moodle-paygw_robokassa.svg"><br>
-Please send me some <a href="https://yoomoney.ru/fundraise/143H2JO3LLE.240720">donate</a>😊</div>
-<iframe src="https://yoomoney.ru/quickpay/fundraise/button?billNumber=143H2JO3LLE.240720"
-width="330" height="35" frameborder="0" allowtransparency="true" scrolling="no"></iframe>
-TRX TRGMc3b63Lus6ehLasbbHxsb2rHky5LbPe<br>
-BTC 1GFTTPCgRTC8yYL1gU7wBZRfhRNRBdLZsq<br>
-ETH 0x1bce7aadef39d328d262569e6194febe597cb2c9<br>
-';
+$string['donate'] = '<div>Plugin version: {$a->release} ({$a->versiondisk}). Kabacademy copy; original plugin: <a href="https://github.com/Snickser/moodle-paygw_robokassa">Snickser/moodle-paygw_robokassa</a>.</div>';
 $string['enrolperiod'] = 'Enrolment duration ({$a->desc}): {$a->count}';
 $string['error_notvalidpayment'] = 'FAIL. Not a valid payment';
 $string['error_notvalidsignature'] = 'FAIL. Not a valid signature';
@@ -76,7 +67,7 @@ $string['message_success_completed'] = 'Hello {$a->firstname},
 You transaction of payment id {$a->orderid} with cost of {$a->localizedcost} is successfully completed.
 If the item is not accessable please contact the administrator.';
 $string['message_success_recurrent'] = 'Hello, {$a->firstname}!
-Your regular payment transaction No. {$a->orderid} for {$a->localizedcost} has been successfully created. Thank you for your donation.
+Your regular payment transaction No. {$a->orderid} for {$a->localizedcost} has been successfully created. Thank you for your payment.
 You can disable regular payments in the Reports (payment) section in your personal profile {$a->$url}/user/profile.php';
 $string['messageprovider:payment_receipt'] = 'Payment receipt';
 $string['messagesubject'] = 'Payment notification ({$a})';
@@ -91,11 +82,11 @@ $string['password_help'] = 'Using this password you can bypass the payback proce
 $string['password_success'] = 'Paymemt password accepted';
 $string['password_text'] = 'If you are unable to make a payment, then ask your curator for a password and enter it.';
 $string['passwordmode'] = 'Password';
-$string['payment'] = 'Donation';
+$string['payment'] = 'Payment';
 $string['payment_error'] = 'Payment Error';
 $string['payment_success'] = 'Payment Successful';
 $string['paymentsystem'] = 'Payment system';
-$string['paymore'] = 'If you want to donate more, simply enter your amount instead of the indicated amount.';
+$string['paymore'] = 'If you want to pay more, simply enter your amount instead of the indicated amount.';
 $string['plastic'] = 'VISA, MasterCard, MIR';
 $string['pluginname'] = 'Robokassa payment';
 $string['pluginname_desc'] = 'The Robokassa plugin allows you to receive payments via Robokassa.';
@@ -133,19 +124,19 @@ $string['robokassa'] = 'Robokassa';
 $string['sbp'] = 'SBP';
 $string['sendlinkmsg'] = 'Send payment link by email';
 $string['sendlinkmsg_help'] = 'If enabled, a link to the invoice for payment will be sent to the users email.';
-$string['sendpaymentbutton'] = 'Send payment via Robokassa!';
+$string['sendpaymentbutton'] = 'Proceed to payment';
 $string['showduration'] = 'Show duration of training';
 $string['skipmode'] = 'Can skip payment';
 $string['skipmode_help'] = 'This setting allows a payment bypass button, which can be useful in public courses with optional payment.';
-$string['skipmode_text'] = 'If you are not able to make a donation through the payment system, you can click on this button.';
+$string['skipmode_text'] = 'If you are not able to pay through the payment system, you can click on this button.';
 $string['skippaymentbutton'] = 'Skip payment :(';
 $string['sno'] = 'Tax type';
-$string['sno_help'] = 'Type of tax system for generating checks:<br>
-1 - General taxation system<br>
-2 - Simplified (STS, income)<br>
-3 - Simplified (STS, income minus expenses)<br>
-4 - Unified Agricultural Tax (UST)<br>
-5 - Patent taxation system';
+$string['sno_esn'] = 'Unified Agricultural Tax';
+$string['sno_help'] = 'Tax system of the seller, used for generating receipts.';
+$string['sno_osn'] = 'General taxation system';
+$string['sno_patent'] = 'Patent taxation system';
+$string['sno_usn_income'] = 'Simplified (STS, income)';
+$string['sno_usn_income_outcome'] = 'Simplified (STS, income minus expenses)';
 $string['suggest'] = 'Suggested cost';
 $string['suggesterror'] = 'Suggested price must be for recurring payment enabled';
 $string['tax'] = 'VAT rate';
@@ -155,5 +146,5 @@ $string['testpassword2'] = 'Test Password2';
 $string['uninterrupted_desc'] = 'The price for the course is formed taking into account the missed time of the period you have not paid for.';
 $string['usedetails'] = 'Make it collapsible';
 $string['usedetails_help'] = 'Display a button or password in a collapsed block.';
-$string['usedetails_text'] = 'Click here if you are unable to donate.';
+$string['usedetails_text'] = 'Click here if you are unable to pay.';
 $string['wallet'] = 'Wallet One';

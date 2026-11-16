@@ -92,12 +92,13 @@ class gateway extends \core_payment\gateway {
         $mform->addElement('passwordunmask', 'password2', get_string('password2', 'paygw_robokassa'), ['size' => 24]);
         $mform->setType('password2', PARAM_TEXT);
 
+        // Копия kabacademy: варианты подписаны словами, сохраняемые значения прежние.
         $options = [
-        'osn' => 1,
-        'usn_income' => 2,
-        'usn_income_outcome' => 3,
-        'esn' => 4,
-        'patent' => 5,
+        'osn' => get_string('sno_osn', 'paygw_robokassa'),
+        'usn_income' => get_string('sno_usn_income', 'paygw_robokassa'),
+        'usn_income_outcome' => get_string('sno_usn_income_outcome', 'paygw_robokassa'),
+        'esn' => get_string('sno_esn', 'paygw_robokassa'),
+        'patent' => get_string('sno_patent', 'paygw_robokassa'),
         ];
         $mform->addElement(
             'select',

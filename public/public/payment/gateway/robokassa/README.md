@@ -1,5 +1,16 @@
 # Robokassa payment gateway plugin for Moodle.
 
+> **Копия kabacademy (2.12+kab1, 16.11.2026).** Основана на
+> [Snickser/moodle-paygw_robokassa](https://github.com/Snickser/moodle-paygw_robokassa) 2.12 (2026042101).
+> Отличия — только тексты и подписи, логика оплаты не менялась:
+> - у покупателя «Оплата» вместо «Пожертвование»: страница оплаты, кнопка, письма;
+> - из формы шлюза и настроек плагина убран блок автора с просьбой о донате и внешними вставками;
+> - «Тип налогообложения» подписан словами, сохраняемые значения прежние.
+>
+> При обновлении от автора правки вносятся заново: `lang/ru`, `lang/en`,
+> `classes/gateway.php` (список `sno`), `version.php`.
+> Спека: `.claude/kabshop/spec_paygw_robokassa_texts_2026-11.md`.
+
 [![](https://img.shields.io/github/v/release/Snickser/moodle-paygw_robokassa.svg)](https://github.com/Snickser/moodle-paygw_robokassa/releases)
 [![Build Status](https://github.com/Snickser/moodle-paygw_robokassa/actions/workflows/moodle-ci.yml/badge.svg)](https://github.com/Snickser/moodle-paygw_robokassa/actions/workflows/moodle-ci.yml)
 
