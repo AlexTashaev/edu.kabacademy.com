@@ -101,6 +101,10 @@ class product_form extends \moodleform {
         }
         $mform->addElement('select', 'accountid', get_string('paymentaccount', 'payment'), $accounts);
 
+        $mform->addElement('text', 'sku', get_string('sku', $p), ['size' => 20, 'maxlength' => 64]);
+        $mform->setType('sku', PARAM_TEXT);
+        $mform->addHelpButton('sku', 'sku', $p);
+
         $mform->addElement('text', 'courseid', get_string('courseid', $p), ['size' => 8]);
         $mform->setType('courseid', PARAM_INT);
         $mform->addHelpButton('courseid', 'courseid', $p);

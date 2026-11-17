@@ -737,6 +737,37 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     border-color: var(--kabshop-border);
 }
 
+/* Данные жертвователя для квитанции: страна, тип, номер. */
+.kabshop-donate fieldset + fieldset.kabshop-tax {
+    margin-top: 1.25rem;
+}
+
+.kabshop-tax .form-select,
+.kabshop-tax .form-control {
+    max-width: 22rem;
+    border-color: var(--kabshop-border);
+}
+
+.kabshop-taxtype,
+.kabshop-taxid {
+    margin-top: .8rem;
+}
+
+.kabshop-taxtype .form-check {
+    margin-bottom: .3rem;
+    font-size: .92rem;
+}
+
+.kabshop-taxid .form-text {
+    font-size: .8rem;
+    color: var(--kabshop-muted);
+    max-width: 30rem;
+}
+
+.kabshop-taxinfo {
+    font-size: .9rem;
+}
+
 /* --- Оплачено / статусы --- */
 .kabshop-product .alert-success {
     background: var(--kabshop-green-bg);

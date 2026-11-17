@@ -91,6 +91,9 @@ if ($purchase->couponid && ($c = $DB->get_record('local_kabshop_coupon', ['id' =
     $dl[get_string('couponcode', $p)] = s($c->code) . ' · −' .
         \core_payment\helper::get_cost_as_string((float) $purchase->amountoff, $purchase->currency);
 }
+if (!empty($purchase->taxtype)) {
+    $dl[get_string('taxpayer', $p)] = catalog::tax_label($purchase->taxtype, $purchase->taxid);
+}
 if ($r) {
     $dl[get_string('col_paymethod', $p)] = orders::method($r);
     if ($r->txnid) {

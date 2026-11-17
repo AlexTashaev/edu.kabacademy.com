@@ -106,6 +106,10 @@ class service_provider implements \core_payment\local\callback\service_provider 
             if (!empty($intent->couponid)) {
                 $opts = ['couponid' => (int) $intent->couponid, 'amountoff' => (float) $intent->amountoff];
             }
+            // Данные жертвователя — в заказ, а у регулярного пожертвования и в подписку.
+            if (!empty($intent->taxtype)) {
+                $opts += ['taxtype' => (string) $intent->taxtype, 'taxid' => (string) $intent->taxid];
+            }
         }
         return catalog::grant($product, $userid, $paymentid, $sub, $opts) > 0;
     }

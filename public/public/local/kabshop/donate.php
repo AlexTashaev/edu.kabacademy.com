@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Сумма на выбор: запоминает сумму и возвращает на страницу товара с кнопкой оплаты.
+ * Сумма на выбор и данные жертвователя: запоминает их и возвращает на страницу товара с кнопкой оплаты.
  *
  * @package    local_kabshop
  * @copyright  2026 Kabacademy
@@ -33,23 +33,45 @@ $producturl = new moodle_url('/local/kabshop/product.php', ['id' => $id]);
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url(new moodle_url('/local/kabshop/donate.php', ['id' => $id]));
 require_login(null, false);
-if (isguestuser() || !$product->visible || empty($product->customamount)
+$taxform = catalog::needs_taxid($product) && !catalog::is_free($product);
+if (isguestuser() || !$product->visible || (empty($product->customamount) && !$taxform)
         || !catalog::prerequisite_ok($product, $USER->id)) {
     redirect($producturl);
 }
 require_sesskey();
 
-// Своя сумма важнее готовой: если поле заполнено — берём его.
-$custom = trim(optional_param('customvalue', '', PARAM_RAW_TRIMMED));
-$amount = $custom !== '' ? (float)str_replace([',', ' '], ['.', ''], $custom) : optional_param('preset', 0, PARAM_FLOAT);
+if (!empty($product->customamount)) {
+    // Своя сумма важнее готовой: если поле заполнено — берём его.
+    $custom = trim(optional_param('customvalue', '', PARAM_RAW_TRIMMED));
+    $amount = $custom !== '' ? (float)str_replace([',', ' '], ['.', ''], $custom)
+        : optional_param('preset', 0, PARAM_FLOAT);
 
-$min = max((float)$product->price, 0.01);
-if ($amount < $min || $amount > catalog::MAX_AMOUNT) {
-    redirect($producturl, get_string('amountrange', 'local_kabshop', (object)[
-        'min' => \core_payment\helper::get_cost_as_string($min, $product->currency),
-        'max' => \core_payment\helper::get_cost_as_string(catalog::MAX_AMOUNT, $product->currency),
-    ]), null, \core\output\notification::NOTIFY_ERROR);
+    $min = max((float)$product->price, 0.01);
+    if ($amount < $min || $amount > catalog::MAX_AMOUNT) {
+        redirect($producturl, get_string('amountrange', 'local_kabshop', (object)[
+            'min' => \core_payment\helper::get_cost_as_string($min, $product->currency),
+            'max' => \core_payment\helper::get_cost_as_string(catalog::MAX_AMOUNT, $product->currency),
+        ]), null, \core\output\notification::NOTIFY_ERROR);
+    }
+} else {
+    $amount = (float) $product->price;
 }
 
-$intentid = catalog::create_intent($product, $USER->id, $amount);
+$tax = null;
+if ($taxform) {
+    $raw = [
+        'country' => optional_param('taxcountry', '', PARAM_ALPHA),
+        'type' => optional_param('taxtype', '', PARAM_ALPHANUM),
+        'id' => optional_param('taxid', '', PARAM_RAW_TRIMMED),
+    ];
+    [$tax, $error] = catalog::clean_tax($raw['country'], $raw['type'], $raw['id']);
+    if ($error) {
+        // Введённое не теряем. Номер — персональные данные, поэтому в сессии, а не в адресе.
+        $SESSION->local_kabshop_tax = $raw + ['productid' => $id, 'amount' => $amount];
+        redirect($producturl, get_string($error, 'local_kabshop'), null, \core\output\notification::NOTIFY_ERROR);
+    }
+    unset($SESSION->local_kabshop_tax);
+}
+
+$intentid = catalog::create_intent($product, $USER->id, $amount, $tax);
 redirect(new moodle_url('/local/kabshop/product.php', ['id' => $id, 'intent' => $intentid]));

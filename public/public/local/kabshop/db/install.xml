@@ -33,6 +33,7 @@
         <FIELD NAME="presets" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Готовые суммы через запятую"/>
         <FIELD NAME="recurmonths" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Автосписание раз в N месяцев; 0 = разово"/>
         <FIELD NAME="accountid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="payment_accounts.id"/>
+        <FIELD NAME="sku" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Код для Priority; пусто = SKU по умолчанию счёта"/>
         <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Курс, куда записывает"/>
         <FIELD NAME="requirecourses" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Только для записанных на один из курсов: ID через запятую"/>
         <FIELD NAME="enrolperiod" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Срок доступа, сек; 0 = бессрочно"/>
@@ -64,6 +65,8 @@
         <FIELD NAME="note" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Причина ручной выдачи / отзыва"/>
         <FIELD NAME="couponid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="amountoff" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="taxtype" TYPE="char" LENGTH="1" NOTNULL="false" SEQUENCE="false" COMMENT="Пожертвование: 1 частное лицо, 2 организация, 9 иностранный резидент"/>
+        <FIELD NAME="taxid" TYPE="char" LENGTH="20" NOTNULL="false" SEQUENCE="false" COMMENT="Пожертвование: идентификационный номер жертвователя"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -82,6 +85,9 @@
         <FIELD NAME="currency" TYPE="char" LENGTH="3" NOTNULL="true" DEFAULT="USD" SEQUENCE="false"/>
         <FIELD NAME="couponid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="amountoff" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="taxcountry" TYPE="char" LENGTH="2" NOTNULL="false" SEQUENCE="false" COMMENT="Пожертвование: страна жертвователя"/>
+        <FIELD NAME="taxtype" TYPE="char" LENGTH="1" NOTNULL="false" SEQUENCE="false" COMMENT="Пожертвование: 1 частное лицо, 2 организация, 9 иностранный резидент"/>
+        <FIELD NAME="taxid" TYPE="char" LENGTH="20" NOTNULL="false" SEQUENCE="false" COMMENT="Пожертвование: идентификационный номер жертвователя"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>
@@ -108,6 +114,8 @@
         <FIELD NAME="failcount" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="lastattempt" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="lasterror" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="taxtype" TYPE="char" LENGTH="1" NOTNULL="false" SEQUENCE="false" COMMENT="Пожертвование: тип жертвователя первого платежа"/>
+        <FIELD NAME="taxid" TYPE="char" LENGTH="20" NOTNULL="false" SEQUENCE="false" COMMENT="Пожертвование: номер жертвователя первого платежа"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>

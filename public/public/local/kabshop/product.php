@@ -71,7 +71,10 @@ $action = null;
 $donateform = null;
 $couponform = null;
 $couponinfo = null;
+$taxinfo = null;
 $custom = !empty($product->customamount);
+// Пожертвование не в рублях: перед оплатой — данные жертвователя для квитанции (статья 46).
+$taxform = catalog::needs_taxid($product) && !$free;
 // Зафиксированная цена (сумма на выбор или цена по купону) — только своя и для этого товара.
 $intent = ($loggedin && $intentid) ? catalog::get_intent($intentid, IGNORE_MISSING) : null;
 if ($intent && ((int) $intent->userid !== (int) $USER->id || (int) $intent->productid !== $id)) {
@@ -99,8 +102,11 @@ if ($product->kind === 'external') {
 } else if (!$prereqok) {
     // Вошёл, но условие не выполнено: только объяснение, без оплаты и промокода.
     $action = null;
-} else if ($intent && $product->accountid && (float) $intent->amount > 0) {
+} else if ($intent && $product->accountid && (float) $intent->amount > 0 && (!$taxform || !empty($intent->taxtype))) {
     // Сумма выбрана или купон применён — кнопка оплаты, окно оплаты открывается сразу.
+    if ($taxform) {
+        $taxinfo = get_string('taxinfo', 'local_kabshop', catalog::tax_label($intent->taxtype, $intent->taxid));
+    }
     $amountstr = \core_payment\helper::get_cost_as_string((float)$intent->amount, $intent->currency);
     $action = [
         'payment' => true,
@@ -126,22 +132,60 @@ if ($product->kind === 'external') {
         var b = document.querySelector('[data-kabshop-autopay]');
         if (b) { b.click(); }
     });");
-} else if ($custom && $product->accountid) {
+} else if (($custom || $taxform) && $product->accountid) {
+    // Введённое до ошибки (donate.php кладёт его в сессию), иначе прошлое пожертвование.
+    $saved = $SESSION->local_kabshop_tax ?? null;
+    if (!$saved || (int) ($saved['productid'] ?? 0) !== $id) {
+        $saved = null;
+    }
     $presets = [];
-    foreach (catalog::presets($product) as $i => $v) {
-        $presets[] = [
-            'value' => $v,
-            'label' => \core_payment\helper::get_cost_as_string($v, $product->currency),
-            'checked' => $i === 0,
+    $customvalue = '';
+    if ($custom) {
+        $values = catalog::presets($product);
+        $savedamount = $saved ? round((float) $saved['amount'], 2) : null;
+        $pick = ($savedamount !== null && in_array($savedamount, $values)) ? $savedamount : null;
+        if ($savedamount !== null && $pick === null) {
+            $customvalue = format_float($savedamount, 2, false);
+        }
+        foreach ($values as $i => $v) {
+            $presets[] = [
+                'value' => $v,
+                'label' => \core_payment\helper::get_cost_as_string($v, $product->currency),
+                'checked' => $pick !== null ? $v == $pick : ($i === 0 && $customvalue === ''),
+            ];
+        }
+    }
+    $taxdata = null;
+    if ($taxform) {
+        $prev = $saved ?: catalog::last_tax((int) $USER->id);
+        $country = strtoupper((string) ($prev['country'] ?? '')) ?: (string) $USER->country;
+        $type = in_array($prev['type'] ?? '', catalog::TAX_TYPES, true) ? $prev['type'] : '1';
+        $countries = [];
+        foreach (get_string_manager()->get_list_of_countries() as $code => $cname) {
+            $countries[] = ['code' => $code, 'name' => $cname, 'selected' => $code === $country];
+        }
+        $types = [];
+        foreach (catalog::TAX_TYPES as $t) {
+            $types[] = ['value' => $t, 'label' => get_string('taxtype_' . $t, 'local_kabshop'), 'checked' => $t === $type];
+        }
+        $taxdata = [
+            'countries' => $countries,
+            'types' => $types,
+            'taxidvalue' => $type === '9' ? '' : (string) ($prev['id'] ?? ''),
+            'isil' => $country === 'IL',
+            'showid' => $country === 'IL' && $type !== '9',
         ];
     }
     $donateform = [
         'url' => (new moodle_url('/local/kabshop/donate.php'))->out(false),
         'id' => $id,
         'sesskey' => sesskey(),
+        'custom' => $custom,
         'presets' => $presets,
+        'customvalue' => $customvalue,
         'min' => max((float)$product->price, 0.01),
         'currency' => $product->currency,
+        'tax' => $taxdata,
     ];
 } else if ($free) {
     $action = [
@@ -196,10 +240,12 @@ $data['legal'] = \local_kabshop\legal::export($market);
 $data['donateform'] = $donateform;
 $data['couponform'] = $couponform;
 $data['couponinfo'] = $couponinfo;
+$data['taxinfo'] = $taxinfo;
 $data['subinfo'] = $activesub ? get_string('subactive', 'local_kabshop',
     userdate($activesub->nextcharge, get_string('strftimedate', 'langconfig'))) : null;
 $data['changeurl'] = !empty($action['autopay']) ? $changeurl : null;
-$data['changelabel'] = get_string($couponinfo ? 'couponremove' : 'changeamount', 'local_kabshop');
+$data['changelabel'] = get_string($couponinfo ? 'couponremove' : ($taxinfo ? 'changedonation' : 'changeamount'),
+    'local_kabshop');
 $data['prereqnotice'] = $prereqnotice;
 $data['nopayment'] = $prereqok && !$free && !$product->accountid && $product->kind !== 'external';
 $data['paid'] = $paid;

@@ -39,6 +39,8 @@ class provider implements \core_privacy\local\metadata\provider {
             'userid' => 'privacy:metadata',
             'paymentid' => 'privacy:metadata',
             'amount' => 'privacy:metadata',
+            'taxtype' => 'privacy:metadata',
+            'taxid' => 'privacy:metadata',
             'timecreated' => 'privacy:metadata',
         ], 'privacy:metadata');
         return $collection;

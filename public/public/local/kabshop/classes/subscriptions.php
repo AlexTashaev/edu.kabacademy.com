@@ -114,7 +114,8 @@ class subscriptions {
      * @param float|null $renewamount сумма следующих списаний, если первая оплата была со скидкой
      * @return \stdClass
      */
-    public static function create(\stdClass $product, int $userid, \stdClass $payment, ?float $renewamount = null): \stdClass {
+    public static function create(\stdClass $product, int $userid, \stdClass $payment, ?float $renewamount = null,
+            array $tax = []): \stdClass {
         global $DB;
         $now = time();
         $sub = (object) [
@@ -132,6 +133,9 @@ class subscriptions {
             'failcount' => 0,
             'lastattempt' => 0,
             'lasterror' => null,
+            // Данные жертвователя первого платежа — автосписания наследуют их, как в WordPress.
+            'taxtype' => $tax['type'] ?? null,
+            'taxid' => $tax['id'] ?? null,
             'timecreated' => $now,
             'timemodified' => $now,
         ];

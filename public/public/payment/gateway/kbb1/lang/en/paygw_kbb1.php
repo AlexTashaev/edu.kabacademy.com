@@ -58,5 +58,5 @@ $string['privacy:metadata:paygw_kbb1:token'] = 'Card or PayPal token for recurri
 $string['privacy:metadata:paygw_kbb1:txnid'] = 'Transaction ID.';
 $string['privacy:metadata:paygw_kbb1:userid'] = 'Buyer.';
 $string['sku'] = 'Default SKU';
-$string['sku_help'] = 'Priority code sent to the service. WordPress takes it from the product; here it is one per account.';
+$string['sku_help'] = 'Priority code sent to the service. A storefront product with its own SKU sends that one, otherwise this one, as in WordPress.';
 $string['unsupportedcurrency'] = 'Currency {$a} is not supported: ILS, USD, EUR only.';

@@ -49,6 +49,7 @@
             {{#price}}<div class="kabshop-price-lg{{#free}} kabshop-price-lg-free{{/free}}">{{price}}</div>{{/price}}
             {{#subinfo}}<div class="alert alert-info">{{subinfo}}</div>{{/subinfo}}
             {{#couponinfo}}<div class="alert alert-success">{{couponinfo}}</div>{{/couponinfo}}
+            {{#taxinfo}}<div class="alert alert-light kabshop-taxinfo">{{taxinfo}}</div>{{/taxinfo}}
             {{#prereqnotice}}<div class="alert alert-info kabshop-prereq">{{{prereqnotice}}}</div>{{/prereqnotice}}
             {{#action}}
                 {{#href}}<a class="btn btn-primary btn-lg" href="{{href}}">{{label}}</a>{{/href}}
@@ -95,6 +96,7 @@
             <form method="post" action="{{url}}" class="kabshop-donate">
                 <input type="hidden" name="id" value="{{id}}">
                 <input type="hidden" name="sesskey" value="{{sesskey}}">
+                {{#custom}}
                 <fieldset>
                     <legend class="kabshop-donate-legend">{{#str}} chooseamount, local_kabshop {{/str}}</legend>
                     <div class="kabshop-presets">
@@ -105,12 +107,67 @@
                     </div>
                     <label class="kabshop-custom-label" for="kabshop-custom">{{#str}} otheramount, local_kabshop {{/str}}</label>
                     <div class="input-group kabshop-custom">
-                        <input type="number" class="form-control" id="kabshop-custom" name="customvalue" min="{{min}}" step="0.01" inputmode="decimal">
+                        <input type="number" class="form-control" id="kabshop-custom" name="customvalue" min="{{min}}" step="0.01" inputmode="decimal" value="{{customvalue}}">
                         <span class="input-group-text">{{currency}}</span>
                     </div>
                 </fieldset>
+                {{/custom}}
+                {{#tax}}
+                <fieldset class="kabshop-tax">
+                    <legend class="kabshop-donate-legend">{{#str}} taxlegend, local_kabshop {{/str}}</legend>
+                    <label class="kabshop-custom-label" for="kabshop-taxcountry">{{#str}} taxcountry, local_kabshop {{/str}}</label>
+                    <select class="form-select custom-select" id="kabshop-taxcountry" name="taxcountry" required>
+                        <option value="">{{#str}} choosecountry, local_kabshop {{/str}}</option>
+                        {{#countries}}
+                        <option value="{{code}}" {{#selected}}selected{{/selected}}>{{name}}</option>
+                        {{/countries}}
+                    </select>
+                    <div class="kabshop-taxtype" {{^isil}}hidden{{/isil}}>
+                        {{#types}}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="taxtype" id="kabshop-taxtype-{{value}}" value="{{value}}" {{#checked}}checked{{/checked}}>
+                            <label class="form-check-label" for="kabshop-taxtype-{{value}}">{{label}}</label>
+                        </div>
+                        {{/types}}
+                    </div>
+                    <div class="kabshop-taxid" {{^showid}}hidden{{/showid}}>
+                        <label class="kabshop-custom-label" for="kabshop-taxid">{{#str}} taxid, local_kabshop {{/str}}</label>
+                        <input type="text" class="form-control" id="kabshop-taxid" name="taxid" value="{{taxidvalue}}" inputmode="numeric" maxlength="9" autocomplete="off">
+                        <div class="form-text">{{#str}} taxid_note, local_kabshop {{/str}}</div>
+                    </div>
+                </fieldset>
+                {{/tax}}
                 <button type="submit" class="btn btn-primary btn-lg mt-3">{{#str}} continue {{/str}}</button>
             </form>
+            {{#tax}}
+            {{#js}}
+            (function() {
+                var form = document.querySelector('.kabshop-donate');
+                var country = form && form.querySelector('[name="taxcountry"]');
+                if (!country) {
+                    return;
+                }
+                var types = form.querySelector('.kabshop-taxtype');
+                var idbox = form.querySelector('.kabshop-taxid');
+                var id = form.querySelector('[name="taxid"]');
+                // Тип жертвователя — только для Израиля, номер — для частного лица и организации.
+                var sync = function() {
+                    var il = country.value === 'IL';
+                    var type = form.querySelector('[name="taxtype"]:checked');
+                    types.hidden = !il;
+                    idbox.hidden = !(il && type && type.value !== '9');
+                };
+                country.addEventListener('change', sync);
+                form.querySelectorAll('[name="taxtype"]').forEach(function(r) {
+                    r.addEventListener('change', sync);
+                });
+                id.addEventListener('input', function() {
+                    id.value = id.value.replace(/\D/g, '');
+                });
+                sync();
+            })();
+            {{/js}}
+            {{/tax}}
             {{/donateform}}
             {{#nopayment}}
             <div class="alert alert-warning">{{#str}} nopayment, local_kabshop {{/str}}</div>

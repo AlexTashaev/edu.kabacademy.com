@@ -218,18 +218,21 @@ class catalog {
     }
 
     /**
-     * Запомнить выбранную покупателем сумму. Минимум — цена товара.
+     * Запомнить выбранную покупателем сумму. Минимум — цена товара. Пожертвование с данными
+     * жертвователя идёт сюда же и при фиксированной цене (тогда сумма — ровно цена).
      *
      * @param \stdClass $product
      * @param int $userid
      * @param float $amount
+     * @param array|null $tax данные жертвователя из clean_tax()
      * @return int id записи
      */
-    public static function create_intent(\stdClass $product, int $userid, float $amount): int {
+    public static function create_intent(\stdClass $product, int $userid, float $amount, ?array $tax = null): int {
         global $DB;
         $amount = round($amount, 2);
-        if (empty($product->customamount) || $amount < (float)$product->price || $amount <= 0
-                || $amount > self::MAX_AMOUNT) {
+        $fixed = empty($product->customamount);
+        if (($fixed && (!$tax || $amount !== round((float) $product->price, 2)))
+                || $amount < (float)$product->price || $amount <= 0 || $amount > self::MAX_AMOUNT) {
             throw new \moodle_exception('invalidamount', 'local_kabshop');
         }
         return $DB->insert_record('local_kabshop_intent', (object)[
@@ -237,8 +240,90 @@ class catalog {
             'userid' => $userid,
             'amount' => $amount,
             'currency' => $product->currency,
+            'taxcountry' => $tax['country'] ?? null,
+            'taxtype' => $tax['type'] ?? null,
+            'taxid' => $tax['id'] ?? null,
             'timecreated' => time(),
         ]);
+    }
+
+    /** Типы жертвователя, как в WordPress и в кассе: частное лицо, организация, иностранный резидент. */
+    const TAX_TYPES = ['1', '2', '9'];
+
+    /** Номер, который касса ждёт от иностранного резидента. */
+    const TAX_FOREIGN_ID = '888888888';
+
+    /**
+     * Нужны ли данные жертвователя для квитанции (налоговый зачёт по статье 46 в Израиле):
+     * пожертвование не в рублях. Рублёвые идут российскому фонду через Robokassa.
+     *
+     * @param \stdClass $product
+     * @return bool
+     */
+    public static function needs_taxid(\stdClass $product): bool {
+        return $product->kind === 'donation' && $product->currency !== self::RU_CURRENCY;
+    }
+
+    /**
+     * Проверить и привести данные жертвователя к виду, который ждёт касса, — по правилам
+     * WordPress: не Израиль или тип 9 → тип 9 и номер 888888888; Израиль, тип 1 или 2 → номер
+     * обязателен, ровно 9 цифр.
+     *
+     * @param string $country код страны
+     * @param string $type 1, 2 или 9
+     * @param string $id номер
+     * @return array [данные ['country', 'type', 'id'] или null, ключ строки ошибки или null]
+     */
+    public static function clean_tax(string $country, string $type, string $id): array {
+        $country = strtoupper(trim($country));
+        if (!array_key_exists($country, get_string_manager()->get_list_of_countries())) {
+            return [null, 'taxcountry_required'];
+        }
+        if ($country !== 'IL') {
+            return [['country' => $country, 'type' => '9', 'id' => self::TAX_FOREIGN_ID], null];
+        }
+        $type = in_array($type, self::TAX_TYPES, true) ? $type : '1';
+        if ($type === '9') {
+            return [['country' => $country, 'type' => '9', 'id' => self::TAX_FOREIGN_ID], null];
+        }
+        $id = preg_replace('/\D/', '', $id);
+        if ($id === '') {
+            return [null, 'taxid_required'];
+        }
+        if (strlen($id) !== 9) {
+            return [null, 'taxid_invalid'];
+        }
+        return [['country' => $country, 'type' => $type, 'id' => $id], null];
+    }
+
+    /**
+     * Данные последнего пожертвования человека — чтобы не вводить номер каждый раз.
+     *
+     * @param int $userid
+     * @return array|null ['country', 'type', 'id']
+     */
+    public static function last_tax(int $userid): ?array {
+        global $DB;
+        $rows = $DB->get_records_select('local_kabshop_intent', 'userid = ? AND taxtype IS NOT NULL',
+            [$userid], 'id DESC', 'id, taxcountry, taxtype, taxid', 0, 1);
+        $row = reset($rows);
+        return $row ? ['country' => (string) $row->taxcountry, 'type' => (string) $row->taxtype,
+            'id' => (string) $row->taxid] : null;
+    }
+
+    /**
+     * Данные жертвователя одной строкой: «Частное лицо (удостоверение личности), 012345678».
+     *
+     * @param string|null $type
+     * @param string|null $id
+     * @return string пусто, если данных нет
+     */
+    public static function tax_label(?string $type, ?string $id): string {
+        if ((string) $type === '' || !in_array($type, self::TAX_TYPES, true)) {
+            return '';
+        }
+        $label = get_string('taxtype_' . $type, 'local_kabshop');
+        return $type === '9' ? $label : $label . ', ' . s((string) $id);
     }
 
     /**
@@ -396,7 +481,8 @@ class catalog {
      * @param int $userid
      * @param int $paymentid 0 — без оплаты (бесплатно, 100% купон, ручная выдача)
      * @param \stdClass|null $sub подписка, если это автосписание
-     * @param array $opts couponid, amountoff — купон; grantedby, note, timeend, mail — ручная выдача
+     * @param array $opts couponid, amountoff — купон; grantedby, note, timeend, mail — ручная выдача;
+     *     taxtype, taxid — данные жертвователя (у автосписания берутся из подписки)
      * @return int номер покупки (он же номер заказа в письме)
      */
     public static function grant(\stdClass $product, int $userid, int $paymentid = 0, ?\stdClass $sub = null,
@@ -411,6 +497,10 @@ class catalog {
         }
         $couponid = (int) ($opts['couponid'] ?? 0);
         $amountoff = (float) ($opts['amountoff'] ?? 0);
+        $tax = [
+            'type' => ($opts['taxtype'] ?? null) ?: ($sub->taxtype ?? null),
+            'id' => ($opts['taxid'] ?? null) ?: ($sub->taxid ?? null),
+        ];
         $purchaseid = $DB->insert_record('local_kabshop_purchase', (object)[
             'productid' => $product->id,
             'userid' => $userid,
@@ -423,6 +513,8 @@ class catalog {
             'note' => isset($opts['note']) ? \core_text::substr(trim((string) $opts['note']), 0, 250) : null,
             'couponid' => $couponid,
             'amountoff' => $amountoff,
+            'taxtype' => $tax['type'],
+            'taxid' => $tax['id'],
         ]);
         if ($couponid) {
             coupons::redeem($couponid, $userid, $purchaseid, $amountoff, $currency);
@@ -434,7 +526,7 @@ class catalog {
         if (!$sub && $payment && !empty($product->recurmonths)) {
             $sub = subscriptions::get_active($product->id, $userid);
             $sub = $sub ? subscriptions::extend($sub, $paymentid)
-                : subscriptions::create($product, $userid, $payment, $couponid ? (float) $product->price : null);
+                : subscriptions::create($product, $userid, $payment, $couponid ? (float) $product->price : null, $tax);
         }
 
         if ($product->courseid) {

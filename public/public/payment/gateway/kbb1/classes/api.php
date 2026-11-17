@@ -110,6 +110,23 @@ class api {
     }
 
     /**
+     * Данные жертвователя для квитанции (тип и номер, как TaxType/TaxId в WordPress): из выбора
+     * суммы (зона 'custom') или из подписки (автосписание наследует данные первого платежа).
+     *
+     * @param \stdClass $rec запись paygw_kbb1
+     * @return array ['type' => string, 'id' => string]; пусто, если данных нет
+     */
+    public static function kabshop_tax(\stdClass $rec): array {
+        global $DB;
+        $table = ['custom' => 'local_kabshop_intent', 'renewal' => 'local_kabshop_sub'][$rec->paymentarea] ?? null;
+        $row = null;
+        if ($rec->component === 'local_kabshop' && $table && $DB->get_manager()->field_exists($table, 'taxtype')) {
+            $row = $DB->get_record($table, ['id' => $rec->itemid], 'taxtype, taxid');
+        }
+        return ['type' => (string) ($row->taxtype ?? ''), 'id' => (string) ($row->taxid ?? '')];
+    }
+
+    /**
      * Регулярный ли товар: тогда при первой оплате просим сервис сохранить карту.
      *
      * @param \stdClass $rec запись paygw_kbb1
@@ -133,7 +150,11 @@ class api {
         $ret = function (string $r, array $extra = []) use ($rec) {
             return (new \moodle_url('/payment/gateway/kbb1/return.php', ['id' => $rec->id, 'r' => $r] + $extra))->out(false);
         };
-        $donation = self::is_donation($rec);
+        $product = self::kabshop_product($rec);
+        $donation = $product && $product->kind === 'donation';
+        // SKU товара, иначе SKU по умолчанию счёта — как order_sku() в woocommerce-bb.
+        $sku = trim((string) ($product->sku ?? '')) ?: (string) $config->sku;
+        $tax = $donation ? self::kabshop_tax($rec) : ['type' => '', 'id' => ''];
         $plugin = \core_plugin_manager::instance()->get_plugin_info('paygw_kbb1');
         return [
             'UserKey'       => $rec->userkey,
@@ -151,11 +172,11 @@ class api {
             'City'          => '',
             'Country'       => (string) $user->country,
             'Details'       => \core_text::substr(trim($description), 0, 250),
-            'SKU'           => (string) $config->sku,
+            'SKU'           => $sku,
             'MaxPayments'   => self::max_payments($config, (float) $rec->amount),
             'VAT'           => $donation ? 'Y' : 'N',
-            'TaxType'       => '',
-            'TaxId'         => '',
+            'TaxType'       => $tax['type'],
+            'TaxId'         => $tax['id'],
             'Installments'  => 1,
             'Language'      => self::language(),
             // Номер платежа Moodle. Префикс подставляет сервис по токену этого сайта —

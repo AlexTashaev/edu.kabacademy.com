@@ -172,5 +172,27 @@ function xmldb_local_kabshop_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026111700, 'local', 'kabshop');
     }
 
+    if ($oldversion < 2026111701) {
+        // SKU товара для кассы и данные жертвователя для квитанции (статья 46).
+        $taxtype = fn(?string $after) => new xmldb_field('taxtype', XMLDB_TYPE_CHAR, '1', null, null, null, null, $after);
+        $taxid = fn() => new xmldb_field('taxid', XMLDB_TYPE_CHAR, '20', null, null, null, null, 'taxtype');
+        $fields = [
+            'local_kabshop_product' => [new xmldb_field('sku', XMLDB_TYPE_CHAR, '64', null, null, null, null, 'accountid')],
+            'local_kabshop_purchase' => [$taxtype('amountoff'), $taxid()],
+            'local_kabshop_intent' => [new xmldb_field('taxcountry', XMLDB_TYPE_CHAR, '2', null, null, null, null, 'amountoff'),
+                $taxtype('taxcountry'), $taxid()],
+            'local_kabshop_sub' => [$taxtype('lasterror'), $taxid()],
+        ];
+        foreach ($fields as $tablename => $list) {
+            $table = new xmldb_table($tablename);
+            foreach ($list as $field) {
+                if (!$dbman->field_exists($table, $field)) {
+                    $dbman->add_field($table, $field);
+                }
+            }
+        }
+        upgrade_plugin_savepoint(true, 2026111701, 'local', 'kabshop');
+    }
+
     return true;
 }

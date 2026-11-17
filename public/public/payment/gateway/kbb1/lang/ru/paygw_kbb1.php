@@ -58,5 +58,5 @@ $string['privacy:metadata:paygw_kbb1:token'] = 'Токен карты или Pay
 $string['privacy:metadata:paygw_kbb1:txnid'] = 'Номер транзакции.';
 $string['privacy:metadata:paygw_kbb1:userid'] = 'Покупатель.';
 $string['sku'] = 'SKU по умолчанию';
-$string['sku_help'] = 'Код для Priority, который получает сервис. У WordPress берётся из товара, здесь — один на счёт.';
+$string['sku_help'] = 'Код для Priority, который получает сервис. Если у товара витрины задан свой SKU, уходит он, иначе этот — как в WordPress.';
 $string['unsupportedcurrency'] = 'Валюта {$a} не поддерживается: только ILS, USD, EUR.';
