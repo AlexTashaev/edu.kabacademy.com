@@ -1,0 +1,23 @@
+<div class="kab-clock" style="width:204px;display:inline-block;background:#6493AF;color:#fff;border-radius:6px;padding:8px 12px;line-height:1.35">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="nolink">Israel</span><b id="kab-clock-il" style="font-size:1.25em">&nbsp;</b></div>
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="nolink">Your Time</span><b id="kab-clock-my" style="font-size:1.25em">&nbsp;</b></div>
+</div>
+<script>
+(function () {
+    var il = document.getElementById('kab-clock-il');
+    var my = document.getElementById('kab-clock-my');
+    if (!il || !my || !window.Intl) { return; }
+    var fmtIl, fmtMy;
+    try {
+        fmtIl = new Intl.DateTimeFormat('ru', { weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'Asia/Jerusalem' });
+        fmtMy = new Intl.DateTimeFormat('ru', { weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    } catch (err) { return; }
+    function tick() {
+        var now = new Date();
+        il.textContent = fmtIl.format(now);
+        my.textContent = fmtMy.format(now);
+    }
+    tick();
+    setInterval(tick, 10000);
+})();
+</script>
