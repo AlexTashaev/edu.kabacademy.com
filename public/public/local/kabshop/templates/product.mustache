@@ -21,6 +21,9 @@
     липнет при прокрутке), описание ниже. altaction — вторая кнопка: оплата
     парным товаром на другом рынке (рубли ↔ карта и PayPal). prereqnotice —
     объяснение условия записи (HTML: названия курсов уже прошли format_string).
+    action.donation — окно «Безвозмездная помощь» на кнопке «Записаться бесплатно»
+    (взнос или запись без взноса, как в корзине WordPress); aftercourse — ссылка на
+    курс, куда человек записался из этого окна, на странице пожертвования.
     Внизу — продавец, контакты и оферта рынка этого товара.
 
     Example context (json):
@@ -37,7 +40,7 @@
 }}
 <div class="kabshop-product">
     {{#paid}}
-    <div class="alert alert-success kabshop-paid">{{#str}} thankyou, local_kabshop {{/str}}</div>
+    <div class="alert alert-success kabshop-paid">{{#str}} thankyou, local_kabshop {{/str}}{{#aftercourse}} <a href="{{href}}">{{label}}</a>{{/aftercourse}}</div>
     {{/paid}}
     <div class="kabshop-product-hero">
         <div class="kabshop-product-media">
@@ -57,7 +60,71 @@
                 <form method="post" action="{{post}}">
                     <input type="hidden" name="id" value="{{id}}">
                     <input type="hidden" name="sesskey" value="{{sesskey}}">
-                    <button type="submit" class="btn btn-primary btn-lg">{{label}}</button>
+                    <button type="submit" class="btn btn-primary btn-lg" {{#donation}}data-kabshop-freedonation="1"{{/donation}}>{{label}}</button>
+                    {{#donation}}
+                    <dialog class="kabshop-dialog" id="kabshop-freedonation" aria-labelledby="kabshop-freedonation-title">
+                        <div class="kabshop-dialog-body">
+                            <button type="button" class="kabshop-dialog-close" data-kabshop-close aria-label="{{#str}} closebuttontitle {{/str}}">&times;</button>
+                            <h2 class="kabshop-dialog-title" id="kabshop-freedonation-title">{{#str}} freedonation_title, local_kabshop {{/str}}</h2>
+                            {{#text}}<div class="kabshop-dialog-text">{{{text}}}</div>{{/text}}
+                            <fieldset>
+                                <legend class="kabshop-donate-legend">{{#str}} chooseamount, local_kabshop {{/str}}</legend>
+                                <div class="kabshop-presets">
+                                    {{#presets}}
+                                    <input type="radio" class="btn-check" name="preset" id="kabshop-fd-{{value}}" value="{{value}}" {{#checked}}checked{{/checked}}>
+                                    <label class="btn" for="kabshop-fd-{{value}}">{{label}}</label>
+                                    {{/presets}}
+                                </div>
+                                <label class="kabshop-custom-label" for="kabshop-fd-custom">{{#str}} otheramount, local_kabshop {{/str}}</label>
+                                <div class="input-group kabshop-custom">
+                                    <input type="number" class="form-control" id="kabshop-fd-custom" name="customvalue" min="{{min}}" max="{{max}}" step="0.01" inputmode="decimal">
+                                    <span class="input-group-text">{{currency}}</span>
+                                </div>
+                            </fieldset>
+                            <div class="kabshop-dialog-actions">
+                                <button type="submit" name="donate" value="1" class="btn btn-primary btn-lg" autofocus>{{#str}} freedonation_yes, local_kabshop {{/str}}</button>
+                                <button type="submit" name="donate" value="0" class="btn btn-link kabshop-dialog-skip" formnovalidate>{{#str}} freedonation_no, local_kabshop {{/str}}</button>
+                            </div>
+                        </div>
+                    </dialog>
+                    {{#js}}
+                    (function() {
+                        var open = document.querySelector('[data-kabshop-freedonation]');
+                        var dialog = document.getElementById('kabshop-freedonation');
+                        // Без поддержки <dialog> кнопка просто записывает, как раньше.
+                        if (!open || !dialog || typeof dialog.showModal !== 'function') {
+                            return;
+                        }
+                        var custom = dialog.querySelector('[name="customvalue"]');
+                        var radios = dialog.querySelectorAll('[name="preset"]');
+                        var preset = dialog.querySelector('[name="preset"]:checked');
+                        open.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            dialog.showModal();
+                        });
+                        dialog.querySelector('[data-kabshop-close]').addEventListener('click', function() {
+                            dialog.close();
+                        });
+                        // Клик по затемнению вокруг окна закрывает его.
+                        dialog.addEventListener('click', function(e) {
+                            if (e.target === dialog) {
+                                dialog.close();
+                            }
+                        });
+                        // Своя сумма снимает выбор готовой; стёрли — вернулась сумма по умолчанию.
+                        custom.addEventListener('input', function() {
+                            radios.forEach(function(r) {
+                                r.checked = custom.value === '' && r === preset;
+                            });
+                        });
+                        radios.forEach(function(r) {
+                            r.addEventListener('change', function() {
+                                custom.value = '';
+                            });
+                        });
+                    })();
+                    {{/js}}
+                    {{/donation}}
                 </form>
                 {{/post}}
                 {{#payment}}
@@ -172,6 +239,9 @@
             {{#nopayment}}
             <div class="alert alert-warning">{{#str}} nopayment, local_kabshop {{/str}}</div>
             {{/nopayment}}
+            {{^paid}}{{#aftercourse}}
+            <a class="kabshop-aftercourse" href="{{href}}">{{label}}</a>
+            {{/aftercourse}}{{/paid}}
             {{#canmanage}}
             <div class="kabshop-editlink"><a href="{{editurl}}">{{#str}} editproduct, local_kabshop {{/str}}</a></div>
             {{/canmanage}}

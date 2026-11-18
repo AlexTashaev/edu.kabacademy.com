@@ -644,6 +644,97 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     font-size: .88rem;
 }
 
+/* Ссылка на курс на странице пожертвования — пришёл из окна взноса при записи. */
+.kabshop-aftercourse {
+    display: block;
+    margin-top: .9rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--kabshop-link);
+}
+
+/* --- Окно «Безвозмездная помощь» при бесплатной записи (нативный <dialog>) --- */
+.kabshop-dialog {
+    width: min(34rem, calc(100vw - 2rem));
+    max-height: calc(100vh - 2rem);
+    padding: 0;
+    border: 0;
+    border-radius: 18px;
+    background: var(--bs-body-bg, #fff);
+    color: var(--kabshop-text);
+    box-shadow: 0 24px 60px -20px rgba(34, 48, 63, .5);
+}
+
+.kabshop-dialog::backdrop {
+    background: rgba(34, 48, 63, .55);
+}
+
+.kabshop-dialog-body {
+    position: relative;
+    padding: 1.6rem 1.6rem 1.3rem;
+}
+
+.kabshop-dialog-close {
+    position: absolute;
+    top: .7rem;
+    right: .7rem;
+    width: 2.4rem;
+    height: 2.4rem;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--kabshop-muted);
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+.kabshop-dialog-close:hover,
+.kabshop-dialog-close:focus-visible {
+    background: var(--kabshop-tint);
+    color: var(--kabshop-navy);
+}
+
+.kabshop-dialog-title {
+    margin: 0 2.4rem .9rem 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    color: var(--kabshop-ink);
+}
+
+.kabshop-dialog-text {
+    margin-bottom: 1.3rem;
+    font-size: .98rem;
+    line-height: 1.6;
+}
+
+.kabshop-dialog-text p:last-child {
+    margin-bottom: 0;
+}
+
+.kabshop-dialog-actions {
+    margin-top: 1.4rem;
+}
+
+.kabshop-dialog .kabshop-dialog-skip {
+    display: block;
+    width: 100%;
+    margin-top: .5rem;
+    color: var(--kabshop-muted);
+    font-size: .95rem;
+    text-decoration: underline;
+}
+
+.kabshop-dialog .kabshop-dialog-skip:hover {
+    color: var(--kabshop-navy);
+}
+
+@media (max-width: 575.98px) {
+    .kabshop-dialog-body {
+        padding: 1.3rem 1.1rem 1rem;
+    }
+}
+
 /* --- Промокод: свёрнут в details --- */
 .kabshop-coupon {
     margin-top: 1rem;

@@ -42,16 +42,10 @@ require_sesskey();
 
 if (!empty($product->customamount)) {
     // Своя сумма важнее готовой: если поле заполнено — берём его.
-    $custom = trim(optional_param('customvalue', '', PARAM_RAW_TRIMMED));
-    $amount = $custom !== '' ? (float)str_replace([',', ' '], ['.', ''], $custom)
-        : optional_param('preset', 0, PARAM_FLOAT);
-
-    $min = max((float)$product->price, 0.01);
-    if ($amount < $min || $amount > catalog::MAX_AMOUNT) {
-        redirect($producturl, get_string('amountrange', 'local_kabshop', (object)[
-            'min' => \core_payment\helper::get_cost_as_string($min, $product->currency),
-            'max' => \core_payment\helper::get_cost_as_string(catalog::MAX_AMOUNT, $product->currency),
-        ]), null, \core\output\notification::NOTIFY_ERROR);
+    $amount = catalog::chosen_amount(optional_param('customvalue', '', PARAM_RAW_TRIMMED),
+        optional_param('preset', 0, PARAM_FLOAT));
+    if ($error = catalog::amount_error($product, $amount)) {
+        redirect($producturl, $error, null, \core\output\notification::NOTIFY_ERROR);
     }
 } else {
     $amount = (float) $product->price;

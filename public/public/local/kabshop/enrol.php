@@ -15,7 +15,8 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Вход перед покупкой (GET) и бесплатная запись (POST).
+ * Вход перед покупкой (GET) и бесплатная запись (POST). С donate=1 (окно «Безвозмездная
+ * помощь») после записи ведёт на оплату взноса.
  *
  * @package    local_kabshop
  * @copyright  2026 Kabacademy
@@ -48,9 +49,48 @@ if (!$product->visible || !catalog::is_free($product) || $product->kind === 'ext
     redirect($producturl);
 }
 
+// Взнос из окна «Безвозмездная помощь» (кнопка «Записаться и сделать взнос»).
+$offer = optional_param('donate', 0, PARAM_BOOL) ? catalog::free_donation_offer($product, (int) $USER->id) : null;
+
+// Запись — всегда и первой: бросивший оплату взноса всё равно записан.
 if (!catalog::is_owned($product, $USER->id)) {
     catalog::grant($product, $USER->id, 0);
 }
 
-$target = $product->courseid ? new moodle_url('/course/view.php', ['id' => $product->courseid]) : $producturl;
-redirect($target, get_string('enrolled', 'local_kabshop'), null, \core\output\notification::NOTIFY_SUCCESS);
+if (!$offer) {
+    $target = $product->courseid ? new moodle_url('/course/view.php', ['id' => $product->courseid]) : $producturl;
+    redirect($target, get_string('enrolled', 'local_kabshop'), null, \core\output\notification::NOTIFY_SUCCESS);
+}
+
+// Дальше — оплата взноса на странице товара-пожертвования.
+$donation = $offer['product'];
+$donationurl = new moodle_url('/local/kabshop/product.php', ['id' => $donation->id]);
+if ($product->courseid) {
+    // Ссылка «Перейти к курсу» на странице пожертвования — до оплаты и после неё.
+    $SESSION->local_kabshop_aftercourse = ['productid' => (int) $donation->id, 'courseid' => (int) $product->courseid];
+}
+
+$amount = catalog::chosen_amount(optional_param('customvalue', '', PARAM_RAW_TRIMMED),
+    optional_param('preset', 0, PARAM_FLOAT));
+if ($error = catalog::amount_error($donation, $amount)) {
+    redirect($donationurl, $error, null, \core\output\notification::NOTIFY_ERROR);
+}
+
+$message = get_string('enrolleddonate', 'local_kabshop',
+    format_string($product->name, true, ['context' => context_system::instance()]));
+$tax = null;
+if (catalog::needs_taxid($donation)) {
+    // Данные для квитанции — с прошлого пожертвования; на странице их видно и можно изменить.
+    $prev = catalog::last_tax((int) $USER->id);
+    if ($prev) {
+        [$tax] = catalog::clean_tax($prev['country'], $prev['type'], $prev['id']);
+    }
+    if (!$tax) {
+        // Данных ещё нет — страница пожертвования с выбранной суммой, форма данных там.
+        $SESSION->local_kabshop_tax = ['productid' => (int) $donation->id, 'amount' => $amount,
+            'country' => '', 'type' => '', 'id' => ''];
+        redirect($donationurl, $message, null, \core\output\notification::NOTIFY_SUCCESS);
+    }
+}
+$intentid = catalog::create_intent($donation, (int) $USER->id, $amount, $tax);
+redirect(new moodle_url($donationurl, ['intent' => $intentid]), $message, null, \core\output\notification::NOTIFY_SUCCESS);

@@ -204,17 +204,131 @@ class catalog {
      */
     public static function presets(\stdClass $product): array {
         $min = (float)$product->price;
+        $out = self::parse_amounts((string)($product->presets ?? ''), $min);
+        if (!$out && $min > 0) {
+            $out = [$min];
+        }
+        return $out;
+    }
+
+    /**
+     * Суммы из строки «10, 25, 50»: не меньше минимума, не больше MAX_AMOUNT, без повторов.
+     *
+     * @param string $raw
+     * @param float $min
+     * @return float[]
+     */
+    protected static function parse_amounts(string $raw, float $min): array {
         $out = [];
-        foreach (preg_split('/[\s,;]+/', (string)($product->presets ?? ''), -1, PREG_SPLIT_NO_EMPTY) as $v) {
+        foreach (preg_split('/[\s,;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY) as $v) {
             $v = round((float)str_replace(',', '.', $v), 2);
             if ($v >= $min && $v > 0 && $v <= self::MAX_AMOUNT) {
                 $out[] = $v;
             }
         }
-        if (!$out && $min > 0) {
-            $out = [$min];
-        }
         return array_values(array_unique($out));
+    }
+
+    /**
+     * Сумма, которую ввёл или выбрал жертвователь: своё значение важнее готового.
+     *
+     * @param string $custom поле «Или своя сумма»
+     * @param float $preset выбранная готовая сумма
+     * @return float
+     */
+    public static function chosen_amount(string $custom, float $preset): float {
+        $custom = trim($custom);
+        return $custom !== '' ? (float)str_replace([',', ' '], ['.', ''], $custom) : $preset;
+    }
+
+    /**
+     * Ошибка суммы для товара с суммой на выбор: меньше цены товара или больше MAX_AMOUNT.
+     *
+     * @param \stdClass $product
+     * @param float $amount
+     * @return string|null текст ошибки или null, если сумма годится
+     */
+    public static function amount_error(\stdClass $product, float $amount): ?string {
+        $min = max((float)$product->price, 0.01);
+        if ($amount >= $min && $amount <= self::MAX_AMOUNT) {
+            return null;
+        }
+        return get_string('amountrange', 'local_kabshop', (object)[
+            'min' => \core_payment\helper::get_cost_as_string($min, $product->currency),
+            'max' => \core_payment\helper::get_cost_as_string(self::MAX_AMOUNT, $product->currency),
+        ]);
+    }
+
+    /** Настройки взноса при бесплатной записи, пока администратор их не сохранил. */
+    const FREEDONATION_DEFAULTS = ['presets' => '20, 90, 250', 'default' => '90'];
+
+    /**
+     * Настройка взноса при бесплатной записи. До сохранения на странице «Новые настройки» —
+     * значение по умолчанию (на сервере без CLI её некому сохранить сразу после апгрейда).
+     *
+     * @param string $name product, text, presets или default
+     * @return string
+     */
+    public static function freedonation_config(string $name): string {
+        $value = get_config('local_kabshop', 'freedonation_' . $name);
+        if ($value !== false) {
+            return (string)$value;
+        }
+        if ($name === 'text') {
+            return get_string('freedonation_text_default', 'local_kabshop');
+        }
+        return self::FREEDONATION_DEFAULTS[$name] ?? '';
+    }
+
+    /**
+     * Предложение взноса при бесплатной записи — окно «Безвозмездная помощь», как в корзине
+     * WordPress. Звать там, где человеку уже положена кнопка «Записаться бесплатно».
+     *
+     * Нет предложения, если: товар-пожертвование не выбран в настройках, скрыт, не с суммой на
+     * выбор или без счёта оплаты; он с другого рынка (на рублёвой витрине — только рублёвое);
+     * у человека уже есть ежемесячное пожертвование.
+     *
+     * @param \stdClass $product бесплатный товар, на который записываются
+     * @param int $userid
+     * @return array|null ['product' => товар-пожертвование, 'presets' => float[], 'default' => float]
+     */
+    public static function free_donation_offer(\stdClass $product, int $userid): ?array {
+        $donationid = (int)self::freedonation_config('product');
+        if (!$donationid || !self::is_free($product) || $product->kind === 'external') {
+            return null;
+        }
+        $donation = self::get_product($donationid, IGNORE_MISSING);
+        if (!$donation || !$donation->visible || $donation->kind !== 'donation' || empty($donation->customamount)
+                || empty($donation->accountid) || self::market($donation) !== self::market($product)
+                || !self::prerequisite_ok($donation, $userid) || self::has_donation_sub($userid)) {
+            return null;
+        }
+        $presets = self::parse_amounts(self::freedonation_config('presets'), max((float)$donation->price, 0.01))
+            ?: self::presets($donation);
+        if (!$presets) {
+            return null;
+        }
+        $default = round((float)str_replace(',', '.', self::freedonation_config('default')), 2);
+        if (!in_array($default, $presets)) {
+            $default = $presets[0];
+        }
+        return ['product' => $donation, 'presets' => $presets, 'default' => $default];
+    }
+
+    /**
+     * Есть ли у человека действующая подписка на пожертвование (ежемесячный взнос).
+     *
+     * @param int $userid
+     * @return bool
+     */
+    public static function has_donation_sub(int $userid): bool {
+        global $DB;
+        return $userid > 0 && $DB->record_exists_sql(
+            "SELECT 1
+               FROM {local_kabshop_sub} s
+               JOIN {local_kabshop_product} p ON p.id = s.productid
+              WHERE s.userid = :userid AND s.status = 'active' AND p.kind = 'donation'",
+            ['userid' => $userid]);
     }
 
     /**
