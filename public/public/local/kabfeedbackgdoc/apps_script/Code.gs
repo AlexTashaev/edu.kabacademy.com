@@ -45,13 +45,14 @@ var TIMEZONE = 'Asia/Jerusalem'; // spreadsheet time zone; new sheets default to
 
 // ---- settings end: everything below is replaced as a whole when the script is updated ----
 
-var VERSION = 8;
+var VERSION = 9;
 var TARGET_TITLE_MARK = '(Moodle)'; // a spreadsheet must carry this in its title to accept rows; '' = no check
 var FONT_SIZE = 13;            // everything the script writes; applyFontSize() restyles what is already there
 // "questions" layout: when Moodle reports a form closed, its rows leave the time tabs for this tab.
 var ARCHIVE_TAB = 'Архив';
 // "questions" layout: a tab per webinar time ("8:00", "17:00", "20:00"), taken from the
 // "Буду участвовать" answer, so that each webinar's teachers see their own questions.
+// A student who ticked several webinars (checkboxes) gets a row on each of their tabs.
 // Tabs are created on demand, in clock order, before the other tabs.
 var TIME_TABS = true;
 var NO_TIME_TAB = 'Без времени'; // where a question without a recognisable time goes
@@ -144,64 +145,89 @@ function respond(obj) {
 function handle_(responses) {
   var groups = {};
   var order = [];
-  responses.forEach(function (d) {
+  responses.forEach(function (d, n) {
     var t = d.target || {};
     var generic = t.layout === 'generic';
-    var sheet = t.sheet || '';
-    if (!generic && !sheet && TIME_TABS) {
-      sheet = timeTab_(d) || NO_TIME_TAB;
+    // A question goes to the tab of every webinar the student ticked: one row per tab.
+    var tabs = [t.sheet || ''];
+    if (!generic && !t.sheet && TIME_TABS) {
+      tabs = timeTabs_(d);
+      if (!tabs.length) { tabs = [NO_TIME_TAB]; }
     }
-    var g = [t.spreadsheet || '', sheet, generic ? 'generic' : 'questions'].join('|');
-    if (!groups[g]) {
-      groups[g] = { spreadsheet: t.spreadsheet || '', sheet: sheet, generic: generic, items: [] };
-      order.push(g);
-    }
-    groups[g].items.push(d);
+    tabs.forEach(function (sheet) {
+      var g = [t.spreadsheet || '', sheet, generic ? 'generic' : 'questions'].join('|');
+      if (!groups[g]) {
+        groups[g] = { spreadsheet: t.spreadsheet || '', sheet: sheet, generic: generic, items: [] };
+        order.push(g);
+      }
+      groups[g].items.push({ d: d, n: n, tabs: tabs });
+    });
   });
 
   var legacy = legacySeen_();
   var result = { ok: true, written: 0, duplicates: 0, tables: [] };
+  var wrote = {}; // number of the response in the request → rows written for it
+  var repeated = {};
   order.forEach(function (g) {
     var group = groups[g];
     var sh = sheet_(group.spreadsheet, group.sheet);
-    var cols = ensureColumns_(sh, group.generic ? genericColumns_(group.items) : QUESTION_COLUMNS);
+    var cols = ensureColumns_(sh, group.generic
+      ? genericColumns_(group.items.map(function (item) { return item.d; })) : QUESTION_COLUMNS);
     // The previous row of a re-submitted question may sit on another time tab.
     var index = index_(sh, cols, !group.generic);
+    var here = sh.getSheetId();
     var rows = [];
     var repeats = [];
-    group.items.forEach(function (d) {
+    group.items.forEach(function (item) {
+      var d = item.d;
       var key = key_(d);
       var id = Number(d.completedid); // completedid 0 = test payloads, never deduped, never a repeat
+      var ts = Number(d.timestamp) || 0;
       if (id) {
-        if (index.seen[key] || legacy[String(d.completedid) + ':' + String(d.timestamp)]) { result.duplicates++; return; }
-        index.seen[key] = true;
+        // Already here, or the table has as many rows of this answer as it has tabs to be on
+        // (they were archived, or a teacher moved one): nothing to add.
+        var on = index.seen[key];
+        if (legacy[String(d.completedid) + ':' + String(d.timestamp)] ||
+            (on && (on.sheets[here] || on.rows >= item.tabs.length))) { return; }
+        on = index.seen[key] = on || { rows: 0, sheets: {} };
+        on.rows++;
+        on.sheets[here] = true;
       }
       var cells = group.generic ? genericCells_(d, key) : questionCells_(d, key);
       var at = rows.length;
       rows.push(cells);
+      wrote[item.n] = (wrote[item.n] || 0) + 1;
       if (id) {
-        var prev = latest_(index.byId[id]);
-        if (prev) { repeats.push({ at: at, cells: cells, prev: prev }); }
-        (index.byId[id] = index.byId[id] || []).push({ sheet: sh, at: at, cells: cells, ts: Number(d.timestamp) || 0 });
+        var prev = previous_(index.byId[id], ts);
+        if (prev.length) {
+          repeats.push({ at: at, cells: cells, prev: prev, tabs: item.tabs, lead: wrote[item.n] === 1 });
+          repeated[item.n] = true;
+        }
+        (index.byId[id] = index.byId[id] || []).push({ sheet: sh, at: at, cells: cells, ts: ts });
       }
     });
     var first = writeRows_(sh, cols, rows);
     repeats.forEach(function (r) {
-      markRepeat_(sh, cols, first + r.at, r.cells, r.prev, first);
+      markRepeat_(sh, cols, first + r.at, r.cells, r.prev, first, r.tabs, r.lead);
     });
     result.written += rows.length;
-    if (repeats.length) { result.repeats = (result.repeats || 0) + repeats.length; }
     result.tables.push(sh.getParent().getName());
   });
+  responses.forEach(function (d, n) {
+    if (!wrote[n]) { result.duplicates++; }
+  });
+  if (Object.keys(repeated).length) { result.repeats = Object.keys(repeated).length; }
+  result.tables = result.tables.filter(function (name, i, all) { return all.indexOf(name) === i; });
   if (responses.length === 1 && result.duplicates === 1) { result.duplicate = true; }
   return result;
 }
 
 /**
- * Rows the table already has: every key (dedupe) and, per completed id, where
- * its rows are (repeats). With allTabs, every tab of the spreadsheet that has a
- * key column is read: the questions table keeps a tab per webinar time, and a
- * student who changed the time changed tabs with it.
+ * Rows the table already has: every key with the tabs it is on (dedupe) and, per
+ * completed id, where its rows are (repeats). With allTabs, every tab of the
+ * spreadsheet that has a key column is read: the questions table keeps a tab per
+ * webinar time, a question sits on the tab of every webinar the student ticked,
+ * and a student who changed the times changed tabs with them.
  */
 function index_(sh, cols, allTabs) {
   var index = { seen: {}, byId: {} };
@@ -213,7 +239,9 @@ function index_(sh, cols, allTabs) {
     s.getRange(2, col, last - 1, 1).getDisplayValues().forEach(function (r, i) {
       var key = String(r[0] || '').trim();
       if (!key) { return; }
-      index.seen[key] = true;
+      var on = index.seen[key] = index.seen[key] || { rows: 0, sheets: {} };
+      on.rows++;
+      on.sheets[s.getSheetId()] = true;
       var m = /^r(\d+)t(\d+)$/.exec(key);
       if (m) {
         (index.byId[m[1]] = index.byId[m[1]] || []).push({ sheet: s, row: i + 2, ts: Number(m[2]) });
@@ -285,13 +313,14 @@ function sameSheet_(a, b) {
   return a.getSheetId() === b.getSheetId();
 }
 
-/** The most recent of a response's rows: the latest timestamp, the last row on a tie. */
-function latest_(entries) {
-  var best = null;
-  (entries || []).forEach(function (e) {
-    if (!best || e.ts >= best.ts) { best = e; }
-  });
-  return best;
+/**
+ * The rows of the previous version of a response: among its rows with another
+ * timestamp, those with the latest one. Several when that version sat on several tabs.
+ */
+function previous_(entries, ts) {
+  var others = (entries || []).filter(function (e) { return e.ts !== ts; });
+  var best = others.reduce(function (max, e) { return Math.max(max, e.ts); }, -1);
+  return others.filter(function (e) { return e.ts === best; });
 }
 
 /** Whether a column holds an answer of the student (what a re-submission may change). */
@@ -330,28 +359,42 @@ function setText_(s, row, col, text) {
 /**
  * A re-submission: the new row says it is one and names the previous row, the
  * answers that changed get CHANGED_BG; the previous row is greyed out and points
- * to the new one. The previous row may be on another tab (questions layout), or
- * earlier in the same batch (then prev.at is its index and prev.cells its values).
+ * to the new one. A previous row may be on another tab (questions layout), or
+ * earlier in the same batch (then its "at" is its index and "cells" its values).
+ *
+ * A question sits on the tab of every webinar the student ticked, so the previous
+ * version may have several rows (prevs) and the new one too (tabs). The new row
+ * names the previous row of its own tab when there is one. A previous row points
+ * to the new row of its own tab; on a tab the new version has left, to the first
+ * new row written (lead).
  */
-function markRepeat_(sh, cols, row, cells, prev, first) {
-  var prevSheet = prev.sheet;
-  var prevRow = (prev.at !== undefined) ? first + prev.at : prev.row;
-  var prevCols = sameSheet_(prevSheet, sh) ? cols : ensureColumns_(prevSheet, QUESTION_COLUMNS);
+function markRepeat_(sh, cols, row, cells, prevs, first, tabs, lead) {
+  var place = function (p) {
+    var same = sameSheet_(p.sheet, sh);
+    return { sheet: p.sheet, same: same, row: (p.at !== undefined) ? first + p.at : p.row,
+      cols: same ? cols : ensureColumns_(p.sheet, QUESTION_COLUMNS), cells: p.cells };
+  };
+  var places = prevs.map(place);
+  var ref = places.filter(function (p) { return p.same; })[0] || places[0];
   var titles = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
   var now = cellValues_(cells);
-  var before = prev.cells ? cellValues_(prev.cells) : rowValues_(prevSheet, prevCols, prevRow);
+  var before = ref.cells ? cellValues_(ref.cells) : rowValues_(ref.sheet, ref.cols, ref.row);
   var changed = Object.keys(cols).filter(function (id) {
     return compared_(id) && !sameText_(now[id], before[id]);
   });
 
-  var text = 'Повторная отправка, прежний ответ — ' + where_(prevSheet, prevRow, sh) + '. ' +
+  var text = 'Повторная отправка, прежний ответ — ' + where_(ref.sheet, ref.row, sh) + '. ' +
     (changed.length ? 'Изменилось: ' + changed.map(function (id) { return titles[cols[id] - 1]; }).join('; ') : 'Ответы те же');
   setText_(sh, row, cols.repeat, text);
   changed.forEach(function (id) { sh.getRange(row, cols[id]).setBackground(CHANGED_BG); });
   if (cols.repeat) { sh.getRange(row, cols.repeat).setBackground(CHANGED_BG); }
 
-  prevSheet.getRange(prevRow, 1, 1, prevSheet.getLastColumn()).setBackground(OLD_BG).setFontColor(OLD_FG);
-  setText_(prevSheet, prevRow, prevCols.repeat, 'Устарел, новый ответ — ' + where_(sh, row, prevSheet));
+  places.forEach(function (p) {
+    var left = lead && (tabs || []).indexOf(p.sheet.getName()) === -1;
+    if (!p.same && !left) { return; }
+    p.sheet.getRange(p.row, 1, 1, p.sheet.getLastColumn()).setBackground(OLD_BG).setFontColor(OLD_FG);
+    setText_(p.sheet, p.row, p.cols.repeat, 'Устарел, новый ответ — ' + where_(sh, row, p.sheet));
+  });
 }
 
 /**
@@ -362,10 +405,25 @@ function key_(d) {
   return 'r' + String(d.completedid) + 't' + String(d.timestamp);
 }
 
-/** Name of the time tab for a "participate" answer: "в 8:00 изр" → "8:00"; '' when there is no time in it. */
+/**
+ * Names of the time tabs for a "participate" answer, in the order of the answer:
+ * "в 8:00 изр" → ["8:00"], "в 8:00 изр, в 20:00 изр" (checkboxes) → ["8:00", "20:00"];
+ * [] when there is no time in it.
+ */
+function timeTabsOf_(value) {
+  var tabs = [];
+  var re = /(\d{1,2}):(\d{2})/g;
+  var m;
+  while ((m = re.exec(String(value || '')))) {
+    var tab = parseInt(m[1], 10) + ':' + m[2];
+    if (tabs.indexOf(tab) === -1) { tabs.push(tab); }
+  }
+  return tabs;
+}
+
+/** The first of them; '' when there is none. */
 function timeTabOf_(value) {
-  var m = /(\d{1,2}):(\d{2})/.exec(String(value || ''));
-  return m ? (parseInt(m[1], 10) + ':' + m[2]) : '';
+  return timeTabsOf_(value)[0] || '';
 }
 
 /** Minutes since midnight for a time tab name, null for any other tab. */
@@ -374,14 +432,19 @@ function tabMinutes_(name) {
   return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
 }
 
-/** Time tab of a response (questions layout): from its "participate" answer. */
-function timeTab_(d) {
+/** Time tabs of a response (questions layout): from its "participate" answer. */
+function timeTabs_(d) {
   var rule = COLUMN_RULES.filter(function (r) { return r.col === 'participate'; })[0];
-  var tab = '';
+  var tabs = [];
   (d.answers || []).forEach(function (a) {
-    if (!tab && rule && rule.re.test(a.name || '')) { tab = timeTabOf_(a.value); }
+    if (!tabs.length && rule && rule.re.test(a.name || '')) { tabs = timeTabsOf_(a.value); }
   });
-  return tab;
+  return tabs;
+}
+
+/** Ticked options come one per line; in a cell they read better on one. */
+function oneLine_(value) {
+  return String(value || '').split(/\s*\n\s*/).filter(function (s) { return s !== ''; }).join(', ');
 }
 
 /** Where a new tab goes: time tabs first, in clock order; anything else after the existing tabs. */
@@ -510,7 +573,8 @@ function questionCells_(d, key) {
     for (var i = 0; i < COLUMN_RULES.length; i++) {
       if (COLUMN_RULES[i].re.test(a.name || '')) { target = COLUMN_RULES[i].col; break; }
     }
-    parts[target].push(target === 'other' ? (a.name + ': ' + a.value) : a.value);
+    parts[target].push(target === 'other' ? (a.name + ': ' + a.value)
+      : (target === 'participate' ? oneLine_(a.value) : a.value));
   });
   var u = (!d.anonymous && d.user) ? d.user : null;
   return [
@@ -763,12 +827,18 @@ function unarchiveForm() {
     if (cols.key && cols.url && cols.participate && last >= 2) {
       var links = archive.getRange(2, cols.url, last - 1, 1).getRichTextValues();
       var slots = archive.getRange(2, cols.participate, last - 1, 1).getDisplayValues();
+      var keys = archive.getRange(2, cols.key, last - 1, 1).getDisplayValues();
       var byTab = {};
+      var copies = {};
       for (var i = 0; i < last - 1; i++) {
         var link = links[i][0] ? links[i][0].getLinkUrl() : null;
         var m = link ? /[?&]id=(\d+)/.exec(link) : null;
         if (!m || Number(m[1]) !== cmid) { continue; }
-        var tab = timeTabOf_(slots[i][0]) || NO_TIME_TAB;
+        // A question ticked for several webinars has a row per tab: the first goes to the first tab, and so on.
+        var tabs = timeTabsOf_(slots[i][0]);
+        var key = String(keys[i][0] || '').trim() || ('row' + i);
+        var n = copies[key] = (copies[key] || 0) + 1;
+        var tab = tabs.length ? tabs[(n - 1) % tabs.length] : NO_TIME_TAB;
         (byTab[tab] = byTab[tab] || []).push(i + 2);
       }
       var remove = [];

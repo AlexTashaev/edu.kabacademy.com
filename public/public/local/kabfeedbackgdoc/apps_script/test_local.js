@@ -1,7 +1,7 @@
 /**
  * Runs Code.gs against an in-memory stand-in for the Spreadsheet service:
  *   node test_local.js
- * Covers the logic (columns, dedupe, batches, text safety, time tabs), not Google itself.
+ * Covers the logic (columns, dedupe, batches, text safety, time tabs, several webinars ticked), not Google itself.
  */
 'use strict';
 const fs = require('fs');
@@ -246,7 +246,7 @@ u.hidden.add(11);
   u.cell(r, 9).value = 'Вопрос по теме урока 1'; u.cell(r, 10).value = x[2]; u.cell(r, 11).value = x[1];
 });
 
-check('ping', JSON.parse(sandbox.doGet().text), { ok: true, ping: 'local_kabfeedbackgdoc', version: 8 });
+check('ping', JSON.parse(sandbox.doGet().text), { ok: true, ping: 'local_kabfeedbackgdoc', version: 9 });
 check('wrong secret', post({ secret: 'nope', event: 'feedback_response' }), { ok: false, error: 'forbidden' });
 check('unknown event', post({ event: 'x' }), { ok: false, error: 'unknown event' });
 
@@ -455,6 +455,75 @@ check('they come back in archive order, with their colours, keys and answers',
   [t8.peek(3, 13).value, t8.peek(6, 1).bg, t8.peek(6, 6).color, t8.peek(6, 13).value, t8.peek(6, 12).value],
   ['r3006t1790500006', '#efefef', '#888888', 'r3000t1790500000', 'ответ на первый']);
 check('and are archived again on the next request', post({ event: 'feedback_archive', form: { cmid: 13448 } }).moved, 13);
+
+// --- several webinars ticked (checkboxes): a row on the tab of each --------------------------------
+// Form 13560 (lesson 7). By now the rows of 13448 are in the archive; the time tabs hold other forms' rows.
+const t20 = qs.getSheetByName('20:00');
+const lesson7 = (id, ts, text, slot) => question(id, ts, text, slot, {
+  feedback: { name: 'Вопрос по теме урока 7 к вебинару с преподавателями' },
+  responseurl: 'https://edu.kabacademy.com/mod/feedback/show_entries.php?id=13560&showcompleted=' + id,
+});
+const find = (sheet, key) => {
+  const hits = [];
+  for (let r = 2; r <= sheet.getLastRow(); r++) { if (sheet.row(r).indexOf(key) !== -1) { hits.push(r); } }
+  return hits;
+};
+const col = (sheet, id) => {
+  for (let c = 1; c <= sheet.getLastColumn(); c++) { if (sheet.peek(1, c).note.indexOf('moodle:' + id + '\n') === 0) { return c; } }
+  return 0;
+};
+const cellOf = (sheet, row, id) => sheet.peek(row, col(sheet, id));
+const NL = String.fromCharCode(10);
+const rows17 = t17.rows();
+check('two webinars ticked: one row on each tab', post(lesson7(4000, 1791000000, 'на двух', 'в 8:00 изр' + NL + 'в 20:00 изр')),
+  { ok: true, written: 2, duplicates: 0, tables: [qs.name] });
+const K1 = 'r4000t1791000000';
+check('the same row on both tabs, the third tab untouched, the ticked times on one line',
+  [find(t8, K1).length, find(t20, K1).length, t17.rows() === rows17, cellOf(t8, find(t8, K1)[0], 'participate').value,
+    cellOf(t20, find(t20, K1)[0], 'question').value, cellOf(t20, find(t20, K1)[0], 'repeat').value],
+  [1, 1, true, 'в 8:00 изр, в 20:00 изр', 'на двух', '']);
+check('cron retry of it is a duplicate', post(lesson7(4000, 1791000000, 'на двух', 'в 8:00 изр' + NL + 'в 20:00 изр')),
+  { ok: true, written: 0, duplicates: 1, tables: [qs.name], duplicate: true });
+t20.deleteRow(find(t20, K1)[0]);
+check('a delivery that stopped half way is completed by the retry: only the missing tab is written',
+  [post(lesson7(4000, 1791000000, 'на двух', 'в 8:00 изр' + NL + 'в 20:00 изр')).written, find(t8, K1).length, find(t20, K1).length],
+  [1, 1, 1]);
+check('all three ticked', [post(lesson7(4001, 1791000001, 'на всех', 'в 8:00 изр' + NL + 'в 17:00 изр' + NL + 'в 20:00 изр')).written,
+  find(t8, 'r4001t1791000001').length, find(t17, 'r4001t1791000001').length, find(t20, 'r4001t1791000001').length], [3, 1, 1, 1]);
+
+// The student sends the form again: 20:00 unticked, 17:00 ticked, another text.
+const K2 = 'r4000t1791000500';
+check('re-submission with other webinars: a row per ticked tab, one repeat',
+  post(lesson7(4000, 1791000500, 'передумал', 'в 8:00 изр' + NL + 'в 17:00 изр')),
+  { ok: true, written: 2, duplicates: 0, tables: [qs.name], repeats: 1 });
+const old8 = find(t8, K1)[0]; const new8 = find(t8, K2)[0]; const old20 = find(t20, K1)[0]; const new17 = find(t17, K2)[0];
+check('the new row names the previous row of its own tab; on a new tab, the previous row elsewhere',
+  [cellOf(t8, new8, 'repeat').value, cellOf(t8, new8, 'question').bg, cellOf(t17, new17, 'repeat').value],
+  ['Повторная отправка, прежний ответ — строка ' + old8 + '. Изменилось: Буду участвовать в вебинаре; Вопрос', '#fff2cc',
+    'Повторная отправка, прежний ответ — строка ' + old8 + ' на вкладке «8:00». Изменилось: Буду участвовать в вебинаре; Мой вопрос']);
+check('each previous row is greyed: it points to the new row of its tab, or of the first tab when its own was unticked',
+  [cellOf(t8, old8, 'repeat').value, cellOf(t8, old8, 'time').bg, cellOf(t20, old20, 'repeat').value, cellOf(t20, old20, 'question').color,
+    find(t20, K2).length],
+  ['Устарел, новый ответ — строка ' + new8, '#efefef', 'Устарел, новый ответ — строка ' + new8 + ' на вкладке «8:00»', '#888888', 0]);
+check('the other student is not touched', [cellOf(t8, find(t8, 'r4001t1791000001')[0], 'repeat').value,
+  cellOf(t8, find(t8, 'r4001t1791000001')[0], 'time').bg], ['', undefined]);
+check('one webinar ticked in a checkbox form is the old single row',
+  [post(lesson7(4002, 1791000002, 'на одном', 'в 17:00 изр' + NL)).written, find(t17, 'r4002t1791000002').length,
+    cellOf(t17, find(t17, 'r4002t1791000002')[0], 'participate').value], [1, 1, 'в 17:00 изр']);
+
+const arch7 = post({ event: 'feedback_archive', form: { cmid: 13560 } });
+check('archive takes every row of the form', [arch7.moved, arch7.from], [8, { '8:00': 3, '17:00': 3, '20:00': 2 }]);
+check('archived, both rows of a question still count: resend adds nothing',
+  post({ event: 'feedback_batch', responses: [lesson7(4000, 1791000500, 'передумал', 'в 8:00 изр' + NL + 'в 17:00 изр'),
+    lesson7(4001, 1791000001, 'на всех', 'в 8:00 изр' + NL + 'в 17:00 изр' + NL + 'в 20:00 изр')] }),
+  { ok: true, written: 0, duplicates: 2, tables: [qs.name] });
+sandbox.UNARCHIVE_CMID = 13560;
+check('unarchive puts the rows of a question back on each of its tabs',
+  [sandbox.unarchiveForm().moved, find(t8, K1).length, find(t20, K1).length, find(t8, K2).length, find(t17, K2).length,
+    find(t8, 'r4001t1791000001').length, find(t17, 'r4001t1791000001').length, find(t20, 'r4001t1791000001').length],
+  [{ '8:00': 3, '20:00': 2, '17:00': 3 }, 1, 1, 1, 1, 1, 1, 1]);
+check('time tabs of an answer', [sandbox.timeTabsOf_('в 8:00 изр' + NL + 'в 20:00 изр'), sandbox.timeTabsOf_('В 08:00, в 8:00'),
+  sandbox.timeTabsOf_('не знаю'), sandbox.timeTabOf_('в 17:00 изр, в 20:00 изр')], [['8:00', '20:00'], ['8:00'], [], '17:00']);
 
 // --- restyling what is already there ---------------------------------------------------------
 g.cell(2, 7).size = undefined; g.cell(1, 1).size = undefined;
