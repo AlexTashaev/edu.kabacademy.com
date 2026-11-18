@@ -45,9 +45,6 @@ class skin {
         if ($theme) {
             $page->add_body_class('kabsignup-camp');
         }
-        if (!empty($theme['fontcss'])) {
-            $page->requires->css(new \moodle_url($theme['fontcss']));
-        }
         if ($phone) {
             $page->requires->css('/local/kabsignup/thirdparty/intl-tel-input/css/intlTelInput.min.css');
             $page->requires->js(new \moodle_url('/local/kabsignup/thirdparty/intl-tel-input/js/intlTelInput.min.js'));
@@ -72,7 +69,7 @@ class skin {
         $c = $b . ' .login-container';
         $rules = [];
         if (isset($theme['bg'])) {
-            $rules[] = "$b,$b #page-wrapper,$b #page{background:{$theme['bg']} !important}";
+            $rules[] = "$b,$b #page-wrapper,$b #page,$b #page-footer{background:{$theme['bg']} !important}";
         }
         if (isset($theme['card'])) {
             $rules[] = "$c{background:{$theme['card']};border-color:transparent}";
@@ -99,7 +96,13 @@ class skin {
         if (isset($theme['fontbody'])) {
             $rules[] = "$c{font-family:{$theme['fontbody']}}";
         }
-        return $rules ? html_writer::tag('style', implode("\n", $rules)) : '';
+        $out = '';
+        if (!empty($theme['fontcss'])) {
+            // Printed as is: moodle_url would merge repeated parameters (Google Fonts has
+            // family=…&family=…). A stylesheet link is allowed in the body.
+            $out .= html_writer::empty_tag('link', ['rel' => 'stylesheet', 'href' => $theme['fontcss']]);
+        }
+        return $out . ($rules ? html_writer::tag('style', implode("\n", $rules)) : '');
     }
 
     /**

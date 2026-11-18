@@ -13,14 +13,22 @@ body.kabsignup .mform .fitem > .col-md-9 {
 body.kabsignup .mform .fitem > .col-md-3 {
     padding-bottom: .25rem;
 }
+/* Bootstrap's d-flex is !important: so are the overrides. */
 body.kabsignup .mform .femptylabel > .col-md-3,
 body.kabsignup .mform .form-label-addon,
 body.kabsignup .mform .fdescription.required {
-    display: none;
+    display: none !important;
 }
 body.kabsignup .mform .felement > .form-control,
 body.kabsignup .mform .felement .iti {
     width: 100%;
+}
+body.kabsignup .mform .femptylabel .felement > .fitem {
+    flex: 1 1 100%;
+    margin-bottom: 0;
+}
+body.kabsignup .mform .femptylabel .felement > .fitem > [data-fieldtype="submit"] {
+    display: block;
 }
 body.kabsignup .mform #id_submitbutton {
     width: 100%;
