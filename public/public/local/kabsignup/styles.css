@@ -15,6 +15,8 @@ body.kabsignup .mform .fitem > .col-md-3 {
 }
 /* Bootstrap's d-flex is !important: so are the overrides. */
 body.kabsignup .mform .femptylabel > .col-md-3,
+body.kabsignup .mform .ks-consent > .col-md-3,
+body.kabsignup .mform .ks-consent .form-check .text-danger,
 body.kabsignup .mform .form-label-addon,
 body.kabsignup .mform .fdescription.required {
     display: none !important;
