@@ -154,6 +154,76 @@ class mailer {
     }
 
     /**
+     * Получатель письма по адресу: аккаунт Moodle с этим e-mail или подставной пользователь
+     * (как в формах поддержки ядра) — письмо уходит и тем, у кого аккаунта ещё нет.
+     *
+     * @param string $email
+     * @return \stdClass
+     */
+    public static function recipient(string $email): \stdClass {
+        global $DB;
+        $users = $DB->get_records_select('user', $DB->sql_equal('email', ':email', false) . ' AND deleted = 0',
+            ['email' => $email], 'id', '*', 0, 1);
+        if ($users) {
+            return reset($users);
+        }
+        $to = \core_user::get_noreply_user();
+        $to->email = $email;
+        $to->firstname = '';
+        $to->lastname = '';
+        $to->mailformat = 1;
+        return $to;
+    }
+
+    /**
+     * Текст письма с промокодом для адреса из списка купона.
+     *
+     * @param \stdClass $c купон
+     * @param \stdClass $to получатель (recipient())
+     * @return array [тема, текст, html]
+     */
+    public static function build_coupon(\stdClass $c, \stdClass $to): array {
+        global $DB, $SITE;
+        $p = 'local_kabshop';
+        $fmt = get_string('strftimedatefullshort', 'langconfig');
+        $ids = array_filter(array_map('intval', explode(',', (string) $c->productids)));
+        $names = $ids ? $DB->get_records_list('local_kabshop_product', 'id', $ids, 'name', 'id, name') : [];
+        $url = count($names) === 1 ? new moodle_url('/local/kabshop/product.php', ['id' => reset($names)->id])
+            : new moodle_url('/local/kabshop/index.php');
+        $a = (object) [
+            'firstname' => $to->firstname,
+            'code' => $c->code,
+            'discount' => ltrim(coupons::label($c), '−'),
+            'products' => $names ? implode(', ', array_map(fn($r) => '«' . format_string($r->name) . '»', $names))
+                : get_string('mail_coupon_anyproduct', $p),
+            'email' => $to->email,
+            'site' => format_string($SITE->fullname),
+        ];
+        $lines = [get_string(trim((string) $to->firstname) !== '' ? 'mail_hello' : 'mail_hello_noname', $p, $a), '',
+            get_string('mail_coupon_body', $p, $a)];
+        if ($c->validfrom > time()) {
+            $lines[] = get_string('mail_coupon_from', $p, userdate($c->validfrom, $fmt));
+        }
+        if ($c->validto) {
+            $lines[] = get_string('mail_coupon_until', $p, userdate($c->validto, $fmt));
+        }
+        if ($c->peruser) {
+            $lines[] = get_string('mail_coupon_once', $p);
+        }
+        if (!empty($c->emailonly)) {
+            $lines[] = get_string('mail_coupon_personal', $p, $a);
+        }
+        $lines[] = '';
+        $lines[] = get_string('mail_coupon_howto', $p);
+        $lines[] = $url->out(false);
+        $lines[] = '';
+        $lines[] = get_string('mail_signature', $p, $a);
+        $text = implode("\n", $lines);
+        $html = nl2br(preg_replace('#(https?://[^\s<]+)#', '<a href="$1">$1</a>', s($text)));
+        return [get_string('mail_coupon_subject', $p, $a), $text, $html];
+    }
+
+    /**
      * Письмо о неудачном автосписании: после первой неудачи — «повторим», после последней —
      * «подписка остановлена». Промежуточные неудачи — без писем.
      *

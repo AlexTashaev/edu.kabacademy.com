@@ -73,6 +73,19 @@ class coupon_form extends \moodleform {
         $mform->addElement('advcheckbox', 'peruser', get_string('couponperuser', $p));
         $mform->setDefault('peruser', 1);
 
+        $mform->addElement('textarea', 'emails', get_string('couponemails', $p), ['rows' => 5, 'cols' => 60]);
+        $mform->setType('emails', PARAM_RAW);
+        $mform->addHelpButton('emails', 'couponemails', $p);
+        if (!empty($this->_customdata['emailstatus'])) {
+            $mform->addElement('static', 'emailstatus', '', $this->_customdata['emailstatus']);
+        }
+        $mform->addElement('advcheckbox', 'emailonly', get_string('couponemailonly', $p));
+        $mform->setDefault('emailonly', 1);
+        $mform->hideIf('emailonly', 'emails', 'eq', '');
+        $mform->addElement('advcheckbox', 'sendmail', get_string('couponsendmail', $p));
+        $mform->setDefault('sendmail', 1);
+        $mform->hideIf('sendmail', 'emails', 'eq', '');
+
         $mform->addElement('text', 'note', get_string('couponnote', $p), ['size' => 60]);
         $mform->setType('note', PARAM_TEXT);
 
@@ -104,6 +117,10 @@ class coupon_form extends \moodleform {
         }
         if (!empty($data['validfrom']) && !empty($data['validto']) && $data['validto'] <= $data['validfrom']) {
             $errors['validto'] = get_string('couponto_invalid', 'local_kabshop');
+        }
+        [, $bad] = \local_kabshop\coupons::parse_emails((string) ($data['emails'] ?? ''));
+        if ($bad) {
+            $errors['emails'] = get_string('couponemails_invalid', 'local_kabshop', s(implode(', ', array_slice($bad, 0, 5))));
         }
         return $errors;
     }

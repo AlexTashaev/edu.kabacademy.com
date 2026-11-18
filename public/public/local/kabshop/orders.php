@@ -30,6 +30,7 @@ require_once($CFG->libdir . '/adminlib.php');
 $tab       = optional_param('tab', 'orders', PARAM_ALPHA);
 $q         = optional_param('q', '', PARAM_RAW_TRIMMED);
 $productid = optional_param('productid', 0, PARAM_INT);
+$couponid  = optional_param('couponid', 0, PARAM_INT);
 $fromstr   = optional_param('from', '', PARAM_RAW_TRIMMED);
 $tostr     = optional_param('to', '', PARAM_RAW_TRIMMED);
 $page      = optional_param('page', 0, PARAM_INT);
@@ -43,8 +44,10 @@ $todate = function (string $s, bool $endofday) {
     $t = $s !== '' ? strtotime($s . ' 00:00:00') : 0;
     return $t ? ($endofday ? $t + DAYSECS : $t) : 0;
 };
-$filters = ['q' => $q, 'productid' => $productid, 'from' => $todate($fromstr, false), 'to' => $todate($tostr, true)];
-$baseparams = ['tab' => $tab, 'q' => $q, 'productid' => $productid, 'from' => $fromstr, 'to' => $tostr];
+$filters = ['q' => $q, 'productid' => $productid, 'couponid' => $couponid,
+    'from' => $todate($fromstr, false), 'to' => $todate($tostr, true)];
+$baseparams = ['tab' => $tab, 'q' => $q, 'productid' => $productid, 'couponid' => $couponid,
+    'from' => $fromstr, 'to' => $tostr];
 $baseurl = new moodle_url('/local/kabshop/orders.php', $baseparams);
 
 $fmt = get_string('strftimedatetimeshort', 'langconfig');
@@ -118,6 +121,12 @@ echo html_writer::div(html_writer::label(get_string('search'), 'kq', true, ['cla
         'class' => 'form-control', 'placeholder' => get_string('searchhint', $p)]));
 echo html_writer::div(html_writer::label(get_string('col_subproduct', $p), 'kp', true, ['class' => 'd-block small']) .
     html_writer::select($products, 'productid', $productid, false, ['id' => 'kp', 'class' => 'form-select']));
+$couponmenu = $DB->get_records_menu('local_kabshop_coupon', null, 'code', 'id, code');
+if ($couponmenu) {
+    echo html_writer::div(html_writer::label(get_string('couponcode', $p), 'kc', true, ['class' => 'd-block small']) .
+        html_writer::select([0 => get_string('anycoupon', $p)] + $couponmenu, 'couponid', $couponid, false,
+            ['id' => 'kc', 'class' => 'form-select']));
+}
 echo html_writer::div(html_writer::label(get_string('datefrom', $p), 'kf', true, ['class' => 'd-block small']) .
     html_writer::empty_tag('input', ['type' => 'date', 'name' => 'from', 'id' => 'kf', 'value' => $fromstr, 'class' => 'form-control']));
 echo html_writer::div(html_writer::label(get_string('dateto', $p), 'kt', true, ['class' => 'd-block small']) .

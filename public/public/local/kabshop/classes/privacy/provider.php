@@ -43,6 +43,11 @@ class provider implements \core_privacy\local\metadata\provider {
             'taxid' => 'privacy:metadata',
             'timecreated' => 'privacy:metadata',
         ], 'privacy:metadata');
+        $collection->add_database_table('local_kabshop_coupon_email', [
+            'couponid' => 'privacy:metadata',
+            'email' => 'privacy:metadata',
+            'timesent' => 'privacy:metadata',
+        ], 'privacy:metadata');
         return $collection;
     }
 }

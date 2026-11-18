@@ -37,10 +37,15 @@ $listurl = new moodle_url('/local/kabshop/coupons.php');
 // Форма: id = 0 — новый купон, id > 0 — правка.
 if ($id >= 0) {
     $PAGE->set_url(new moodle_url($listurl, ['id' => $id]));
-    $form = new \local_kabshop\form\coupon_form($PAGE->url);
+    $emails = $id ? coupons::emails($id) : [];
+    $sentcount = count(array_filter($emails, fn($r) => $r->timesent > 0));
+    $form = new \local_kabshop\form\coupon_form($PAGE->url, ['emailstatus' => $emails
+        ? get_string('couponemails_status', $p, (object) ['sent' => $sentcount, 'total' => count($emails)]) : '']);
     if ($id) {
         $c = $DB->get_record('local_kabshop_coupon', ['id' => $id], '*', MUST_EXIST);
         $c->productids = array_filter(array_map('intval', explode(',', (string) $c->productids)));
+        $c->emails = implode("\n", array_keys($emails));
+        $c->emailonly = $emails ? $c->emailonly : 1;
         $form->set_data($c);
     } else {
         $form->set_data(['id' => 0]);
@@ -62,15 +67,23 @@ if ($id >= 0) {
             'enabled' => (int) $data->enabled,
             'timemodified' => time(),
         ];
+        [$list] = coupons::parse_emails((string) ($data->emails ?? ''));
+        $rec->emailonly = $list ? (int) $data->emailonly : 0;
         if ($data->id) {
             $rec->id = $data->id;
             $DB->update_record('local_kabshop_coupon', $rec);
         } else {
             $rec->uses = 0;
             $rec->timecreated = time();
-            $DB->insert_record('local_kabshop_coupon', $rec);
+            $rec->id = $DB->insert_record('local_kabshop_coupon', $rec);
         }
-        redirect($listurl, get_string('changessaved'), null, \core\output\notification::NOTIFY_SUCCESS);
+        $pending = coupons::save_emails($rec->id, $list);
+        $msg = get_string('changessaved');
+        if ($pending && !empty($data->sendmail)) {
+            coupons::queue_mail($rec->id);
+            $msg .= ' ' . get_string('couponemails_queued', $p, $pending);
+        }
+        redirect($listurl, $msg, null, \core\output\notification::NOTIFY_SUCCESS);
     }
     echo $OUTPUT->header();
     echo $OUTPUT->heading(get_string($id ? 'editcoupon' : 'addcoupon', $p));
@@ -88,10 +101,13 @@ if (!$list) {
     echo $OUTPUT->notification(get_string('nocoupons', $p), 'info');
 } else {
     $products = $DB->get_records_menu('local_kabshop_product', null, '', 'id, name');
+    $emailstats = $DB->get_records_sql('SELECT couponid, COUNT(1) AS total, SUM(CASE WHEN timesent > 0 THEN 1 ELSE 0 END) AS sent
+        FROM {local_kabshop_coupon_email} GROUP BY couponid');
     $fmt = get_string('strftimedatetimeshort', 'langconfig');
     $t = new html_table();
     $t->head = [get_string('couponcode', $p), get_string('couponkind', $p), get_string('couponproducts', $p),
-        get_string('couponvalidity', $p), get_string('couponuses', $p), get_string('couponnote', $p), get_string('enabled', 'admin')];
+        get_string('couponvalidity', $p), get_string('couponemails_col', $p), get_string('couponuses', $p),
+        get_string('couponnote', $p), get_string('enabled', 'admin')];
     $t->attributes['class'] = 'generaltable';
     foreach ($list as $c) {
         $ids = array_filter(array_map('intval', explode(',', (string) $c->productids)));
@@ -99,12 +115,18 @@ if (!$list) {
             : get_string('allproducts', $p);
         $valid = (!$c->validfrom && !$c->validto) ? get_string('couponnolimit', $p)
             : ($c->validfrom ? userdate($c->validfrom, $fmt) : '…') . ' — ' . ($c->validto ? userdate($c->validto, $fmt) : '…');
+        $es = $emailstats[$c->id] ?? null;
+        $emailcell = $es ? get_string('couponemails_short', $p, (object) ['total' => $es->total, 'sent' => (int) $es->sent])
+            . ($c->emailonly ? ' · ' . get_string('couponemailonly_short', $p) : '') : '—';
+        $uses = $c->uses . ($c->maxuses ? ' / ' . $c->maxuses : '');
         $t->data[] = [
             html_writer::link(new moodle_url($listurl, ['id' => $c->id]), s($c->code)),
             coupons::label($c) . ($c->peruser ? ' · ' . get_string('couponperuser_short', $p) : ''),
             $names,
             $valid,
-            $c->uses . ($c->maxuses ? ' / ' . $c->maxuses : ''),
+            $emailcell,
+            $c->uses ? html_writer::link(new moodle_url('/local/kabshop/orders.php', ['couponid' => $c->id]), $uses,
+                ['title' => get_string('couponuses_link', $p)]) : $uses,
             s((string) $c->note),
             $c->enabled ? get_string('yes') : get_string('no'),
         ];

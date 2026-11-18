@@ -43,7 +43,7 @@ class orders {
     /**
      * Заказы по фильтрам.
      *
-     * @param array $f q (имя/email/номер), productid, from, to (timestamp), userid
+     * @param array $f q (имя/email/номер/промокод), productid, couponid, from, to (timestamp), userid
      * @param int $page
      * @param int $perpage 0 — без ограничения (выгрузка)
      * @return array [записи, всего]
@@ -59,6 +59,10 @@ class orders {
         if (!empty($f['productid'])) {
             $where[] = 'pu.productid = :productid';
             $params['productid'] = $f['productid'];
+        }
+        if (!empty($f['couponid'])) {
+            $where[] = 'pu.couponid = :couponid';
+            $params['couponid'] = $f['couponid'];
         }
         if (!empty($f['from'])) {
             $where[] = 'pu.timecreated >= :from';
@@ -78,7 +82,7 @@ class orders {
                 $params['qid'] = (int) $q;
             } else {
                 $like = [];
-                foreach (['u.email', 'u.firstname', 'u.lastname'] as $i => $col) {
+                foreach (['u.email', 'u.firstname', 'u.lastname', 'cp.code'] as $i => $col) {
                     $like[] = $DB->sql_like($col, ':q' . $i, false, false);
                     $params['q' . $i] = '%' . $DB->sql_like_escape($q) . '%';
                 }

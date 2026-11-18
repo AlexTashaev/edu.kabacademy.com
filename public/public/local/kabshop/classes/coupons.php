@@ -66,6 +66,9 @@ class coupons {
         if ($c->maxuses && $c->uses >= $c->maxuses) {
             return 'coupon_usedup';
         }
+        if (!self::allowed_for($c, $userid)) {
+            return 'coupon_notforyou';
+        }
         $ids = array_filter(array_map('intval', explode(',', (string) $c->productids)));
         if (($ids && !in_array((int) $product->id, $ids, true)) || !empty($product->customamount)
                 || catalog::is_free($product) || $product->kind === 'external') {
@@ -82,6 +85,92 @@ class coupons {
             return 'coupon_alreadyused';
         }
         return null;
+    }
+
+    /**
+     * Можно ли пользователю применить купон: у купона «только для этих адресов» e-mail аккаунта
+     * должен быть в списке. Пустой список — без ограничения.
+     *
+     * @param \stdClass $c
+     * @param int $userid
+     * @return bool
+     */
+    public static function allowed_for(\stdClass $c, int $userid): bool {
+        global $DB;
+        if (empty($c->emailonly) || !$DB->record_exists('local_kabshop_coupon_email', ['couponid' => $c->id])) {
+            return true;
+        }
+        $email = \core_text::strtolower(trim((string) $DB->get_field('user', 'email', ['id' => $userid])));
+        return $email !== '' && $DB->record_exists('local_kabshop_coupon_email', ['couponid' => $c->id, 'email' => $email]);
+    }
+
+    /**
+     * Разобрать список адресов: через запятую, точку с запятой, пробел или с новой строки.
+     *
+     * @param string $raw
+     * @return array [верные адреса нижним регистром без повторов, неверные]
+     */
+    public static function parse_emails(string $raw): array {
+        $ok = [];
+        $bad = [];
+        foreach (preg_split('/[\s,;]+/u', $raw, -1, PREG_SPLIT_NO_EMPTY) as $e) {
+            $e = \core_text::strtolower(trim($e, " \t\n\r\0\x0B<>\"'"));
+            if ($e === '') {
+                continue;
+            }
+            if (\core_text::strlen($e) <= 100 && validate_email($e)) {
+                $ok[$e] = $e;
+            } else {
+                $bad[$e] = $e;
+            }
+        }
+        return [array_values($ok), array_values($bad)];
+    }
+
+    /**
+     * Адреса купона.
+     *
+     * @param int $couponid
+     * @return array email => запись
+     */
+    public static function emails(int $couponid): array {
+        global $DB;
+        $list = [];
+        foreach ($DB->get_records('local_kabshop_coupon_email', ['couponid' => $couponid], 'id') as $r) {
+            $list[$r->email] = $r;
+        }
+        return $list;
+    }
+
+    /**
+     * Сохранить список адресов: новые добавить (письмо им ещё не отправлено), убранные удалить.
+     *
+     * @param int $couponid
+     * @param array $emails верные адреса нижним регистром
+     * @return int сколько адресов ещё без письма
+     */
+    public static function save_emails(int $couponid, array $emails): int {
+        global $DB;
+        $have = self::emails($couponid);
+        foreach (array_diff_key($have, array_flip($emails)) as $r) {
+            $DB->delete_records('local_kabshop_coupon_email', ['id' => $r->id]);
+        }
+        foreach (array_diff($emails, array_keys($have)) as $e) {
+            $DB->insert_record('local_kabshop_coupon_email',
+                (object) ['couponid' => $couponid, 'email' => $e, 'timesent' => 0, 'timecreated' => time()]);
+        }
+        return $DB->count_records('local_kabshop_coupon_email', ['couponid' => $couponid, 'timesent' => 0]);
+    }
+
+    /**
+     * Поставить в очередь письма с кодом тем адресам купона, кому ещё не отправляли.
+     *
+     * @param int $couponid
+     */
+    public static function queue_mail(int $couponid): void {
+        $task = new task\send_coupon_emails();
+        $task->set_custom_data(['couponid' => $couponid]);
+        \core\task\manager::queue_adhoc_task($task, true);
     }
 
     /**
