@@ -20,12 +20,19 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir . '/formslib.php');
 
+use local_kabsignup\emailcheck;
+use local_kabsignup\manager;
+
 /**
  * The signup form: first name, last name (optional), e-mail, phone
- * (required unless the phonerequired setting is off).
+ * (required unless the phonerequired setting is off), consent to the terms
+ * (when a terms page is configured).
  *
  * Also carries an invisible honeypot field (not a moodleform element, so bots
  * that fill every input give themselves away); index.php checks it.
+ *
+ * Custom data: phonerequired, termsurl, buttonlabel, belowbutton, country,
+ * courseid, campaign (slug, for the log of rejected addresses).
  *
  * @package    local_kabsignup
  * @copyright  2026 Kabbalah Academy
@@ -38,6 +45,7 @@ class signup_form extends \moodleform {
      */
     public function definition() {
         $mform = $this->_form;
+        $custom = $this->_customdata;
 
         $mform->addElement('text', 'firstname', get_string('firstnamelabel', 'local_kabsignup'), [
             'size' => 40,
@@ -64,16 +72,28 @@ class signup_form extends \moodleform {
         $mform->setType('email', PARAM_RAW_TRIMMED);
         $mform->addRule('email', get_string('required'), 'required', null, 'client');
 
-        $mform->addElement('text', 'phone', get_string('phonelabel', 'local_kabsignup'), [
+        $phoneattrs = [
             'size' => 40,
             'maxlength' => 30,
             'autocomplete' => 'tel',
             'inputmode' => 'tel',
             'placeholder' => '+7 999 123-45-67',
-        ]);
+        ];
+        if (!empty($custom['country'])) {
+            $phoneattrs['data-country'] = $custom['country'];
+        }
+        $mform->addElement('text', 'phone', get_string('phonelabel', 'local_kabsignup'), $phoneattrs);
         $mform->setType('phone', PARAM_RAW_TRIMMED);
-        if (!empty($this->_customdata['phonerequired'])) {
+        if (!empty($custom['phonerequired'])) {
             $mform->addRule('phone', get_string('required'), 'required', null, 'client');
+        }
+
+        if (!empty($custom['termsurl'])) {
+            $link = \html_writer::link($custom['termsurl'], get_string('consentlink', 'local_kabsignup'),
+                ['target' => '_blank', 'rel' => 'noopener']);
+            $mform->addElement('checkbox', 'consent', '', get_string('consenttext', 'local_kabsignup', $link),
+                ['class' => 'ks-consent']);
+            $mform->addRule('consent', get_string('consentrequired', 'local_kabsignup'), 'required', null, 'client');
         }
 
         $mform->addElement('html', \html_writer::div(
@@ -89,12 +109,18 @@ class signup_form extends \moodleform {
             ['style' => 'position:absolute;left:-9999px;top:-9999px;height:0;overflow:hidden;']
         ));
 
-        $this->add_action_buttons(false, get_string('submit', 'local_kabsignup'));
+        $label = !empty($custom['buttonlabel']) ? $custom['buttonlabel'] : get_string('submit', 'local_kabsignup');
+        $this->add_action_buttons(false, $label);
+
+        if (!empty($custom['belowbutton'])) {
+            $mform->addElement('html', \html_writer::div(s($custom['belowbutton']), 'ks-below'));
+        }
     }
 
     /**
-     * A real name and a syntactically valid address; whether the address is
-     * taken stays secret until after submission.
+     * A real name, a syntactically valid and deliverable address, a phone
+     * number, the consent. Whether the address is taken stays secret until
+     * after submission.
      *
      * @param array $data
      * @param array $files
@@ -102,6 +128,7 @@ class signup_form extends \moodleform {
      */
     public function validation($data, $files) {
         $errors = parent::validation($data, $files);
+        $custom = $this->_customdata;
         if (trim($data['firstname'] ?? '') === '') {
             $errors['firstname'] = get_string('required');
         }
@@ -112,12 +139,50 @@ class signup_form extends \moodleform {
         }
         $phone = trim($data['phone'] ?? '');
         if ($phone === '') {
-            if (!empty($this->_customdata['phonerequired'])) {
+            if (!empty($custom['phonerequired'])) {
                 $errors['phone'] = get_string('required');
             }
-        } else if (\local_kabsignup\manager::normalise_phone($phone) === '') {
+        } else if (manager::normalise_phone($phone) === '') {
             $errors['phone'] = get_string('invalidphone', 'local_kabsignup');
         }
+        if (!empty($custom['termsurl']) && empty($data['consent'])) {
+            $errors['consent'] = get_string('consentrequired', 'local_kabsignup');
+        }
+        if (!isset($errors['email']) && !$errors) {
+            $error = self::check_address((string)$data['email'], (int)($custom['courseid'] ?? 0),
+                (string)($custom['campaign'] ?? ''));
+            if ($error !== null) {
+                $errors['email'] = $error;
+            }
+        }
         return $errors;
+    }
+
+    /**
+     * Clearout check of a new address (§4.6 of the spec). Skipped for taken
+     * addresses and when the visitor is over the rate limit; a rejection is
+     * logged (status "badmail") so that it counts toward the limit and nobody
+     * can burn the Clearout credits by spamming the form.
+     *
+     * @param string $email
+     * @param int $courseid
+     * @param string $campaign
+     * @return string|null error text
+     */
+    protected static function check_address(string $email, int $courseid, string $campaign): ?string {
+        $config = manager::config();
+        if ($config->clearouttoken === '' || manager::find_user($email) !== null) {
+            return null;
+        }
+        $ip = \core_text::substr((string)getremoteaddr(), 0, 45);
+        $emailhash = manager::email_hash($email);
+        if (manager::throttled($emailhash, $ip, $config)) {
+            return null;
+        }
+        if (emailcheck::check($email, $config) !== 'reject') {
+            return null;
+        }
+        manager::log($courseid, 0, $emailhash, 0, $campaign, 'badmail', $ip);
+        return get_string('undeliverable', 'local_kabsignup');
     }
 }

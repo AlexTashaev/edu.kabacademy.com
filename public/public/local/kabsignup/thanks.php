@@ -16,7 +16,8 @@
 
 /**
  * Built-in thank-you page: used when neither the campaign nor the course has
- * its own page configured, and always for "you are already enrolled".
+ * its own page configured, and always for "you are already enrolled". Shown
+ * in the campaign's colours when camp= names a visible campaign.
  *
  * @package    local_kabsignup
  * @copyright  2026 Kabbalah Academy
@@ -25,8 +26,13 @@
 
 require(__DIR__ . '/../../config.php');
 
+use local_kabsignup\campaigns;
+use local_kabsignup\skin;
+
 $courseid = required_param('id', PARAM_INT);
 $already = optional_param('already', 0, PARAM_BOOL);
+$campaign = core_text::strtolower(core_text::substr(optional_param('camp', '', PARAM_ALPHANUMEXT), 0, 64));
+$campaignrec = campaigns::get_visible($campaign);
 
 $PAGE->set_url(new moodle_url('/local/kabsignup/thanks.php', ['id' => $courseid]));
 $PAGE->set_pagelayout('login');
@@ -47,9 +53,11 @@ if ($course) {
 $loggedin = isloggedin() && !isguestuser();
 $heading = get_string($already ? 'alreadyheading' : 'thanksheading', 'local_kabsignup');
 $PAGE->set_title($heading);
+skin::setup($PAGE, $campaignrec);
 
 echo $OUTPUT->header();
-echo $OUTPUT->heading($heading, 2, 'text-center mb-3');
+echo skin::style($campaignrec);
+echo skin::heading($campaignrec, $heading);
 if ($course) {
     if ($already) {
         $stringid = $loggedin ? 'alreadytext' : 'alreadytextguest';
@@ -59,7 +67,7 @@ if ($course) {
     echo $OUTPUT->box(get_string($stringid, 'local_kabsignup', $coursename), 'generalbox boxwidthnormal boxaligncenter');
     echo html_writer::div(
         $OUTPUT->single_button(new moodle_url('/course/view.php', ['id' => $course->id]),
-            get_string('gotocourse', 'local_kabsignup'), 'get'),
+            get_string('gotocourse', 'local_kabsignup'), 'get', ['type' => 'primary']),
         'text-center'
     );
 } else {

@@ -16,15 +16,22 @@
 
 namespace local_kabsignup\task;
 
+use local_kabsignup\capi;
 use local_kabsignup\dupcheck;
 use local_kabsignup\geo;
 use local_kabsignup\manager;
 
 /**
- * Background work for a newly created account, off the signup request:
- * city/country by IP and the duplicate-account alert.
+ * Background work after a signup, off the request: for a newly created
+ * account — city/country by IP and the duplicate-account alert; for every
+ * first enrolment of a campaign with the pixel on — the Facebook
+ * CompleteRegistration event (Conversions API).
  *
- * Custom data: logid, userid, courseid, ip.
+ * Custom data: logid, userid, courseid, ip, newuser (absent in tasks queued by
+ * 1.1–1.2: then true), capi (event from capi::payload() or null).
+ *
+ * Each step marks the log row (flags) before or right after it runs, so a
+ * retried task never sends an alert or an event twice.
  *
  * @package    local_kabsignup
  * @copyright  2026 Kabbalah Academy
@@ -40,6 +47,7 @@ class after_signup extends \core\task\adhoc_task {
         $data = $this->get_custom_data();
         $logid = (int)($data->logid ?? 0);
         $userid = (int)($data->userid ?? 0);
+        $newuser = !isset($data->newuser) || !empty($data->newuser);
         $user = $DB->get_record('user', ['id' => $userid, 'deleted' => 0],
             'id, email, firstname, lastname, phone1, phone2, auth, suspended, city, country');
         if (!$user) {
@@ -47,7 +55,7 @@ class after_signup extends \core\task\adhoc_task {
         }
         $done = $logid ? (string)$DB->get_field('local_kabsignup_log', 'flags', ['id' => $logid]) : '';
 
-        if (strpos($done, 'geo') === false) {
+        if ($newuser && strpos($done, 'geo') === false) {
             try {
                 if (geo::fill($userid, (string)($data->ip ?? ''))) {
                     manager::add_flags($logid, ['geo']);
@@ -57,7 +65,7 @@ class after_signup extends \core\task\adhoc_task {
             }
         }
 
-        if (strpos($done, 'dup') === false) {
+        if ($newuser && strpos($done, 'dup') === false) {
             $matches = dupcheck::find($user);
             if ($matches) {
                 // Flag first: a retry after a mail failure must not send twice.
@@ -65,6 +73,18 @@ class after_signup extends \core\task\adhoc_task {
                 $course = $DB->get_record('course', ['id' => (int)($data->courseid ?? 0)], 'id, fullname');
                 dupcheck::alert($user, $matches, manager::config()->dupalertto, $course ?: null);
             }
+        }
+
+        if (!empty($data->capi) && strpos($done, 'capi') === false) {
+            $event = json_decode(json_encode($data->capi), true);
+            try {
+                $ok = capi::send($event, manager::config());
+            } catch (\Throwable $e) {
+                mtrace('local_kabsignup: Conversions API failed: ' . $e->getMessage());
+                $ok = false;
+            }
+            // Not retried: a late registration event is worth little, a duplicate one costs.
+            manager::add_flags($logid, [$ok ? 'capi' : 'capi:err']);
         }
     }
 }

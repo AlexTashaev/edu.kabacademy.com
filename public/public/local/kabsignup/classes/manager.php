@@ -22,8 +22,9 @@ defined('MOODLE_INTERNAL') || die();
  * Creates accounts, enrols them and routes the visitor to a thank-you page.
  *
  * Isolation: existing accounts are never modified — the only things that may
- * happen to them here are a manual enrolment into a whitelisted course and an
- * e-mail with a login link (issued by auth_kabmagic under its own rules).
+ * happen to them here are a manual enrolment into a whitelisted course, an
+ * e-mail with a login link (issued by auth_kabmagic under its own rules) and
+ * the persona profile field (see persona::save() for why).
  * New accounts are created by the standard user_create_user() with auth
  * "manual" and a generated password that is e-mailed to the address.
  *
@@ -39,12 +40,20 @@ class manager {
     /** @var int Per-IP cap is this many times the per-address limit, same window. */
     const IP_MULTIPLIER = 10;
 
+    /** @var string[] Statuses of a first enrolment: they count as a registration (pixel, persona). */
+    const REGISTERED = ['created', 'enrolled', 'loggedin'];
+
+    /** @var string Persona slugs allowed by default (the autumn-2026 lounges). */
+    const DEFAULT_PERSONAS = 'edik, mushi, gavriel, senja, rav, itzik';
+
     /**
      * Plugin settings with defaults applied.
      *
-     * @return \stdClass courses (id => thank-you URL or ''), campaigns (slug => URL),
-     *                   defaultthankyou, existingpolicy ('enrol'|'login'), phonerequired,
-     *                   ipinfotoken, dupalertto, ratelimit, ratewindow (min), retentiondays
+     * @return \stdClass courses (id => thank-you URL or ''), prerequisites, defaultthankyou,
+     *                   existingpolicy ('enrol'|'login'), phonerequired, termsurl, personas (slugs),
+     *                   personafield, ipinfotoken, dupalertto, ratelimit, ratewindow (min),
+     *                   retentiondays, capipixel, capitoken, capiversion, capitestcode,
+     *                   clearouttoken, clearouttimeout (s)
      */
     public static function config(): \stdClass {
         // A setting that is missing, empty or zero means "use the default": the admin
@@ -52,8 +61,23 @@ class manager {
         $raw = get_config('local_kabsignup');
         $out = new \stdClass();
         $out->courses = self::parse_courses((string)($raw->courses ?? ''));
-        $out->campaigns = self::parse_campaigns((string)($raw->campaigns ?? ''));
         $out->prerequisites = self::parse_prerequisites((string)($raw->prerequisites ?? ''));
+        // Settings added in 1.3.0: unset means default.
+        $personas = isset($raw->personas) ? (string)$raw->personas : self::DEFAULT_PERSONAS;
+        $out->personas = array_values(array_filter(array_map(function(string $p): string {
+            return \core_text::strtolower(clean_param(trim($p), PARAM_ALPHANUMEXT));
+        }, preg_split('/[\s,;]+/', $personas))));
+        $out->personafield = isset($raw->personafield) ? clean_param(trim((string)$raw->personafield), PARAM_ALPHANUMEXT)
+            : 'kab_persona';
+        $out->termsurl = self::terms_url(isset($raw->termsurl) ? (string)$raw->termsurl : '');
+        $out->capipixel = preg_replace('/\D/', '', (string)($raw->capipixel ?? ''));
+        $out->capitoken = trim((string)($raw->capitoken ?? ''));
+        $version = trim((string)($raw->capiversion ?? ''));
+        $out->capiversion = preg_match('/^v\d+\.\d+$/', $version) ? $version : 'v23.0';
+        $out->capitestcode = trim((string)($raw->capitestcode ?? ''));
+        $out->clearouttoken = trim((string)($raw->clearouttoken ?? ''));
+        $timeout = (int)($raw->clearouttimeout ?? 0);
+        $out->clearouttimeout = ($timeout > 0 && $timeout <= 20) ? $timeout : 4;
         $out->defaultthankyou = self::clean_target((string)($raw->defaultthankyou ?? ''));
         $out->existingpolicy = (($raw->existingpolicy ?? '') === 'login') ? 'login' : 'enrol';
         // Settings added in 1.1.0 stay unset until the settings page is saved: unset means default.
@@ -173,7 +197,31 @@ class manager {
     }
 
     /**
-     * Campaign lines: "slug|thank-you URL".
+     * The terms page for the consent box: the setting, or — when it is empty —
+     * the offer of the storefront (local_kabshop) if it is installed; "-" turns
+     * the box off.
+     *
+     * @param string $setting
+     * @return string URL or ''
+     */
+    public static function terms_url(string $setting): string {
+        $setting = trim($setting);
+        if ($setting === '-') {
+            return '';
+        }
+        if ($setting !== '') {
+            $target = self::clean_target($setting);
+            return $target === '' ? '' : (new \moodle_url($target))->out(false);
+        }
+        if (class_exists('\local_kabshop\legal')) {
+            return (new \moodle_url('/local/kabshop/legal.php', ['doc' => 'offer']))->out(false);
+        }
+        return '';
+    }
+
+    /**
+     * Legacy campaign lines "slug|thank-you URL" (setting of 1.0–1.2, moved to
+     * the campaign table by the 1.3.0 upgrade).
      *
      * @param string $raw
      * @return array slug (lower-cased) => URL
@@ -212,23 +260,6 @@ class manager {
             return $url;
         }
         return '';
-    }
-
-    /**
-     * The utm_* parameters of the current request, to pass through to the
-     * thank-you page.
-     *
-     * @return array name => value
-     */
-    public static function utm_params(): array {
-        $out = [];
-        foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as $name) {
-            $value = trim(optional_param($name, '', PARAM_NOTAGS));
-            if ($value !== '') {
-                $out[$name] = \core_text::substr($value, 0, 255);
-            }
-        }
-        return $out;
     }
 
     /**
@@ -466,28 +497,34 @@ class manager {
      * @param string $phone as typed, may be empty
      * @param string $campaign camp= slug ('' when none)
      * @param string $ip requester's IP
-     * @return array ['status' => created|enrolled|already|exists|throttled|noprereq, 'user' => \stdClass|null]
+     * @param array $context attr (ad and quiz parameters), campaignrec (campaign row or null),
+     *                       persona (checked slug), sourceurl (signup page, for the pixel event)
+     * @return array ['status' => created|enrolled|already|exists|throttled|noprereq,
+     *                'user' => \stdClass|null, 'eventid' => string]
      */
     public static function signup(\stdClass $course, string $firstname, string $lastname,
-            string $email, string $phone, string $campaign, string $ip): array {
+            string $email, string $phone, string $campaign, string $ip, array $context = []): array {
         $config = self::config();
         $ip = \core_text::substr($ip, 0, 45);
         $emailhash = self::email_hash($email);
+        $attr = $context['attr'] ?? [];
+        $persona = (string)($context['persona'] ?? '');
+        $extra = ['attribution' => $attr, 'persona' => $persona, 'flags' => emailcheck::flags($email)];
 
         if (self::throttled($emailhash, $ip, $config)) {
-            return ['status' => 'throttled', 'user' => null];
+            return ['status' => 'throttled', 'user' => null, 'eventid' => ''];
         }
 
         $user = self::find_user($email);
         // Signup conditions (part 2 only after part 1): checked before anything is
         // created — a stranger gets no account, since there is no course for it.
         if (!self::prerequisite_ok($user ? (int)$user->id : 0, (int)$course->id, $config)) {
-            self::log($course->id, $user ? (int)$user->id : 0, $emailhash, 0, $campaign, 'noprereq', $ip);
-            return ['status' => 'noprereq', 'user' => null];
+            self::log($course->id, $user ? (int)$user->id : 0, $emailhash, 0, $campaign, 'noprereq', $ip, $extra);
+            return ['status' => 'noprereq', 'user' => null, 'eventid' => ''];
         }
         if ($user !== null && $config->existingpolicy === 'login') {
-            self::log($course->id, (int)$user->id, $emailhash, 0, $campaign, 'exists', $ip);
-            return ['status' => 'exists', 'user' => null];
+            self::log($course->id, (int)$user->id, $emailhash, 0, $campaign, 'exists', $ip, $extra);
+            return ['status' => 'exists', 'user' => null, 'eventid' => ''];
         }
 
         // Rule of 09.11.2026: an account exists only together with an enrolment —
@@ -511,26 +548,89 @@ class manager {
         self::send_welcome($user, $course, $campaign, $ip, $password);
 
         $status = $new ? 'created' : $enrolled;
-        $logid = self::log($course->id, (int)$user->id, $emailhash, $new ? 1 : 0, $campaign, $status, $ip);
-        if ($new) {
-            self::queue_after_signup($logid, (int)$user->id, (int)$course->id, $ip);
+        $eventid = '';
+        if (in_array($status, self::REGISTERED, true)) {
+            $eventid = self::new_eventid();
+            persona::save((int)$user->id, $persona, $config);
         }
-        return ['status' => $status, 'user' => $user];
+        $logid = self::log($course->id, (int)$user->id, $emailhash, $new ? 1 : 0, $campaign, $status, $ip,
+            $extra + ['eventid' => $eventid]);
+        $typed = self::normalise_phone($phone);
+        $capi = capi::payload($context['campaignrec'] ?? null, $config, $eventid, (string)$user->email,
+            $typed !== '' ? $typed : (string)$user->phone1, $attr, $ip, (string)($context['sourceurl'] ?? ''));
+        if ($new || $capi) {
+            self::queue_after_signup($logid, (int)$user->id, (int)$course->id, $ip, $new, $capi);
+        }
+        return ['status' => $status, 'user' => $user, 'eventid' => $eventid];
     }
 
     /**
-     * Hand the slow part (ipinfo.io, duplicate search, alert e-mail) to cron.
-     * A failure here never breaks the signup itself.
+     * Enrol a visitor who is already logged in (no form), with the same
+     * bookkeeping as the form: signup conditions, log, persona, pixel event.
+     *
+     * @param \stdClass $user $USER
+     * @param \stdClass $course whitelisted course
+     * @param string $campaign camp= slug
+     * @param string $ip
+     * @param array $context as for signup()
+     * @return array ['status' => loggedin|already|noprereq, 'eventid' => string]
+     */
+    public static function signup_loggedin(\stdClass $user, \stdClass $course, string $campaign, string $ip,
+            array $context = []): array {
+        $config = self::config();
+        $ip = \core_text::substr($ip, 0, 45);
+        $emailhash = self::email_hash((string)$user->email);
+        $attr = $context['attr'] ?? [];
+        $persona = (string)($context['persona'] ?? '');
+        $extra = ['attribution' => $attr, 'persona' => $persona];
+
+        if (!self::prerequisite_ok((int)$user->id, (int)$course->id, $config)) {
+            self::log($course->id, (int)$user->id, $emailhash, 0, $campaign, 'noprereq', $ip, $extra);
+            return ['status' => 'noprereq', 'eventid' => ''];
+        }
+        $status = self::enrol($user, $course) === 'already' ? 'already' : 'loggedin';
+        $eventid = '';
+        if ($status === 'loggedin') {
+            $eventid = self::new_eventid();
+            persona::save((int)$user->id, $persona, $config);
+        }
+        $logid = self::log($course->id, (int)$user->id, $emailhash, 0, $campaign, $status, $ip,
+            $extra + ['eventid' => $eventid]);
+        $capi = capi::payload($context['campaignrec'] ?? null, $config, $eventid, (string)$user->email,
+            (string)($user->phone1 ?? ''), $attr, $ip, (string)($context['sourceurl'] ?? ''));
+        if ($capi) {
+            self::queue_after_signup($logid, (int)$user->id, (int)$course->id, $ip, false, $capi);
+        }
+        return ['status' => $status, 'eventid' => $eventid];
+    }
+
+    /**
+     * Random id shared by the browser event on the thank-you page and the
+     * server event, so that Meta counts one registration.
+     *
+     * @return string 32 hex characters
+     */
+    public static function new_eventid(): string {
+        return bin2hex(random_bytes(16));
+    }
+
+    /**
+     * Hand the slow part (ipinfo.io, duplicate search, alert e-mail, the
+     * Facebook event) to cron. A failure here never breaks the signup itself.
      *
      * @param int $logid
      * @param int $userid
      * @param int $courseid
      * @param string $ip
+     * @param bool $newuser city and duplicate check only for a new account
+     * @param array|null $capi Conversions API event, from capi::payload()
      */
-    public static function queue_after_signup(int $logid, int $userid, int $courseid, string $ip): void {
+    public static function queue_after_signup(int $logid, int $userid, int $courseid, string $ip,
+            bool $newuser = true, ?array $capi = null): void {
         try {
             $task = new \local_kabsignup\task\after_signup();
-            $task->set_custom_data(['logid' => $logid, 'userid' => $userid, 'courseid' => $courseid, 'ip' => $ip]);
+            $task->set_custom_data(['logid' => $logid, 'userid' => $userid, 'courseid' => $courseid, 'ip' => $ip,
+                'newuser' => $newuser, 'capi' => $capi]);
             \core\task\manager::queue_adhoc_task($task);
         } catch (\Throwable $e) {
             debugging('local_kabsignup: could not queue after_signup: ' . $e->getMessage(), DEBUG_DEVELOPER);
@@ -609,44 +709,52 @@ class manager {
     }
 
     /**
-     * Where to send the visitor after the signup: the campaign page, else the
-     * course page, else the default, else the plugin's built-in thanks.php.
-     * UTM parameters and the campaign slug ride along.
+     * Where to send the visitor after the signup: the campaign page (with
+     * {pres} filled in), else the course page, else the default, else the
+     * plugin's built-in thanks.php. The campaign slug, utm_* and pres ride
+     * along; eid — the id of the pixel event — only for a first enrolment.
      *
      * Somebody already enrolled gets the built-in "you are already enrolled"
      * page instead: the campaign page fires the ad pixels, and a repeat signup
      * must not count as a new registration (same as kab-already-enrolled on WP).
      *
      * @param \stdClass $course
-     * @param string $campaign
-     * @param array $utm
+     * @param string $campaign camp= slug
+     * @param array $attr ad parameters of the link
+     * @param string $eventid '' when there is no new registration
      * @param bool $already
+     * @param \stdClass|null $campaignrec visible campaign row
+     * @param string $persona checked slug
      * @return \moodle_url
      */
-    public static function thankyou_url(\stdClass $course, string $campaign, array $utm, bool $already = false): \moodle_url {
+    public static function thankyou_url(\stdClass $course, string $campaign, array $attr, string $eventid = '',
+            bool $already = false, ?\stdClass $campaignrec = null, string $persona = ''): \moodle_url {
+        $params = attribution::for_thankyou($attr);
+        if ($campaign !== '') {
+            $params['camp'] = $campaign;
+        }
+        $builtin = ['id' => $course->id] + ($already ? ['already' => 1] : []) + $params;
         if ($already) {
-            return new \moodle_url('/local/kabsignup/thanks.php', ['id' => $course->id, 'already' => 1] + $utm);
+            return new \moodle_url('/local/kabsignup/thanks.php', $builtin);
         }
         $config = self::config();
-        $base = '';
-        if ($campaign !== '' && isset($config->campaigns[$campaign])) {
-            $base = $config->campaigns[$campaign];
-        } else if (!empty($config->courses[$course->id])) {
+        $base = $campaignrec ? campaigns::thankyou_base($campaignrec, $persona) : '';
+        if ($base === '' && !empty($config->courses[$course->id])) {
             $base = $config->courses[$course->id];
-        } else if ($config->defaultthankyou !== '') {
+        }
+        if ($base === '') {
             $base = $config->defaultthankyou;
         }
         if ($base === '') {
-            return new \moodle_url('/local/kabsignup/thanks.php', ['id' => $course->id] + $utm);
+            return new \moodle_url('/local/kabsignup/thanks.php', $builtin);
         }
-        $params = $utm;
-        if ($campaign !== '') {
-            $params['camp'] = $campaign;
+        if ($eventid !== '') {
+            $params['eid'] = $eventid;
         }
         try {
             return new \moodle_url($base, $params);
         } catch (\moodle_exception $e) {
-            return new \moodle_url('/local/kabsignup/thanks.php', ['id' => $course->id] + $utm);
+            return new \moodle_url('/local/kabsignup/thanks.php', $builtin);
         }
     }
 
@@ -660,11 +768,13 @@ class manager {
      * @param string $campaign
      * @param string $status
      * @param string $ip
+     * @param array $extra attribution (array), persona, eventid, productid, flags (string[])
      * @return int row id
      */
     public static function log(int $courseid, int $userid, string $emailhash, int $newuser,
-            string $campaign, string $status, string $ip): int {
+            string $campaign, string $status, string $ip, array $extra = []): int {
         global $DB;
+        $attr = $extra['attribution'] ?? [];
         $record = (object)[
             'courseid' => $courseid,
             'userid' => $userid,
@@ -672,7 +782,13 @@ class manager {
             'newuser' => $newuser,
             'campaign' => \core_text::substr($campaign, 0, 64),
             'status' => \core_text::substr($status, 0, 20),
+            'flags' => \core_text::substr(implode(';', $extra['flags'] ?? []), 0, 100),
             'ip' => \core_text::substr($ip, 0, 45),
+            'attribution' => $attr ? json_encode($attr, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
+            'quizscore' => attribution::quiz_score($attr),
+            'persona' => \core_text::substr((string)($extra['persona'] ?? ''), 0, 32),
+            'eventid' => (string)($extra['eventid'] ?? ''),
+            'productid' => (int)($extra['productid'] ?? 0),
             'timecreated' => time(),
         ];
         return (int)$DB->insert_record('local_kabsignup_log', $record);

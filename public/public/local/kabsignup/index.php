@@ -17,13 +17,18 @@
 /**
  * Public course signup page.
  *
- * ?id=<courseid>&camp=<campaign slug>&utm_*=... — the course must be listed in
- * the plugin's "courses open for signup" setting. A guest fills in a name, an
- * e-mail and a phone: a free address gets a new account (and is logged in
- * right away), a taken one is enrolled as the existing account (or asked to
- * log in, depending on the setting). A logged-in visitor is enrolled without
- * the form. Everybody ends up on the thank-you page of the campaign/course;
- * somebody already enrolled — on the plugin's "you are already enrolled" page.
+ * ?id=<courseid>&camp=<campaign slug>&<ad and quiz parameters> — the course must
+ * be listed in the plugin's "courses open for signup" setting (without id the
+ * campaign's course is used). A guest fills in a name, an e-mail and a phone:
+ * a free address gets a new account (and is logged in right away), a taken one
+ * is enrolled as the existing account (or asked to log in, depending on the
+ * setting). A logged-in visitor is enrolled without the form. Everybody ends up
+ * on the thank-you page of the campaign/course; somebody already enrolled — on
+ * the plugin's "you are already enrolled" page.
+ *
+ * A campaign (local_kabsignup_campaign, camp=) gives the page its colours, logo,
+ * course card and button text, and the thank-you address. preview=1 lets a
+ * campaign manager see the page as a guest does, without signing up.
  *
  * @package    local_kabsignup
  * @copyright  2026 Kabbalah Academy
@@ -32,18 +37,36 @@
 
 require(__DIR__ . '/../../config.php');
 
-$courseid = required_param('id', PARAM_INT);
-$campaign = core_text::strtolower(core_text::substr(optional_param('camp', '', PARAM_ALPHANUMEXT), 0, 64));
-$utm = \local_kabsignup\manager::utm_params();
+use local_kabsignup\attribution;
+use local_kabsignup\campaigns;
+use local_kabsignup\manager;
+use local_kabsignup\persona;
+use local_kabsignup\skin;
 
-$config = \local_kabsignup\manager::config();
+$config = manager::config();
+$campaign = core_text::strtolower(core_text::substr(optional_param('camp', '', PARAM_ALPHANUMEXT), 0, 64));
+$campaignrec = campaigns::get_visible($campaign);
+$courseid = optional_param('id', 0, PARAM_INT);
+if ($courseid <= 0 && $campaignrec) {
+    $courseid = (int)$campaignrec->courseid;
+}
+$attr = attribution::from_request();
+$persona = persona::slug($attr['pres'] ?? '', $config);
+$preview = optional_param('preview', 0, PARAM_BOOL)
+    && has_capability('local/kabsignup:manage', context_system::instance());
 
 $pageparams = ['id' => $courseid];
 if ($campaign !== '') {
     $pageparams['camp'] = $campaign;
 }
-$pageparams += $utm;
+$pageparams += $attr;
+if ($preview) {
+    $pageparams['preview'] = 1;
+}
 $pageurl = new moodle_url('/local/kabsignup/index.php', $pageparams);
+$sourceurl = (new moodle_url('/local/kabsignup/index.php',
+    array_filter(['id' => $courseid, 'camp' => $campaign])))->out(false);
+$context = ['attr' => $attr, 'campaignrec' => $campaignrec, 'persona' => $persona, 'sourceurl' => $sourceurl];
 
 $PAGE->set_url($pageurl);
 $PAGE->set_pagelayout('login');
@@ -58,7 +81,9 @@ if (!$course) {
     $PAGE->set_context(context_system::instance());
     $PAGE->set_title(get_string('signuptitle', 'local_kabsignup'));
     $PAGE->set_heading(format_string($SITE->fullname));
+    skin::setup($PAGE, $campaignrec);
     echo $OUTPUT->header();
+    echo skin::style($campaignrec);
     echo $OUTPUT->notification(get_string('notavailable', 'local_kabsignup'), \core\output\notification::NOTIFY_INFO);
     echo $OUTPUT->footer();
     exit;
@@ -72,19 +97,22 @@ $PAGE->set_title(get_string('signuptitle', 'local_kabsignup'));
 $PAGE->set_heading($coursename);
 
 // Signup conditions: part 2 of a course only for those enrolled in part 1.
-$prereqnames = \local_kabsignup\manager::prerequisite_names((int)$course->id, $config);
+$prereqnames = manager::prerequisite_names((int)$course->id, $config);
 
 /**
  * "Signup is open only to part-1 students" page, then exit.
  *
  * @param bool $loggedin
  */
-$noprereqpage = function(bool $loggedin) use ($OUTPUT, $USER, $coursename, $prereqnames, $pageurl, $course) {
+$noprereqpage = function(bool $loggedin) use ($OUTPUT, $PAGE, $USER, $coursename, $prereqnames, $pageurl,
+        $campaignrec) {
     global $SESSION;
     $a = (object)['course' => $coursename, 'required' => $prereqnames,
         'email' => $loggedin ? s($USER->email) : ''];
+    skin::setup($PAGE, $campaignrec);
     echo $OUTPUT->header();
-    echo $OUTPUT->heading(get_string('noprereqheading', 'local_kabsignup'), 2, 'text-center mb-3');
+    echo skin::style($campaignrec);
+    echo skin::heading($campaignrec, get_string('noprereqheading', 'local_kabsignup'));
     echo $OUTPUT->box(get_string($loggedin ? 'noprereqtextloggedin' : 'noprereqtext', 'local_kabsignup', $a),
         'generalbox boxwidthnormal boxaligncenter');
     if (!$loggedin) {
@@ -103,37 +131,49 @@ $noprereqpage = function(bool $loggedin) use ($OUTPUT, $USER, $coursename, $prer
     exit;
 };
 
-if (isloggedin() && !isguestuser()) {
+if (!$preview && isloggedin() && !isguestuser()) {
     if (is_siteadmin() || has_capability('moodle/course:update', $coursecontext)) {
         // Admins and the course's teachers preview the flow without enrolling themselves.
-        redirect(\local_kabsignup\manager::thankyou_url($course, $campaign, $utm));
+        redirect(manager::thankyou_url($course, $campaign, $attr, '', false, $campaignrec, $persona));
     }
-    if (!\local_kabsignup\manager::prerequisite_ok((int)$USER->id, (int)$course->id, $config)) {
-        \local_kabsignup\manager::log($course->id, (int)$USER->id,
-            \local_kabsignup\manager::email_hash((string)$USER->email),
-            0, $campaign, 'noprereq', (string)getremoteaddr());
+    $result = manager::signup_loggedin($USER, $course, $campaign, (string)getremoteaddr(), $context);
+    if ($result['status'] === 'noprereq') {
         $noprereqpage(true);
     }
-    $status = \local_kabsignup\manager::enrol($USER, $course);
-    \local_kabsignup\manager::log($course->id, (int)$USER->id,
-        \local_kabsignup\manager::email_hash((string)$USER->email),
-        0, $campaign, $status === 'already' ? 'already' : 'loggedin', (string)getremoteaddr());
-    redirect(\local_kabsignup\manager::thankyou_url($course, $campaign, $utm, $status === 'already'));
+    redirect(manager::thankyou_url($course, $campaign, $attr, $result['eventid'], $result['status'] === 'already',
+        $campaignrec, $persona));
 }
 
 // Honeypot: bots fill the invisible field; people never see it.
 if (data_submitted() && optional_param('kab_website', '', PARAM_RAW) !== '') {
-    redirect(\local_kabsignup\manager::thankyou_url($course, $campaign, $utm));
+    redirect(manager::thankyou_url($course, $campaign, $attr, '', false, $campaignrec, $persona));
 }
 
-$form = new \local_kabsignup\form\signup_form($pageurl, ['phonerequired' => $config->phonerequired]);
+$form = new \local_kabsignup\form\signup_form($pageurl, [
+    'phonerequired' => $config->phonerequired,
+    'termsurl' => $config->termsurl,
+    'buttonlabel' => $campaignrec ? (string)$campaignrec->buttonlabel : '',
+    'belowbutton' => $campaignrec ? (string)$campaignrec->belowbutton : '',
+    'country' => skin::country(),
+    'courseid' => (int)$course->id,
+    'campaign' => $campaign,
+]);
+skin::setup($PAGE, $campaignrec, true);
 
-if ($data = $form->get_data()) {
-    $result = \local_kabsignup\manager::signup($course, $data->firstname, (string)($data->lastname ?? ''),
-        $data->email, (string)($data->phone ?? ''), $campaign, (string)getremoteaddr());
+$data = $form->get_data();
+if ($data && $preview) {
+    // A manager's preview never signs anybody up.
+    $data = null;
+    $previewsubmitted = true;
+}
+
+if ($data) {
+    $result = manager::signup($course, $data->firstname, (string)($data->lastname ?? ''),
+        $data->email, (string)($data->phone ?? ''), $campaign, (string)getremoteaddr(), $context);
 
     if ($result['status'] === 'throttled') {
         echo $OUTPUT->header();
+        echo skin::style($campaignrec);
         echo $OUTPUT->notification(get_string('throttled', 'local_kabsignup'), \core\output\notification::NOTIFY_WARNING);
         if (is_enabled_auth('kabmagic')) {
             $requesturl = new moodle_url('/auth/kabmagic/request.php',
@@ -156,6 +196,8 @@ if ($data = $form->get_data()) {
         // logged-in branch above finishes the enrolment.
         $SESSION->wantsurl = $pageurl->out(false);
         echo $OUTPUT->header();
+        echo skin::style($campaignrec);
+        echo skin::heading($campaignrec, get_string('existsheading', 'local_kabsignup'));
         echo $OUTPUT->box(get_string('existstext', 'local_kabsignup'), 'generalbox boxwidthnormal boxaligncenter');
         $buttons = $OUTPUT->single_button(new moodle_url('/login/index.php'),
             get_string('loginbutton', 'local_kabsignup'), 'get');
@@ -177,12 +219,18 @@ if ($data = $form->get_data()) {
         complete_user_login($newuser);
         \core\session\manager::apply_concurrent_login_limit($newuser->id, session_id());
     }
-    redirect(\local_kabsignup\manager::thankyou_url($course, $campaign, $utm, $result['status'] === 'already'));
+    redirect(manager::thankyou_url($course, $campaign, $attr, $result['eventid'], $result['status'] === 'already',
+        $campaignrec, $persona));
 }
 
 echo $OUTPUT->header();
-echo $OUTPUT->heading(get_string('signupheading', 'local_kabsignup', $coursename), 2, 'text-center mb-3');
-echo $OUTPUT->box(get_string('signupintro', 'local_kabsignup'), 'generalbox boxwidthnormal boxaligncenter');
+echo skin::style($campaignrec);
+if ($preview) {
+    echo $OUTPUT->notification(get_string(empty($previewsubmitted) ? 'previewnotice' : 'previewsubmitted',
+        'local_kabsignup'), \core\output\notification::NOTIFY_INFO, false);
+}
+echo skin::intro($campaignrec, get_string('signupheading', 'local_kabsignup', $coursename),
+    get_string('signupintro', 'local_kabsignup'));
 if ($prereqnames !== '') {
     echo $OUTPUT->notification(get_string('prereqintro', 'local_kabsignup', $prereqnames),
         \core\output\notification::NOTIFY_INFO, false);

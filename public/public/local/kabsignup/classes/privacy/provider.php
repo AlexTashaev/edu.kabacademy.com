@@ -52,11 +52,26 @@ class provider implements
             'status'      => 'privacy:metadata:log:status',
             'flags'       => 'privacy:metadata:log:flags',
             'ip'          => 'privacy:metadata:log:ip',
+            'attribution' => 'privacy:metadata:log:attribution',
+            'quizscore'   => 'privacy:metadata:log:quizscore',
+            'persona'     => 'privacy:metadata:log:persona',
+            'eventid'     => 'privacy:metadata:log:eventid',
+            'productid'   => 'privacy:metadata:log:productid',
             'timecreated' => 'privacy:metadata:log:timecreated',
         ], 'privacy:metadata:log');
         $collection->add_external_location_link('ipinfo', [
             'ip' => 'privacy:metadata:ipinfo:ip',
         ], 'privacy:metadata:ipinfo');
+        $collection->add_external_location_link('facebook', [
+            'emailhash' => 'privacy:metadata:facebook:emailhash',
+            'phonehash' => 'privacy:metadata:facebook:phonehash',
+            'ip' => 'privacy:metadata:facebook:ip',
+            'useragent' => 'privacy:metadata:facebook:useragent',
+            'fbclid' => 'privacy:metadata:facebook:fbclid',
+        ], 'privacy:metadata:facebook');
+        $collection->add_external_location_link('clearout', [
+            'email' => 'privacy:metadata:clearout:email',
+        ], 'privacy:metadata:clearout');
         return $collection;
     }
 
@@ -111,6 +126,10 @@ class provider implements
                     'flags'       => $record->flags,
                     'newuser'     => transform::yesno($record->newuser),
                     'ip'          => $record->ip,
+                    'attribution' => json_decode((string)$record->attribution, true) ?: [],
+                    'quizscore'   => $record->quizscore,
+                    'persona'     => $record->persona,
+                    'productid'   => $record->productid,
                     'timecreated' => transform::datetime($record->timecreated),
                 ];
             }
