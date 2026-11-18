@@ -40,7 +40,10 @@ if ($id >= 0) {
     $emails = $id ? coupons::emails($id) : [];
     $sentcount = count(array_filter($emails, fn($r) => $r->timesent > 0));
     $form = new \local_kabshop\form\coupon_form($PAGE->url, ['emailstatus' => $emails
-        ? get_string('couponemails_status', $p, (object) ['sent' => $sentcount, 'total' => count($emails)]) : '']);
+        ? get_string('couponemails_status', $p, (object) ['sent' => $sentcount, 'total' => count($emails)]) . ' · '
+            . html_writer::link(new moodle_url('/local/kabshop/mailpreview.php', ['coupon' => $id]),
+                get_string('couponemails_preview', $p), ['target' => '_blank'])
+        : '']);
     if ($id) {
         $c = $DB->get_record('local_kabshop_coupon', ['id' => $id], '*', MUST_EXIST);
         $c->productids = array_filter(array_map('intval', explode(',', (string) $c->productids)));

@@ -84,6 +84,7 @@ $string['couponemails_invalid'] = 'Неверные адреса: {$a}';
 $string['couponemails_queued'] = 'Письма с промокодом поставлены в очередь: {$a}. Уйдут в течение нескольких минут.';
 $string['couponemails_short'] = '{$a->total}, отправлено {$a->sent}';
 $string['couponemails_status'] = 'Письма с промокодом отправлены: {$a->sent} из {$a->total}';
+$string['couponemails_preview'] = 'как выглядит письмо';
 $string['couponfrom'] = 'Действует с';
 $string['couponkind'] = 'Скидка';
 $string['couponkind_fixed'] = 'Фиксированная сумма';

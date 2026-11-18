@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Предпросмотр письма «оплата прошла» для покупки — для админа (на dev письма выключены).
+ * Предпросмотр писем для админа (на dev письма выключены): «оплата прошла» для покупки или письмо с промокодом.
  *
  * @package    local_kabshop
  * @copyright  2026 Kabacademy
@@ -26,16 +26,31 @@ use local_kabshop\catalog;
 
 require_once(__DIR__ . '/../../config.php');
 
-$purchaseid = required_param('purchase', PARAM_INT);
+$purchaseid = optional_param('purchase', 0, PARAM_INT);
+$couponid = optional_param('coupon', 0, PARAM_INT);
 require_login();
 $context = context_system::instance();
 require_capability('local/kabshop:manage', $context);
 
 $PAGE->set_context($context);
-$PAGE->set_url(new moodle_url('/local/kabshop/mailpreview.php', ['purchase' => $purchaseid]));
+$PAGE->set_url(new moodle_url('/local/kabshop/mailpreview.php', $couponid ? ['coupon' => $couponid] : ['purchase' => $purchaseid]));
 $PAGE->set_pagelayout('standard');
 $PAGE->set_title(get_string('mailpreview', 'local_kabshop'));
 $PAGE->set_heading(get_string('mailpreview', 'local_kabshop'));
+
+// Письмо с промокодом — на первый адрес купона.
+if ($couponid) {
+    $coupon = $DB->get_record('local_kabshop_coupon', ['id' => $couponid], '*', MUST_EXIST);
+    $first = $DB->get_records('local_kabshop_coupon_email', ['couponid' => $couponid], 'id', 'id, email', 0, 1);
+    $to = \local_kabshop\mailer::recipient($first ? reset($first)->email : $USER->email);
+    [$subject, , $html] = \local_kabshop\mailer::build_coupon($coupon, $to);
+    echo $OUTPUT->header();
+    echo html_writer::tag('p', html_writer::tag('strong', get_string('mailpreview_to', 'local_kabshop')) . ' ' . s($to->email));
+    echo html_writer::tag('p', html_writer::tag('strong', get_string('mailpreview_subject', 'local_kabshop')) . ' ' . s($subject));
+    echo html_writer::div($html, 'border rounded p-3 bg-white');
+    echo $OUTPUT->footer();
+    exit;
+}
 
 $purchase = $DB->get_record('local_kabshop_purchase', ['id' => $purchaseid], '*', MUST_EXIST);
 $payment = $DB->get_record('payments', ['id' => $purchase->paymentid], '*', MUST_EXIST);

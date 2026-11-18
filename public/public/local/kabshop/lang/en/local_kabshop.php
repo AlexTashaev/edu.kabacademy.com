@@ -84,6 +84,7 @@ $string['couponemails_invalid'] = 'Invalid addresses: {$a}';
 $string['couponemails_queued'] = 'Coupon e-mails queued: {$a}. They will be sent within a few minutes.';
 $string['couponemails_short'] = '{$a->total}, sent {$a->sent}';
 $string['couponemails_status'] = 'Coupon e-mails sent: {$a->sent} of {$a->total}';
+$string['couponemails_preview'] = 'preview the e-mail';
 $string['couponfrom'] = 'Valid from';
 $string['couponkind'] = 'Discount';
 $string['couponkind_fixed'] = 'Fixed amount';
