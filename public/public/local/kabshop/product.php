@@ -193,7 +193,27 @@ if ($product->kind === 'external') {
         'id' => $id,
         'sesskey' => sesskey(),
         'label' => get_string('enrolfree', 'local_kabshop'),
+        'donation' => null,
     ];
+    // Окно «Безвозмездная помощь» перед записью, как в корзине WordPress: взнос или без взноса.
+    if ($offer = catalog::free_donation_offer($product, (int) $USER->id)) {
+        $dcurrency = $offer['product']->currency;
+        $dpresets = [];
+        foreach ($offer['presets'] as $v) {
+            $dpresets[] = [
+                'value' => $v,
+                'label' => \core_payment\helper::get_cost_as_string($v, $dcurrency),
+                'checked' => $v == $offer['default'],
+            ];
+        }
+        $action['donation'] = [
+            'text' => format_text(catalog::freedonation_config('text'), FORMAT_HTML, ['context' => $context]),
+            'presets' => $dpresets,
+            'min' => max((float) $offer['product']->price, 0.01),
+            'max' => catalog::MAX_AMOUNT,
+            'currency' => $dcurrency,
+        ];
+    }
 } else if ($product->accountid && !$custom) {
     $PAGE->requires->js_call_amd('core_payment/gateways_modal', 'init');
     $action = [
@@ -224,6 +244,22 @@ if ($twin && !$owned && !$activesub && ($prereqok || !$loggedin)) {
     ];
 }
 
+// Пришёл сюда из окна взноса при бесплатной записи — ссылка на курс, куда записался:
+// до оплаты (передумал платить) и после неё (тогда в последний раз).
+$aftercourse = null;
+$after = $SESSION->local_kabshop_aftercourse ?? null;
+if ($loggedin && $after && (int) $after['productid'] === $id
+        && ($acourse = $DB->get_record('course', ['id' => $after['courseid']], 'id, fullname'))) {
+    $aftercourse = [
+        'href' => (new moodle_url('/course/view.php', ['id' => $acourse->id]))->out(false),
+        'label' => get_string('aftercourse', 'local_kabshop',
+            format_string($acourse->fullname, true, ['context' => context_course::instance($acourse->id)])),
+    ];
+    if ($paid) {
+        unset($SESSION->local_kabshop_aftercourse);
+    }
+}
+
 // Рублёвый товар без своего описания показывает описание пары.
 $description = (string) ($product->description ?? '');
 $descriptionformat = $product->descriptionformat;
@@ -249,6 +285,7 @@ $data['changelabel'] = get_string($couponinfo ? 'couponremove' : ($taxinfo ? 'ch
 $data['prereqnotice'] = $prereqnotice;
 $data['nopayment'] = $prereqok && !$free && !$product->accountid && $product->kind !== 'external';
 $data['paid'] = $paid;
+$data['aftercourse'] = $aftercourse;
 $data['canmanage'] = $canmanage;
 $data['editurl'] = (new moodle_url('/local/kabshop/edit_product.php', ['id' => $id]))->out(false);
 $data['catalogurl'] = $catalogurl->out(false);

@@ -74,4 +74,49 @@ if ($hassiteconfig) {
         ));
     }
     $ADMIN->add('localplugins', $page);
+
+    // Окно «Безвозмездная помощь» при бесплатной записи — как попап корзины WordPress.
+    $page = new admin_settingpage('local_kabshop_freedonation', get_string('freedonationsettings', 'local_kabshop'));
+    $choices = [0 => get_string('freedonation_off', 'local_kabshop')];
+    if ($ADMIN->fulltree) {
+        try {
+            $recs = $DB->get_records_select('local_kabshop_product',
+                "kind = 'donation' AND customamount = 1 AND accountid > 0", null, 'sortorder, id',
+                'id, name, currency, visible');
+        } catch (dml_exception $e) {
+            $recs = []; // Таблиц ещё нет — плагин ставится.
+        }
+        foreach ($recs as $r) {
+            $choices[$r->id] = format_string($r->name) . ' (' . $r->currency . ')'
+                . ($r->visible ? '' : ' — ' . get_string('hidden', 'local_kabshop'));
+        }
+    }
+    $page->add(new admin_setting_configselect(
+        'local_kabshop/freedonation_product',
+        get_string('setting_freedonation_product', 'local_kabshop'),
+        get_string('setting_freedonation_product_desc', 'local_kabshop'),
+        0,
+        $choices
+    ));
+    $page->add(new admin_setting_confightmleditor(
+        'local_kabshop/freedonation_text',
+        get_string('setting_freedonation_text', 'local_kabshop'),
+        get_string('setting_freedonation_text_desc', 'local_kabshop'),
+        get_string('freedonation_text_default', 'local_kabshop')
+    ));
+    $page->add(new admin_setting_configtext(
+        'local_kabshop/freedonation_presets',
+        get_string('setting_freedonation_presets', 'local_kabshop'),
+        get_string('setting_freedonation_presets_desc', 'local_kabshop'),
+        \local_kabshop\catalog::FREEDONATION_DEFAULTS['presets'],
+        PARAM_TEXT
+    ));
+    $page->add(new admin_setting_configtext(
+        'local_kabshop/freedonation_default',
+        get_string('setting_freedonation_default', 'local_kabshop'),
+        get_string('setting_freedonation_default_desc', 'local_kabshop'),
+        \local_kabshop\catalog::FREEDONATION_DEFAULTS['default'],
+        PARAM_TEXT
+    ));
+    $ADMIN->add('localplugins', $page);
 }
