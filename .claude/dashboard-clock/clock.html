@@ -1,23 +1,64 @@
-<div class="kab-clock" style="width:204px;display:inline-block;background:#6493AF;color:#fff;border-radius:6px;padding:8px 12px;line-height:1.35">
-<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="nolink">Israel</span><b id="kab-clock-il" style="font-size:1.25em">&nbsp;</b></div>
-<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="nolink">Your Time</span><b id="kab-clock-my" style="font-size:1.25em">&nbsp;</b></div>
+<div class="kab-clock" style="box-sizing:border-box;width:100%;max-width:280px;position:relative;overflow:hidden;border-radius:14px;padding:14px 16px 13px;color:#fff;background:linear-gradient(160deg,#17406f 0%,#235a96 55%,#2f72b3 100%);box-shadow:0 6px 16px rgba(23,53,94,.28);font-variant-numeric:tabular-nums;line-height:1.25">
+<div id="kab-clock-stars" style="display:none;position:absolute;top:0;right:0;bottom:0;left:0;background-image:radial-gradient(1.4px 1.4px at 46% 14%,#fff 60%,transparent 62%),radial-gradient(1px 1px at 62% 34%,#fff 60%,transparent 62%),radial-gradient(1.2px 1.2px at 88% 52%,#fff 60%,transparent 62%),radial-gradient(1px 1px at 74% 78%,#fff 60%,transparent 62%),radial-gradient(1.3px 1.3px at 93% 90%,#fff 60%,transparent 62%),radial-gradient(1px 1px at 56% 60%,#fff 60%,transparent 62%)"></div>
+<div id="kab-clock-sky" style="position:absolute;top:-38px;right:-38px;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle,#ffe9a3 0%,#ffcf5c 44%,rgba(255,207,92,.35) 58%,rgba(255,207,92,0) 72%)"></div>
+<div style="position:relative">
+<div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;opacity:.9"><span class="nolink">Израиль · Тель-Авив</span></div>
+<div style="font-size:38px;font-weight:700;letter-spacing:.01em"><span id="kab-clock-il">&nbsp;</span></div>
+<div id="kab-clock-il-date" style="font-size:12px">&nbsp;</div>
+<div style="height:1px;background:rgba(255,255,255,.24);margin:11px 0 9px"></div>
+<div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;opacity:.9"><span class="nolink">Ваше время</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between">
+<div style="font-size:24px;font-weight:600"><span id="kab-clock-my">&nbsp;</span></div>
+<div id="kab-clock-diff" style="display:none;font-size:11px;padding:2px 9px;border-radius:10px;background:rgba(255,255,255,.2);white-space:nowrap"></div>
+</div>
+<div id="kab-clock-my-date" style="font-size:12px">&nbsp;</div>
+</div>
 </div>
 <script>
 (function () {
-    var il = document.getElementById('kab-clock-il');
-    var my = document.getElementById('kab-clock-my');
-    if (!il || !my || !window.Intl) { return; }
-    var fmtIl, fmtMy;
+    var el = function (id) { return document.getElementById(id); };
+    var box = document.querySelector('.kab-clock');
+    var ilT = el('kab-clock-il'), ilD = el('kab-clock-il-date'), myT = el('kab-clock-my'), myD = el('kab-clock-my-date');
+    var diff = el('kab-clock-diff'), sky = el('kab-clock-sky'), stars = el('kab-clock-stars');
+    if (!box || !ilT || !ilD || !myT || !myD || !diff || !sky || !stars || !window.Intl) { return; }
+    var zone = 'Asia/Jerusalem', ilNum, ilDate, myDate;
     try {
-        fmtIl = new Intl.DateTimeFormat('ru', { weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'Asia/Jerusalem' });
-        fmtMy = new Intl.DateTimeFormat('ru', { weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+        ilNum = new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' });
+        ilDate = new Intl.DateTimeFormat('ru', { timeZone: zone, weekday: 'long', day: 'numeric', month: 'long' });
+        myDate = new Intl.DateTimeFormat('ru', { weekday: 'long', day: 'numeric', month: 'long' });
+        ilNum.formatToParts(new Date());
     } catch (err) { return; }
+    var css = document.createElement('style');
+    css.textContent = '@keyframes kabClockPulse{50%{opacity:.35}}.kab-clock-c{animation:kabClockPulse 2s ease-in-out infinite}@media (prefers-reduced-motion:reduce){.kab-clock-c{animation:none}}';
+    document.head.appendChild(css);
+    var day = 'linear-gradient(160deg,#17406f 0%,#235a96 55%,#2f72b3 100%)';
+    var night = 'linear-gradient(160deg,#0d1533 0%,#1a2452 55%,#2b3273 100%)';
+    var sun = 'radial-gradient(circle,#ffe9a3 0%,#ffcf5c 44%,rgba(255,207,92,.35) 58%,rgba(255,207,92,0) 72%)';
+    var moon = 'radial-gradient(circle,#f7f4e3 0%,#e6e2cc 42%,rgba(230,226,204,.25) 58%,rgba(230,226,204,0) 72%)';
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    var hm = function (h, m) { return pad(h) + '<span class="kab-clock-c">:</span>' + pad(m); };
+    var last = '';
     function tick() {
-        var now = new Date();
-        il.textContent = fmtIl.format(now);
-        my.textContent = fmtMy.format(now);
+        var now = new Date(), p = {};
+        ilNum.formatToParts(now).forEach(function (x) { p[x.type] = parseInt(x.value, 10); });
+        var key = p.hour + '.' + p.minute + '.' + now.getHours() + '.' + now.getMinutes();
+        if (key === last) { return; }
+        last = key;
+        ilT.innerHTML = hm(p.hour % 24, p.minute);
+        myT.innerHTML = hm(now.getHours(), now.getMinutes());
+        ilD.textContent = ilDate.format(now);
+        myD.textContent = myDate.format(now);
+        var mine = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
+        var theirs = Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute);
+        var d = Math.round((mine - theirs) / 60000), a = Math.abs(d), h = Math.floor(a / 60), m = a % 60;
+        diff.textContent = d === 0 ? 'как в Израиле' : (d > 0 ? '+' : '−') + (h ? h + ' ч' : '') + (h && m ? ' ' : '') + (m ? m + ' мин' : '') + ' к Израилю';
+        diff.style.display = 'block';
+        var dark = p.hour % 24 < 6 || p.hour % 24 >= 18;
+        box.style.background = dark ? night : day;
+        sky.style.background = dark ? moon : sun;
+        stars.style.display = dark ? 'block' : 'none';
     }
     tick();
-    setInterval(tick, 10000);
+    setInterval(tick, 5000);
 })();
 </script>
