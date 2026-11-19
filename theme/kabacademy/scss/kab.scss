@@ -408,7 +408,7 @@ $kab-navbar-line: #E6EEF4;
   // Логотип академии целиком: дерево и «МЕЖДУНАРОДНАЯ АКАДЕМИЯ КАББАЛЫ».
   .kab-brand {
     flex: none;
-    margin-right: 3.5rem !important;
+    margin-right: 2.5rem !important;
   }
 
   .kab-logo {
@@ -450,7 +450,7 @@ $kab-navbar-line: #E6EEF4;
     .moremenu .nav-link,
     .navigation .nav-link {
       height: 40px;
-      padding: 0 16px;
+      padding: 0 12px;
       border: 0 !important;
       border-radius: 8px;
       color: $kab-ink;
@@ -481,8 +481,14 @@ $kab-navbar-line: #E6EEF4;
     // Кнопка «Поддержать академию» — первой справа, перед иконками.
     .kab-donate-wrap {
       order: -1;
-      margin-right: 20px;
+      margin-right: 14px;
     }
+  }
+
+  // Переключатель «Режим редактирования»: надпись съедала ~170px меню (у админа всё уходило
+  // в «Дополнительно») — оставляем её экранным дикторам, как Boost делает на телефоне.
+  .editmode-switch-form label {
+    @include visually-hidden();
   }
 
   // Иконки уведомлений и сообщений: из БД они белые (под голубую полосу).
