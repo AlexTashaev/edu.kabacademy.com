@@ -25,4 +25,5 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+\local_kabshop\catalog::remember_market('main');
 echo $OUTPUT->render_from_template('local_kabshop/catalog', \local_kabshop\catalog::export_catalog());

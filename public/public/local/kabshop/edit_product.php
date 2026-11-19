@@ -39,7 +39,7 @@ if ($id) {
     $product = $DB->get_record('local_kabshop_product', ['id' => $id], '*', MUST_EXIST);
 } else {
     $product = (object)['id' => 0, 'description' => '', 'descriptionformat' => FORMAT_HTML, 'visible' => 1,
-        'currency' => 'USD', 'kind' => 'course', 'price' => 0, 'sortorder' => 0];
+        'currency' => 'USD', 'kind' => 'course', 'price' => 0, 'sortorder' => 0, 'altprice' => 0, 'altaccountid' => 0];
 }
 $product = file_prepare_standard_editor($product, 'description', $editoroptions, $context);
 $product = file_prepare_standard_filemanager($product, 'image', $fileoptions, $context, 'local_kabshop', 'image',
@@ -57,6 +57,16 @@ if ($form->is_cancelled()) {
     $data->sku = trim((string) ($data->sku ?? '')) ?: null;
     $data->requirecourses = implode(',', \local_kabshop\catalog::parse_courseids((string) ($data->requirecourses ?? '')))
         ?: null;
+    // Взнос за курс — всегда сумма на выбор.
+    if ($data->kind === 'contribution') {
+        $data->customamount = 1;
+    }
+    $data->altcurrency = trim((string) ($data->altcurrency ?? '')) ?: null;
+    if (!$data->altcurrency) {
+        $data->altprice = 0;
+        $data->altpresets = null;
+        $data->altaccountid = 0;
+    }
     $data->timemodified = time();
     if ($data->id) {
         $DB->update_record('local_kabshop_product', $data);
@@ -69,6 +79,23 @@ if ($form->is_cancelled()) {
 }
 
 $PAGE->set_title(get_string($id ? 'editproduct' : 'addproduct', 'local_kabshop'));
+// Вид «Взнос за курс» сам отмечает «Сумма на выбор» — поле готовых сумм раскрывается сразу.
+$PAGE->requires->js_amd_inline("(function() {
+    var kind = document.getElementById('id_kind');
+    var custom = document.getElementById('id_customamount');
+    if (!kind || !custom) {
+        return;
+    }
+    var sync = function() {
+        if (kind.value === 'contribution' && !custom.checked) {
+            custom.checked = true;
+            custom.dispatchEvent(new Event('change', {bubbles: true}));
+            custom.dispatchEvent(new Event('click', {bubbles: true}));
+        }
+    };
+    kind.addEventListener('change', sync);
+    sync();
+})();");
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string($id ? 'editproduct' : 'addproduct', 'local_kabshop'));
 $form->display();

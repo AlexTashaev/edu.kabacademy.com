@@ -102,12 +102,12 @@ if ($hassiteconfig) {
         try {
             $recs = $DB->get_records_select('local_kabshop_product',
                 "kind = 'donation' AND customamount = 1 AND accountid > 0", null, 'sortorder, id',
-                'id, name, currency, visible');
+                'id, name, currency, altcurrency, visible');
         } catch (dml_exception $e) {
             $recs = []; // Таблиц ещё нет — плагин ставится.
         }
         foreach ($recs as $r) {
-            $choices[$r->id] = format_string($r->name) . ' (' . $r->currency . ')'
+            $choices[$r->id] = format_string($r->name) . ' (' . $r->currency . ($r->altcurrency ? ', ' . $r->altcurrency : '') . ')'
                 . ($r->visible ? '' : ' — ' . get_string('hidden', 'local_kabshop'));
         }
     }
@@ -136,6 +136,20 @@ if ($hassiteconfig) {
         get_string('setting_freedonation_default', 'local_kabshop'),
         get_string('setting_freedonation_default_desc', 'local_kabshop'),
         \local_kabshop\catalog::FREEDONATION_DEFAULTS['default'],
+        PARAM_TEXT
+    ));
+    $page->add(new admin_setting_configtext(
+        'local_kabshop/freedonation_altpresets',
+        get_string('setting_freedonation_altpresets', 'local_kabshop'),
+        get_string('setting_freedonation_altpresets_desc', 'local_kabshop'),
+        \local_kabshop\catalog::FREEDONATION_DEFAULTS['altpresets'],
+        PARAM_TEXT
+    ));
+    $page->add(new admin_setting_configtext(
+        'local_kabshop/freedonation_altdefault',
+        get_string('setting_freedonation_altdefault', 'local_kabshop'),
+        get_string('setting_freedonation_altdefault_desc', 'local_kabshop'),
+        \local_kabshop\catalog::FREEDONATION_DEFAULTS['altdefault'],
         PARAM_TEXT
     ));
     $ADMIN->add('localplugins', $page);

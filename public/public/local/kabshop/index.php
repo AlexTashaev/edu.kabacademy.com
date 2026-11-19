@@ -30,6 +30,8 @@ $PAGE->set_pagelayout('standard');
 $PAGE->set_title(get_string('catalog', 'local_kabshop'));
 $PAGE->set_heading(get_string('catalog', 'local_kabshop'));
 
+\local_kabshop\catalog::remember_market('main');
+
 echo $OUTPUT->header();
 echo $OUTPUT->render_from_template('local_kabshop/catalog', \local_kabshop\catalog::export_catalog());
 echo $OUTPUT->footer();

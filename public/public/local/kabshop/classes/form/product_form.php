@@ -101,6 +101,23 @@ class product_form extends \moodleform {
         }
         $mform->addElement('select', 'accountid', get_string('paymentaccount', 'payment'), $accounts);
 
+        // Вторая цена — в другой валюте со своим счётом (рубли через Robokassa): тот же товар,
+        // на странице — выбор, чем платить.
+        $mform->addElement('select', 'altcurrency', get_string('altcurrency', $p),
+            ['' => get_string('altcurrency_none', $p)] + $currencymenu);
+        $mform->addHelpButton('altcurrency', 'altcurrency', $p);
+        $mform->addElement('text', 'altprice', get_string('altprice', $p), ['size' => 10]);
+        $mform->setType('altprice', PARAM_FLOAT);
+        $mform->setDefault('altprice', 0);
+        $mform->addHelpButton('altprice', 'altprice', $p);
+        $mform->hideIf('altprice', 'altcurrency', 'eq', '');
+        $mform->addElement('text', 'altpresets', get_string('altpresets', $p), ['size' => 30]);
+        $mform->setType('altpresets', PARAM_TEXT);
+        $mform->hideIf('altpresets', 'altcurrency', 'eq', '');
+        $mform->hideIf('altpresets', 'customamount', 'notchecked');
+        $mform->addElement('select', 'altaccountid', get_string('altaccount', $p), $accounts);
+        $mform->hideIf('altaccountid', 'altcurrency', 'eq', '');
+
         $mform->addElement('text', 'sku', get_string('sku', $p), ['size' => 20, 'maxlength' => 64]);
         $mform->setType('sku', PARAM_TEXT);
         $mform->addHelpButton('sku', 'sku', $p);
@@ -160,12 +177,24 @@ class product_form extends \moodleform {
         }
         // Платный товар (или сумма на выбор) без платёжного счёта не продаётся — на странице
         // товара было бы «Оплата не настроена».
-        $paid = (float) $data['price'] > 0 || !empty($data['customamount']);
+        $custom = !empty($data['customamount']) || $data['kind'] === 'contribution';
+        $paid = (float) $data['price'] > 0 || $custom;
         if (!empty($data['recurmonths']) && !$paid) {
             $errors['recurmonths'] = get_string('recurfree', 'local_kabshop');
         }
         if ($paid && $data['kind'] !== 'external' && empty($data['accountid'])) {
             $errors['accountid'] = get_string('accountrequired', 'local_kabshop');
+        }
+        if (!empty($data['altcurrency'])) {
+            if ($data['altcurrency'] === $data['currency']) {
+                $errors['altcurrency'] = get_string('altcurrency_same', 'local_kabshop');
+            } else if (!$paid || $data['kind'] === 'external') {
+                $errors['altcurrency'] = get_string('altcurrency_free', 'local_kabshop');
+            } else if ((float) $data['altprice'] < 0 || (!$custom && (float) $data['altprice'] <= 0)) {
+                $errors['altprice'] = get_string('invalidaltprice', 'local_kabshop');
+            } else if (empty($data['altaccountid'])) {
+                $errors['altaccountid'] = get_string('accountrequired', 'local_kabshop');
+            }
         }
         return $errors;
     }

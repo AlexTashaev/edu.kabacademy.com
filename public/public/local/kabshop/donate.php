@@ -27,8 +27,10 @@ use local_kabshop\catalog;
 require_once(__DIR__ . '/../../config.php');
 
 $id = required_param('id', PARAM_INT);
-$product = catalog::get_product($id);
-$producturl = new moodle_url('/local/kabshop/product.php', ['id' => $id]);
+$record = catalog::get_product($id);
+// Товар в валюте, выбранной на странице (у товара с двумя ценами).
+$product = catalog::variant($record, optional_param('cur', '', PARAM_ALPHA)) ?: $record;
+$producturl = catalog::product_url($product);
 
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url(new moodle_url('/local/kabshop/donate.php', ['id' => $id]));

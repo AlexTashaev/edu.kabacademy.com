@@ -33,6 +33,9 @@ $PAGE->set_pagelayout('standard');
 $PAGE->set_title(get_string('catalogru', 'local_kabshop'));
 $PAGE->set_heading(get_string('catalogru', 'local_kabshop'));
 
+// Пришёл на российскую витрину — товары с двумя ценами открываются в рублях.
+\local_kabshop\catalog::remember_market('ru');
+
 echo $OUTPUT->header();
 echo $OUTPUT->render_from_template('local_kabshop/catalog', \local_kabshop\catalog::export_catalog('ru'));
 echo $OUTPUT->footer();

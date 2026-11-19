@@ -28,7 +28,7 @@
         <FIELD NAME="summary" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Коротко, для карточки"/>
         <FIELD NAME="description" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="HTML страницы товара"/>
         <FIELD NAME="descriptionformat" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
-        <FIELD NAME="kind" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="course" SEQUENCE="false" COMMENT="course|donation|service|external"/>
+        <FIELD NAME="kind" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="course" SEQUENCE="false" COMMENT="course|contribution|donation|service|external"/>
         <FIELD NAME="price" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2"/>
         <FIELD NAME="currency" TYPE="char" LENGTH="3" NOTNULL="true" DEFAULT="USD" SEQUENCE="false"/>
         <FIELD NAME="pricelabel" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="Подпись к цене: в месяц, от"/>
@@ -36,6 +36,10 @@
         <FIELD NAME="presets" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Готовые суммы через запятую"/>
         <FIELD NAME="recurmonths" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Автосписание раз в N месяцев; 0 = разово"/>
         <FIELD NAME="accountid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="payment_accounts.id"/>
+        <FIELD NAME="altcurrency" TYPE="char" LENGTH="3" NOTNULL="false" SEQUENCE="false" COMMENT="Валюта второй цены; пусто — второй цены нет"/>
+        <FIELD NAME="altprice" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2" COMMENT="Вторая цена; у суммы на выбор — минимум"/>
+        <FIELD NAME="altpresets" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Готовые суммы во второй валюте"/>
+        <FIELD NAME="altaccountid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="payment_accounts.id второй валюты"/>
         <FIELD NAME="sku" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Код для Priority; пусто = SKU по умолчанию счёта"/>
         <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Курс, куда записывает"/>
         <FIELD NAME="requirecourses" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Только для записанных на один из курсов: ID через запятую"/>

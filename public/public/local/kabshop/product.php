@@ -29,29 +29,41 @@ require_once(__DIR__ . '/../../config.php');
 $id = required_param('id', PARAM_INT);
 $paid = optional_param('paid', 0, PARAM_BOOL);
 $intentid = optional_param('intent', 0, PARAM_INT);
+$cur = optional_param('cur', '', PARAM_ALPHA);
 
 $context = context_system::instance();
-$product = catalog::get_product($id);
+$record = catalog::get_product($id);
 $canmanage = has_capability('local/kabshop:manage', $context);
-if (!$product->visible && !$canmanage) {
+if (!$record->visible && !$canmanage) {
     throw new moodle_exception('productnotfound', 'local_kabshop');
 }
+$loggedin = isloggedin() && !isguestuser();
 
-$url = new moodle_url('/local/kabshop/product.php', ['id' => $id]);
+// Зафиксированная цена (сумма на выбор или цена по купону) — только своя и для этого товара.
+$intent = ($loggedin && $intentid) ? catalog::get_intent($intentid, IGNORE_MISSING) : null;
+if ($intent && ((int) $intent->userid !== (int) $USER->id || (int) $intent->productid !== $id)) {
+    $intent = null;
+}
+// Валюта страницы: у выбранной суммы — её валюта, иначе выбранная в адресе или витрины,
+// с которой пришёл посетитель. Дальше $product — товар в этой валюте (цена, суммы, счёт).
+$variants = catalog::variants($record);
+$product = $intent ? (catalog::variant($record, $intent->currency) ?: $record) : catalog::pick_variant($record, $cur);
+$market = catalog::market($product);
+if ($cur !== '' && count($variants) > 1 && catalog::variant($record, $cur)) {
+    catalog::remember_market($market);
+}
+
+$url = catalog::product_url($product);
 $PAGE->set_context($context);
 $PAGE->set_url($url);
 $PAGE->set_pagelayout('standard');
 $name = format_string($product->name, true, ['context' => $context]);
 $PAGE->set_title($name);
 $PAGE->set_heading($name);
-// Рынок товара (рубли — российская витрина) и парный товар того же курса на другом рынке.
-$market = catalog::market($product);
-$twin = catalog::twin($product);
 $catalogurl = catalog::catalog_url($market);
 $PAGE->navbar->add(get_string($market === 'ru' ? 'catalogru' : 'catalog', 'local_kabshop'), $catalogurl);
 $PAGE->navbar->add($name);
 
-$loggedin = isloggedin() && !isguestuser();
 $owned = $loggedin && catalog::is_owned($product, $USER->id);
 $activesub = ($loggedin && !empty($product->recurmonths))
     ? \local_kabshop\subscriptions::get_active($product->id, $USER->id) : null;
@@ -75,11 +87,7 @@ $taxinfo = null;
 $custom = !empty($product->customamount);
 // Пожертвование не в рублях: перед оплатой — данные жертвователя для квитанции (статья 46).
 $taxform = catalog::needs_taxid($product) && !$free;
-// Зафиксированная цена (сумма на выбор или цена по купону) — только своя и для этого товара.
-$intent = ($loggedin && $intentid) ? catalog::get_intent($intentid, IGNORE_MISSING) : null;
-if ($intent && ((int) $intent->userid !== (int) $USER->id || (int) $intent->productid !== $id)) {
-    $intent = null;
-}
+$producturlstr = $url->out(false);
 if ($product->kind === 'external') {
     if (!empty($product->externalurl)) {
         $action = ['href' => $product->externalurl, 'label' => get_string('gotoexternal', 'local_kabshop')];
@@ -96,7 +104,8 @@ if ($product->kind === 'external') {
     ];
 } else if (!$loggedin) {
     $action = [
-        'href' => (new moodle_url('/local/kabshop/enrol.php', ['id' => $id]))->out(false),
+        'href' => (new moodle_url('/local/kabshop/enrol.php', ['id' => $id] + (count($variants) > 1
+            ? ['cur' => $product->currency] : [])))->out(false),
         'label' => get_string($free ? 'loginandenrol' : ($custom ? 'loginanddonate' : 'loginandbuy'), 'local_kabshop'),
     ];
 } else if (!$prereqok) {
@@ -126,7 +135,7 @@ if ($product->kind === 'external') {
             'was' => \core_payment\helper::get_cost_as_string((float) $product->price, $product->currency),
         ]);
     }
-    $changeurl = (new moodle_url('/local/kabshop/product.php', ['id' => $id]))->out(false);
+    $changeurl = $producturlstr;
     $PAGE->requires->js_amd_inline("require(['core_payment/gateways_modal'], function(m) {
         m.init();
         var b = document.querySelector('[data-kabshop-autopay]');
@@ -179,6 +188,7 @@ if ($product->kind === 'external') {
     $donateform = [
         'url' => (new moodle_url('/local/kabshop/donate.php'))->out(false),
         'id' => $id,
+        'cur' => $product->currency,
         'sesskey' => sesskey(),
         'custom' => $custom,
         'presets' => $presets,
@@ -196,52 +206,75 @@ if ($product->kind === 'external') {
         'donation' => null,
     ];
     // Окно «Безвозмездная помощь» перед записью, как в корзине WordPress: взнос или без взноса.
-    if ($offer = catalog::free_donation_offer($product, (int) $USER->id)) {
-        $dcurrency = $offer['product']->currency;
-        $dpresets = [];
-        foreach ($offer['presets'] as $v) {
-            $dpresets[] = [
-                'value' => $v,
-                'label' => \core_payment\helper::get_cost_as_string($v, $dcurrency),
-                'checked' => $v == $offer['default'],
+    // У пожертвования с двумя ценами — выбор валюты; заранее выбрана валюта витрины посетителя.
+    if ($offers = catalog::free_donation_offer($product, (int) $USER->id)) {
+        $selected = array_key_first($offers);
+        foreach ($offers as $code => $offer) {
+            if (catalog::market($offer['product']) === catalog::preferred_market()) {
+                $selected = $code;
+                break;
+            }
+        }
+        $groups = [];
+        foreach ($offers as $code => $offer) {
+            $dpresets = [];
+            foreach ($offer['presets'] as $v) {
+                $dpresets[] = [
+                    'value' => $v,
+                    'label' => \core_payment\helper::get_cost_as_string($v, $code),
+                    'checked' => $v == $offer['default'],
+                ];
+            }
+            $groups[] = [
+                'code' => $code,
+                'currencyname' => catalog::currency_name($code),
+                'hint' => get_string('paywith_' . catalog::market($offer['product']), 'local_kabshop'),
+                'selected' => $code === $selected,
+                'presets' => $dpresets,
+                'min' => max((float) $offer['product']->price, 0.01),
+                'max' => catalog::MAX_AMOUNT,
             ];
         }
         $action['donation'] = [
             'text' => format_text(catalog::freedonation_config('text'), FORMAT_HTML, ['context' => $context]),
-            'presets' => $dpresets,
-            'min' => max((float) $offer['product']->price, 0.01),
-            'max' => catalog::MAX_AMOUNT,
-            'currency' => $dcurrency,
+            'groups' => $groups,
+            'switch' => count($groups) > 1,
         ];
     }
 } else if ($product->accountid && !$custom) {
     $PAGE->requires->js_call_amd('core_payment/gateways_modal', 'init');
+    $area = empty($product->isalt) ? 'product' : 'productalt';
     $action = [
         'payment' => true,
         'component' => 'local_kabshop',
-        'paymentarea' => 'product',
+        'paymentarea' => $area,
         'itemid' => $id,
         'cost' => (float)$product->price,
-        'successurl' => \local_kabshop\payment\service_provider::get_success_url('product', $id)->out(false),
+        'successurl' => \local_kabshop\payment\service_provider::get_success_url($area, $id)->out(false),
         'description' => $name,
         'label' => get_string('buy', 'local_kabshop'),
     ];
     $couponform = [
         'url' => (new moodle_url('/local/kabshop/coupon.php'))->out(false),
         'id' => $id,
+        'cur' => $product->currency,
         'sesskey' => sesskey(),
     ];
 }
 
-// Вторая кнопка — оплата на другом рынке (рубли ↔ карта/PayPal): ведёт на парный товар,
-// он записывает в тот же курс. Если курс уже куплен, вторая кнопка не нужна.
-$altaction = null;
-if ($twin && !$owned && !$activesub && ($prereqok || !$loggedin)) {
-    $altaction = [
-        'href' => (new moodle_url('/local/kabshop/product.php', ['id' => $twin->id]))->out(false),
-        'label' => get_string($market === 'ru' ? 'paybycard' : 'payinrub', 'local_kabshop'),
-        'price' => catalog::price_string($twin),
-    ];
+// Выбор валюты у товара с двумя ценами: рубли — Robokassa, основная — карта и PayPal. После
+// покупки или при действующей подписке выбирать нечего.
+$currencies = [];
+if (count($variants) > 1 && !$owned && !$activesub && !$paid) {
+    foreach ($variants as $code => $v) {
+        $currencies[] = [
+            'code' => $code,
+            'name' => catalog::currency_name($code),
+            'hint' => get_string('paywith_' . catalog::market($v), 'local_kabshop'),
+            'url' => catalog::product_url($v)->out(false),
+            'current' => $code === $product->currency,
+        ];
+    }
 }
 
 // Пришёл сюда из окна взноса при бесплатной записи — ссылка на курс, куда записался:
@@ -260,18 +293,16 @@ if ($loggedin && $after && (int) $after['productid'] === $id
     }
 }
 
-// Рублёвый товар без своего описания показывает описание пары.
-$description = (string) ($product->description ?? '');
-$descriptionformat = $product->descriptionformat;
-if ($market === 'ru' && $twin && trim(strip_tags($description)) === '') {
-    $description = (string) ($twin->description ?? '');
-    $descriptionformat = $twin->descriptionformat;
-}
+// Раздел витрины — ленточка над названием, как «Базовый онлайн-курс» на kabacademy.com.
+$sectionname = $DB->get_field('local_kabshop_section', 'name', ['id' => $record->sectionid]);
 
 $data = catalog::card($product);
-$data['description'] = format_text($description, $descriptionformat, ['context' => $context]);
+$data['description'] = trim(strip_tags((string) $record->description, '<img><iframe><video>')) !== ''
+    ? format_text($record->description, $record->descriptionformat, ['context' => $context]) : null;
+$data['section'] = $sectionname !== false ? format_string($sectionname, true, ['context' => $context]) : null;
 $data['action'] = $action;
-$data['altaction'] = $altaction;
+$data['currencies'] = $currencies;
+$data['hascurrencies'] = !empty($currencies);
 $data['legal'] = \local_kabshop\legal::export($market);
 $data['donateform'] = $donateform;
 $data['couponform'] = $couponform;

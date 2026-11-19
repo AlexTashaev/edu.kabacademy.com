@@ -18,7 +18,8 @@
     @template local_kabshop/legal
 
     Юридический блок внизу каталога и страницы товара: продавец с реквизитами,
-    контакты, ссылки на оферту и политику конфиденциальности. Виден без кликов —
+    контакты, ссылки на оферту и политику конфиденциальности (в новой вкладке:
+    покупатель не должен уходить со страницы товара). Виден без кликов —
     платёжные системы проверяют, что эти сведения есть на странице продажи.
 
     Example context (json):
@@ -35,7 +36,7 @@
         <a href="mailto:{{email}}">{{email}}</a>{{#phone}}, <a href="tel:{{phonehref}}">{{phone}}</a>{{/phone}}
     </p>
     <p class="kabshop-legal-links">
-        <a href="{{offerurl}}">{{offerlabel}}</a>
-        <a href="{{privacyurl}}">{{privacylabel}}</a>
+        <a href="{{offerurl}}" target="_blank" rel="noopener">{{offerlabel}}</a>
+        <a href="{{privacyurl}}" target="_blank" rel="noopener">{{privacylabel}}</a>
     </p>
 </div>

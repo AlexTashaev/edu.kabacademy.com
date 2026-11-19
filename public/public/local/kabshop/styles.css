@@ -958,89 +958,282 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     }
 }
 
-/* ========================= Страница товара ========================= */
+/* ========================= Страница товара =========================
+   По странице курса kabacademy.com: светло-голубая шапка курса с ленточкой раздела и обложкой,
+   под ней слева карточка покупки в рамке-градиенте (голубой → фиолетовый, как «НАЧАЛО —
+   1 ОКТЯБРЯ»), справа описание: программа — номера в голубых квадратах, особенности — стрелки. */
 
-.kabshop-product-hero {
-    display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: 2rem;
-    align-items: start;
-}
-
-.kabshop-product-media {
-    aspect-ratio: 16 / 9;
-    border-radius: 18px;
+/* Заголовок страницы Moodle — только для чтения с экрана: название крупно в шапке курса. */
+#page-local-kabshop-product #page-header .page-header-headings {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
     overflow: hidden;
-    background: var(--kabshop-tint);
-    border: 1px solid var(--kabshop-border);
-    box-shadow: var(--kabshop-shadow);
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
-/* --- Панель покупки --- */
+/* --- Шапка курса --- */
+.kabshop-pp-hero {
+    position: relative;
+    overflow: hidden;
+    min-height: 360px;
+    background: linear-gradient(100deg, #d6edfa 0%, #e6f4fc 52%, #cfe9f8 100%);
+}
+
+.kabshop-pp-hero-media {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 60%;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 38%);
+    mask-image: linear-gradient(to right, transparent 0, #000 38%);
+}
+
+.kabshop-pp-hero-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Без обложки — фирменный узор, светлее, чтобы шапка оставалась голубой. */
+.kabshop-pp-hero-media .kabshop-card-placeholder {
+    opacity: .55;
+}
+
+.kabshop-pp-hero-text {
+    position: relative;
+    z-index: 1;
+    max-width: 52%;
+    padding: 46px 0 150px 56px;
+}
+
+/* Ленточка раздела — белая, с вырезом справа, как «БАЗОВЫЙ ОНЛАЙН-КУРС». */
+.kabshop-pp-ribbon {
+    display: inline-block;
+    padding: 12px 40px 12px 26px;
+    background: #fff;
+    color: var(--kabshop-purple);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .3em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 50%, 100% 100%, 0 100%);
+}
+
+.kabshop-pp-title {
+    margin: 26px 0 14px;
+    font-size: clamp(30px, 3.3vw, 46px);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -.01em;
+    text-transform: uppercase;
+    color: #2f5288;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+}
+
+.kabshop-pp-lead {
+    margin: 0;
+    max-width: 34rem;
+    font-family: var(--kabshop-body);
+    font-size: 15px;
+    font-weight: 300;
+    line-height: 1.7;
+    color: var(--kabshop-copy);
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* --- Две колонки: карточка покупки и описание --- */
+.kabshop-pp-body {
+    display: grid;
+    grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+    gap: 56px;
+    align-items: start;
+    padding: 0 56px;
+}
+
+.kabshop-pp-aside {
+    position: relative;
+    z-index: 2;
+    margin-top: -112px;
+    align-self: stretch;
+}
+
+/* --- Карточка покупки в рамке-градиенте --- */
 .kabshop-buy {
-    background: var(--bs-body-bg, #fff);
-    border: 1px solid var(--kabshop-border);
-    border-radius: 18px;
-    padding: 1.4rem 1.5rem 1.5rem;
-    box-shadow: var(--kabshop-shadow);
+    border: 12px solid transparent;
+    background:
+        linear-gradient(#fff, #fff) padding-box,
+        linear-gradient(165deg, #3ba9dc 0%, #6f78d2 52%, #a42bb9 100%) border-box;
+    padding: 26px 26px 28px;
+    box-shadow: 0 22px 44px -26px rgba(60, 93, 144, .45);
 }
 
 @media (min-width: 992px) {
     .kabshop-buy {
         position: sticky;
-        top: 76px;
+        top: calc(var(--navbar-height, 72px) + 16px);
     }
 }
 
-.kabshop-product-summary {
-    color: var(--kabshop-muted);
-    font-size: .95rem;
-    line-height: 1.6;
-    margin: 0 0 .8rem;
+/* Выбор «чем платить»: две плашки в светлой полосе, выбранная — белая. */
+.kabshop-currency {
+    margin: 0 0 22px;
+    padding: 0;
+    border: 0;
+    min-width: 0;
 }
 
-.kabshop-price-lg {
-    font-size: 1.9rem;
-    font-weight: 700;
-    letter-spacing: -.01em;
-    color: var(--kabshop-ink);
-    font-variant-numeric: tabular-nums;
-    margin: 0 0 1rem;
+.kabshop-currency-label,
+.kabshop-currency > legend {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .26em;
+    line-height: 1.4;
+    text-transform: uppercase;
+    color: #6b7680;
 }
 
-/* «Бесплатно» — тихая пометка, а не цена: мельче и легче цифр. */
-.kabshop-price-lg.kabshop-price-lg-free {
-    color: var(--kabshop-green);
-    font-size: 1.05rem;
+.kabshop-currency-tabs {
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--kabshop-border);
+    border-radius: 8px;
+    background: var(--kabshop-band);
+}
+
+.kabshop-currency-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 52px;
+    margin: 0;
+    padding: 7px 6px;
+    border-radius: 6px;
+    color: var(--kabshop-navy);
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color .15s ease, box-shadow .15s ease;
+}
+
+.kabshop-currency-tab:hover {
+    background: rgba(255, 255, 255, .7);
+    color: var(--kabshop-navy-dark);
+    text-decoration: none;
+}
+
+.kabshop-currency-tab.is-current,
+.btn-check:checked + .kabshop-currency-tab {
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(34, 48, 63, .08), 0 6px 14px -8px rgba(60, 93, 144, .45);
+}
+
+.kabshop-currency-tab:focus-visible,
+.btn-check:focus-visible + .kabshop-currency-tab {
+    outline: 2px solid var(--kabshop-sky);
+    outline-offset: 1px;
+}
+
+.kabshop-currency-name {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.kabshop-currency-tab.is-current .kabshop-currency-name,
+.btn-check:checked + .kabshop-currency-tab .kabshop-currency-name {
+    color: var(--kabshop-purple);
+}
+
+.kabshop-currency-hint {
+    font-size: 11px;
     font-weight: 500;
-    letter-spacing: 0;
+    line-height: 1.25;
+    color: #6b7680;
 }
 
-/* Кнопки внутри витрины — фирменный тёмно-синий. */
-.kabshop-buy .btn-primary {
-    background: var(--kabshop-navy);
-    border-color: var(--kabshop-navy);
+/* Цена — фиолетовая с разрядкой, как цены на сайте. */
+.kabshop-price-lg {
+    margin: 0 0 20px;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    line-height: 1.2;
+    color: var(--kabshop-purple);
+    font-variant-numeric: tabular-nums;
+}
+
+/* «Бесплатно» — тихая пометка, а не цена. */
+.kabshop-price-lg.kabshop-price-lg-free {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--kabshop-sky);
+}
+
+/* Кнопки — фиолетовые прописные, как «Записаться» на сайте и «Поддержать академию» в шапке. */
+.kabshop-buy .btn-primary,
+.kabshop-dialog .btn-primary {
+    --bs-btn-bg: var(--kabshop-purple);
+    --bs-btn-border-color: var(--kabshop-purple);
+    --bs-btn-hover-bg: var(--kabshop-purple-dark);
+    --bs-btn-hover-border-color: var(--kabshop-purple-dark);
+    --bs-btn-active-bg: var(--kabshop-purple-dark);
+    --bs-btn-active-border-color: var(--kabshop-purple-dark);
+    background: var(--kabshop-purple);
+    border-color: var(--kabshop-purple);
+    color: #fff;
 }
 
 .kabshop-buy .btn-primary:hover,
 .kabshop-buy .btn-primary:focus,
-.kabshop-buy .btn-primary:active {
-    background: var(--kabshop-navy-dark);
-    border-color: var(--kabshop-navy-dark);
+.kabshop-buy .btn-primary:active,
+.kabshop-dialog .btn-primary:hover,
+.kabshop-dialog .btn-primary:focus,
+.kabshop-dialog .btn-primary:active {
+    background: var(--kabshop-purple-dark);
+    border-color: var(--kabshop-purple-dark);
+    color: #fff;
 }
 
-.kabshop-buy .btn-primary:focus,
-.kabshop-buy .btn-primary:focus-visible {
-    box-shadow: 0 0 0 .25rem rgba(82, 176, 216, .4);
+.kabshop-buy .btn-primary:focus-visible,
+.kabshop-dialog .btn-primary:focus-visible {
+    box-shadow: 0 0 0 .25rem rgba(164, 43, 185, .3);
 }
 
 .kabshop-buy .btn-lg {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
+    min-height: 54px;
+    padding: .7rem 1rem;
+    border-radius: 8px;
+    font-size: 14px;
     font-weight: 600;
-    font-size: 1.02rem;
-    padding: .8rem 1rem;
-    border-radius: 12px;
+    letter-spacing: .12em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    text-align: center;
 }
 
 .kabshop-buy form {
@@ -1050,7 +1243,7 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 .kabshop-buy .alert {
     font-size: .88rem;
     padding: .65rem .85rem;
-    border-radius: 10px;
+    border-radius: 8px;
     margin: 0 0 .9rem;
 }
 
@@ -1058,47 +1251,10 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     margin: .9rem 0 0;
 }
 
-/* Вторая кнопка оплаты — парный товар на другой витрине (рубли ↔ карта и PayPal).
-   Тише основной: выбор есть, но главное действие остаётся одно. */
-.kabshop-buy .kabshop-altpay {
-    display: block;
-    width: 100%;
-    margin-top: .7rem;
-    padding: .7rem 1rem;
-    border: 1px solid var(--kabshop-border);
-    border-radius: 12px;
-    background: var(--kabshop-tint);
-    color: var(--kabshop-navy);
-    font-weight: 600;
-    font-size: .95rem;
-    line-height: 1.35;
-    text-align: center;
-    text-decoration: none;
-    transition: background-color .15s ease, border-color .15s ease;
-}
-
-.kabshop-buy .kabshop-altpay:hover,
-.kabshop-buy .kabshop-altpay:focus-visible {
-    background: var(--bs-body-bg, #fff);
-    border-color: var(--kabshop-blue);
-    color: var(--kabshop-navy-dark);
-    text-decoration: none;
-}
-
-.kabshop-buy .kabshop-altpay:focus-visible {
-    outline: 2px solid var(--kabshop-blue);
-    outline-offset: 2px;
-}
-
-.kabshop-altpay-price {
-    font-weight: 500;
-    color: var(--kabshop-muted);
-    white-space: nowrap;
-}
-
 .kabshop-changeamount {
-    margin-top: .7rem;
+    margin-top: .8rem;
     font-size: .9rem;
+    text-align: center;
 }
 
 .kabshop-changeamount a,
@@ -1252,7 +1408,19 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     margin-bottom: 1rem;
 }
 
+/* Цвета — через переменные Bootstrap: правило ядра .btn-check + .btn:hover идёт в CSS
+   темы позже стилей плагина и при наведении красило кнопку переменными по умолчанию
+   (прозрачный фон и рамка) — сумма пропадала. */
 .kabshop-presets .btn {
+    --bs-btn-color: var(--kabshop-navy);
+    --bs-btn-bg: #fff;
+    --bs-btn-border-color: var(--kabshop-border);
+    --bs-btn-hover-color: var(--kabshop-navy);
+    --bs-btn-hover-bg: var(--kabshop-tint);
+    --bs-btn-hover-border-color: var(--kabshop-blue);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--kabshop-navy);
+    --bs-btn-active-border-color: var(--kabshop-navy);
     border-radius: 999px;
     border: 1px solid var(--kabshop-border);
     color: var(--kabshop-navy);
@@ -1261,6 +1429,7 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     padding: .45rem 1.05rem;
 }
 
+.kabshop-presets .btn-check:not(:checked) + .btn:hover,
 .kabshop-presets .btn:hover {
     background: var(--kabshop-tint);
     border-color: var(--kabshop-blue);
@@ -1340,81 +1509,164 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     margin-bottom: 1.5rem;
 }
 
-/* --- Описание --- */
+/* --- Описание: текст Open Sans Light, программа и особенности — как на странице курса сайта --- */
+.kabshop-pp-main {
+    padding-top: 44px;
+    min-width: 0;
+}
+
 .kabshop-product-description {
-    margin-top: 2.5rem;
-    max-width: 48rem;
-    font-size: 1.02rem;
-    line-height: 1.68;
-    color: #2e3a46;
+    max-width: 50rem;
+    font-family: var(--kabshop-body);
+    font-size: 15px;
+    font-weight: 300;
+    line-height: 1.75;
+    color: var(--kabshop-copy);
+}
+
+/* Пустые абзацы из редактора WordPress. */
+.kabshop-product-description p:empty,
+.kabshop-product-description p:has(> br:only-child) {
+    display: none;
+}
+
+.kabshop-product-description strong,
+.kabshop-product-description b {
+    font-weight: 600;
 }
 
 .kabshop-product-description h2,
 .kabshop-product-description h3,
 .kabshop-product-description h4 {
-    font-family: inherit;
-    color: var(--kabshop-ink);
-    font-weight: 700;
-    margin: 1.5em 0 .5em;
+    font-family: "Montserrat", system-ui, sans-serif;
+    font-weight: 300;
+    letter-spacing: -.02em;
+    line-height: 1.2;
+    color: var(--kabshop-navy);
+    margin: 1.6em 0 .7em;
 }
 
 .kabshop-product-description h2 {
-    font-size: 1.3rem;
+    font-size: 30px;
 }
 
 .kabshop-product-description h3 {
-    font-size: 1.15rem;
+    font-size: 24px;
 }
 
 .kabshop-product-description h4 {
-    font-size: 1.02rem;
+    font-size: 19px;
+}
+
+.kabshop-product-description > :first-child {
+    margin-top: 0;
 }
 
 .kabshop-product-description p {
-    margin: 0 0 .9em;
-}
-
-.kabshop-product-description ul,
-.kabshop-product-description ol {
     margin: 0 0 1em;
-    padding-left: 1.35em;
 }
 
-.kabshop-product-description li {
-    margin-bottom: .4em;
+.kabshop-product-description a {
+    color: var(--kabshop-link);
+}
+
+.kabshop-product-description hr {
+    margin: 2rem 0;
+    border: 0;
+    border-top: 1px solid var(--kabshop-border);
+    opacity: 1;
+}
+
+/* Нумерованный список — программа курса: номера в голубых квадратах, в две колонки. */
+.kabshop-product-description ol {
+    counter-reset: kabshop-ol;
+    list-style: none;
+    margin: 1.2rem 0 1.6rem;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    column-gap: 2rem;
+    row-gap: 1rem;
+}
+
+.kabshop-product-description ol > li {
+    counter-increment: kabshop-ol;
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    margin: 0;
+    padding-left: 60px;
+    font-family: "Montserrat", system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--kabshop-ink);
+}
+
+.kabshop-product-description ol > li::before {
+    content: counter(kabshop-ol);
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #d4ecf9;
+    color: var(--kabshop-navy);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* Маркированный список — особенности обучения: квадрат со стрелкой. */
+.kabshop-product-description ul {
+    list-style: none;
+    margin: 1.2rem 0 1.6rem;
+    padding: 0;
+}
+
+.kabshop-product-description ul > li {
+    position: relative;
+    min-height: 32px;
+    margin: 0 0 1.1rem;
+    padding-left: 56px;
+}
+
+.kabshop-product-description ul > li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 32px;
+    height: 32px;
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%233ba9dc' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M3 8h9M8.5 4.5 12 8l-3.5 3.5'/%3E%3C/svg%3E") center / 16px no-repeat,
+        #dff1fb;
 }
 
 .kabshop-product-description img {
     max-width: 100%;
     height: auto;
-    border-radius: 12px;
 }
 
-/* --- «Все курсы» --- */
+/* --- «Все курсы ▷» --- */
 .kabshop-back {
-    margin-top: 2.5rem;
+    margin: 2.5rem 0 0;
 }
 
-.kabshop-back a {
-    display: inline-flex;
-    align-items: center;
-    gap: .45rem;
-    padding: .5rem 1.1rem;
-    border: 1px solid var(--kabshop-border);
-    border-radius: 999px;
-    color: var(--kabshop-navy);
-    font-weight: 500;
-    font-size: .92rem;
-    text-decoration: none;
-    transition: background-color .15s ease, border-color .15s ease;
+/* Окно взноса: группа сумм своей валюты. */
+.kabshop-fd-group {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
 }
 
-.kabshop-back a:hover,
-.kabshop-back a:focus-visible {
-    background: var(--kabshop-tint);
-    border-color: var(--kabshop-blue);
-    color: var(--kabshop-navy);
-    text-decoration: none;
+.kabshop-dialog .kabshop-currency {
+    margin-bottom: 18px;
 }
 
 /* --- Юридический блок: продавец, контакты, оферта --- */
@@ -1485,19 +1737,93 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     color: var(--kabshop-link);
 }
 
-/* ===================== Мобильные: страница товара ===================== */
+/* ===================== Планшет и телефон: страница товара ===================== */
+
+@media (max-width: 991.98px) {
+    .kabshop-pp-hero-text {
+        max-width: 62%;
+        padding: 36px 0 120px 32px;
+    }
+
+    .kabshop-pp-body {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+        padding: 0 32px;
+    }
+
+    .kabshop-pp-aside {
+        margin-top: -84px;
+        max-width: 480px;
+    }
+}
 
 @media (max-width: 767.98px) {
-    .kabshop-product-hero {
-        grid-template-columns: 1fr;
-        gap: 1.25rem;
+    /* Шапка в столбик: обложка сверху, растворяется книзу, под ней ленточка и название. */
+    .kabshop-pp-hero {
+        min-height: 0;
+    }
+
+    .kabshop-pp-hero-media {
+        position: relative;
+        width: 100%;
+        height: 200px;
+        -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+        mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+    }
+
+    .kabshop-pp-hero-text {
+        max-width: none;
+        margin-top: -36px;
+        padding: 0 16px 76px;
+    }
+
+    .kabshop-pp-ribbon {
+        padding: 10px 32px 10px 18px;
+        font-size: 10px;
+        letter-spacing: .26em;
+    }
+
+    .kabshop-pp-title {
+        margin: 18px 0 10px;
+        font-size: 27px;
+    }
+
+    .kabshop-pp-lead {
+        font-size: 14px;
+    }
+
+    .kabshop-pp-body {
+        padding: 0 4px;
+    }
+
+    .kabshop-pp-aside {
+        margin-top: -52px;
+        max-width: none;
+    }
+
+    .kabshop-buy {
+        border-width: 8px;
+        padding: 20px 16px 22px;
     }
 
     .kabshop-price-lg {
-        font-size: 1.6rem;
+        font-size: 24px;
     }
 
-    .kabshop-product-description {
-        margin-top: 1.75rem;
+    .kabshop-pp-main {
+        padding-top: 32px;
+    }
+
+    .kabshop-product-description h2 {
+        font-size: 25px;
+    }
+
+    .kabshop-product-description ol > li {
+        padding-left: 54px;
+        font-size: 14px;
+    }
+
+    .kabshop-product-description ul > li {
+        padding-left: 48px;
     }
 }

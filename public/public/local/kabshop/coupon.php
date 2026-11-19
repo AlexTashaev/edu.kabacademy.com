@@ -30,8 +30,10 @@ require_once(__DIR__ . '/../../config.php');
 
 $id = required_param('id', PARAM_INT);
 $code = optional_param('code', '', PARAM_RAW_TRIMMED);
-$product = catalog::get_product($id);
-$producturl = new moodle_url('/local/kabshop/product.php', ['id' => $id]);
+$record = catalog::get_product($id);
+// Купон — к цене в валюте, выбранной на странице.
+$product = catalog::variant($record, optional_param('cur', '', PARAM_ALPHA)) ?: $record;
+$producturl = catalog::product_url($product);
 
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url(new moodle_url('/local/kabshop/coupon.php', ['id' => $id]));

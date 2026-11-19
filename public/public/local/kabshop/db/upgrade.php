@@ -230,5 +230,21 @@ function xmldb_local_kabshop_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026111901, 'local', 'kabshop');
     }
 
+    if ($oldversion < 2026111904) {
+        // Вторая цена товара в другой валюте (рубли через Robokassa) вместо товара-пары.
+        $table = new xmldb_table('local_kabshop_product');
+        foreach ([
+            new xmldb_field('altcurrency', XMLDB_TYPE_CHAR, '3', null, null, null, null, 'accountid'),
+            new xmldb_field('altprice', XMLDB_TYPE_NUMBER, '12, 2', null, XMLDB_NOTNULL, null, '0', 'altcurrency'),
+            new xmldb_field('altpresets', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'altprice'),
+            new xmldb_field('altaccountid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'altpresets'),
+        ] as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        upgrade_plugin_savepoint(true, 2026111904, 'local', 'kabshop');
+    }
+
     return true;
 }

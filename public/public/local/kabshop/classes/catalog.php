@@ -30,7 +30,7 @@ use moodle_url;
 class catalog {
 
     /** Виды товара. */
-    const KINDS = ['course', 'donation', 'service', 'external'];
+    const KINDS = ['course', 'contribution', 'donation', 'service', 'external'];
 
     /** Валюта российской витрины. */
     const RU_CURRENCY = 'RUB';
@@ -59,30 +59,114 @@ class catalog {
     }
 
     /**
-     * Парный товар на другом рынке: видимый платный товар того же курса. Из нескольких —
-     * сначала из того же раздела, затем по порядку. У товаров без курса пары нет.
+     * Товар во второй валюте: копия записи, где цена, валюта, готовые суммы и счёт — второй цены.
+     * У бесплатного и внешнего товара второй цены нет.
      *
-     * @param \stdClass $product
+     * @param \stdClass $product запись товара
      * @return \stdClass|null
      */
-    public static function twin(\stdClass $product): ?\stdClass {
-        global $DB;
-        if (empty($product->courseid) || $product->kind === 'external') {
+    public static function alt(\stdClass $product): ?\stdClass {
+        $cur = strtoupper(trim((string) ($product->altcurrency ?? '')));
+        if ($cur === '' || $cur === strtoupper((string) $product->currency) || !empty($product->isalt)
+                || $product->kind === 'external' || self::is_free($product)) {
             return null;
         }
-        $other = self::market($product) === 'ru' ? 'currency <> :cur' : 'currency = :cur';
-        $sql = "SELECT *
-                  FROM {local_kabshop_product}
-                 WHERE courseid = :courseid AND id <> :id AND visible = 1 AND kind <> 'external'
-                       AND (price > 0 OR customamount = 1) AND $other
-              ORDER BY CASE WHEN sectionid = :sectionid THEN 0 ELSE 1 END, sortorder, id";
-        $recs = $DB->get_records_sql($sql, [
-            'courseid' => $product->courseid,
-            'id' => $product->id,
-            'cur' => self::RU_CURRENCY,
-            'sectionid' => $product->sectionid,
-        ], 0, 1);
-        return $recs ? reset($recs) : null;
+        $v = clone $product;
+        $v->currency = $cur;
+        $v->price = $product->altprice;
+        $v->presets = $product->altpresets;
+        $v->accountid = $product->altaccountid;
+        $v->isalt = true;
+        return $v;
+    }
+
+    /**
+     * Валюты товара: основная (первой) и вторая, если задана.
+     *
+     * @param \stdClass $product запись товара
+     * @return \stdClass[] валюта => товар в этой валюте
+     */
+    public static function variants(\stdClass $product): array {
+        $out = [strtoupper((string) $product->currency) => $product];
+        if ($alt = self::alt($product)) {
+            $out[$alt->currency] = $alt;
+        }
+        return $out;
+    }
+
+    /**
+     * Товар в заданной валюте.
+     *
+     * @param \stdClass $product запись товара
+     * @param string|null $currency
+     * @return \stdClass|null null — в этой валюте товар не продаётся
+     */
+    public static function variant(\stdClass $product, ?string $currency): ?\stdClass {
+        $currency = strtoupper(trim((string) $currency));
+        return $currency === '' ? null : (self::variants($product)[$currency] ?? null);
+    }
+
+    /**
+     * Товар в валюте рынка: на российской витрине — в рублях.
+     *
+     * @param \stdClass $product запись товара
+     * @param string $market
+     * @return \stdClass|null null — на этом рынке товара нет
+     */
+    public static function for_market(\stdClass $product, string $market): ?\stdClass {
+        foreach (self::variants($product) as $v) {
+            if (self::market($v) === $market) {
+                return $v;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Валюта для страницы товара: явно выбранная, иначе валюта витрины, с которой пришёл
+     * посетитель (зашёл через /ru.php или выбирал рубли — рубли), иначе основная.
+     *
+     * @param \stdClass $product запись товара
+     * @param string $currency из адреса
+     * @return \stdClass
+     */
+    public static function pick_variant(\stdClass $product, string $currency = ''): \stdClass {
+        return self::variant($product, $currency) ?: self::for_market($product, self::preferred_market()) ?: $product;
+    }
+
+    /**
+     * Рынок, который выбрал посетитель в этой сессии.
+     *
+     * @return string 'ru' или 'main'
+     */
+    public static function preferred_market(): string {
+        global $SESSION;
+        return ($SESSION->local_kabshop_market ?? '') === 'ru' ? 'ru' : 'main';
+    }
+
+    /**
+     * Запомнить рынок посетителя: открыл витрину или выбрал валюту на странице товара.
+     *
+     * @param string $market
+     */
+    public static function remember_market(string $market): void {
+        global $SESSION;
+        $SESSION->local_kabshop_market = $market === 'ru' ? 'ru' : 'main';
+    }
+
+    /**
+     * Название валюты для выбора «чем платить»: «Рубли», «Доллары»; прочие — из справочника ядра.
+     *
+     * @param string $code
+     * @return string
+     */
+    public static function currency_name(string $code): string {
+        $sm = get_string_manager();
+        $key = 'currency_' . strtolower($code);
+        if ($sm->string_exists($key, 'local_kabshop')) {
+            return get_string($key, 'local_kabshop');
+        }
+        return $sm->string_exists($code, 'core_currencies') ? get_string($code, 'core_currencies') : $code;
     }
 
     /**
@@ -121,7 +205,7 @@ class catalog {
      * Разделы с товарами для каталога.
      *
      * @param bool $all true — включая скрытые (для управления)
-     * @param string|null $market только товары этого рынка; null — все
+     * @param string|null $market только товары этого рынка, в его валюте; null — все, как в базе
      * @return array
      */
     public static function get_sections(bool $all = false, ?string $market = null): array {
@@ -136,7 +220,7 @@ class catalog {
             $s->products = [];
         }
         foreach ($products as $p) {
-            if ($market !== null && self::market($p) !== $market) {
+            if ($market !== null && !($p = self::for_market($p, $market))) {
                 continue;
             }
             if ($viewer !== null && !self::prerequisite_ok($p, $viewer)) {
@@ -263,13 +347,13 @@ class catalog {
     }
 
     /** Настройки взноса при бесплатной записи, пока администратор их не сохранил. */
-    const FREEDONATION_DEFAULTS = ['presets' => '20, 90, 250', 'default' => '90'];
+    const FREEDONATION_DEFAULTS = ['presets' => '20, 90, 250', 'default' => '90', 'altpresets' => '', 'altdefault' => ''];
 
     /**
      * Настройка взноса при бесплатной записи. До сохранения на странице «Новые настройки» —
      * значение по умолчанию (на сервере без CLI её некому сохранить сразу после апгрейда).
      *
-     * @param string $name product, text, presets или default
+     * @param string $name product, text, presets, default, altpresets или altdefault
      * @return string
      */
     public static function freedonation_config(string $name): string {
@@ -287,13 +371,15 @@ class catalog {
      * Предложение взноса при бесплатной записи — окно «Безвозмездная помощь», как в корзине
      * WordPress. Звать там, где человеку уже положена кнопка «Записаться бесплатно».
      *
+     * По валюте на каждую цену товара-пожертвования (основная и вторая — рубли через Robokassa):
+     * суммы из настроек окна, пусто — суммы самого товара. Валюта без счёта оплаты пропускается.
+     *
      * Нет предложения, если: товар-пожертвование не выбран в настройках, скрыт, не с суммой на
-     * выбор или без счёта оплаты; он с другого рынка (на рублёвой витрине — только рублёвое);
-     * у человека уже есть ежемесячное пожертвование.
+     * выбор; у человека уже есть ежемесячное пожертвование.
      *
      * @param \stdClass $product бесплатный товар, на который записываются
      * @param int $userid
-     * @return array|null ['product' => товар-пожертвование, 'presets' => float[], 'default' => float]
+     * @return array|null валюта => ['product' => пожертвование в валюте, 'presets' => float[], 'default' => float]
      */
     public static function free_donation_offer(\stdClass $product, int $userid): ?array {
         $donationid = (int)self::freedonation_config('product');
@@ -302,20 +388,27 @@ class catalog {
         }
         $donation = self::get_product($donationid, IGNORE_MISSING);
         if (!$donation || !$donation->visible || $donation->kind !== 'donation' || empty($donation->customamount)
-                || empty($donation->accountid) || self::market($donation) !== self::market($product)
                 || !self::prerequisite_ok($donation, $userid) || self::has_donation_sub($userid)) {
             return null;
         }
-        $presets = self::parse_amounts(self::freedonation_config('presets'), max((float)$donation->price, 0.01))
-            ?: self::presets($donation);
-        if (!$presets) {
-            return null;
+        $out = [];
+        foreach (self::variants($donation) as $cur => $v) {
+            if (empty($v->accountid)) {
+                continue;
+            }
+            $prefix = empty($v->isalt) ? '' : 'alt';
+            $presets = self::parse_amounts(self::freedonation_config($prefix . 'presets'), max((float)$v->price, 0.01))
+                ?: self::presets($v);
+            if (!$presets) {
+                continue;
+            }
+            $default = round((float)str_replace(',', '.', self::freedonation_config($prefix . 'default')), 2);
+            if (!in_array($default, $presets)) {
+                $default = $presets[0];
+            }
+            $out[$cur] = ['product' => $v, 'presets' => $presets, 'default' => $default];
         }
-        $default = round((float)str_replace(',', '.', self::freedonation_config('default')), 2);
-        if (!in_array($default, $presets)) {
-            $default = $presets[0];
-        }
-        return ['product' => $donation, 'presets' => $presets, 'default' => $default];
+        return $out ?: null;
     }
 
     /**
@@ -725,6 +818,21 @@ class catalog {
     }
 
     /**
+     * Адрес страницы товара. У товара с двумя ценами — с валютой, в которой его показали.
+     *
+     * @param \stdClass $product товар (в валюте)
+     * @param array $params
+     * @return moodle_url
+     */
+    public static function product_url(\stdClass $product, array $params = []): moodle_url {
+        $params = ['id' => $product->id] + $params;
+        if (!empty($product->isalt) || count(self::variants($product)) > 1) {
+            $params['cur'] = $product->currency;
+        }
+        return new moodle_url('/local/kabshop/product.php', $params);
+    }
+
+    /**
      * Контекст карточки для шаблона.
      *
      * @param \stdClass $product
@@ -734,12 +842,8 @@ class catalog {
         $context = context_system::instance();
         $url = $product->kind === 'external' && !empty($product->externalurl)
             ? $product->externalurl
-            : (new moodle_url('/local/kabshop/product.php', ['id' => $product->id]))->out(false);
-        // Рублёвый товар без своего «Коротко» берёт текст пары — описание ведётся в одном месте.
+            : self::product_url($product)->out(false);
         $summary = (string) ($product->summary ?? '');
-        if (trim($summary) === '' && self::market($product) === 'ru' && ($twin = self::twin($product))) {
-            $summary = (string) ($twin->summary ?? '');
-        }
         return [
             'id' => $product->id,
             'name' => format_string($product->name, true, ['context' => $context]),
@@ -847,12 +951,16 @@ class catalog {
         if ($n = $DB->count_records('local_kabshop_sub', ['productid' => $id])) {
             $out[] = get_string('delblock_subs', $p, $n);
         }
-        // Оплата суммы на выбор и со скидкой начинается с intent, по цене товара — с платежа в зоне 'product';
+        // Оплата суммы на выбор и со скидкой начинается с intent, по цене товара — с платежа в зоне
+        // 'product' (основная цена) или 'productalt' (вторая);
         // незавершённые заказы kbb1 есть только в его таблице.
-        $area = ['component' => 'local_kabshop', 'paymentarea' => 'product', 'itemid' => $id];
-        $n = $DB->count_records('local_kabshop_intent', ['productid' => $id]) + $DB->count_records('payments', $area);
-        if ($DB->get_manager()->table_exists('paygw_kbb1')) {
-            $n += $DB->count_records('paygw_kbb1', $area);
+        $n = $DB->count_records('local_kabshop_intent', ['productid' => $id]);
+        foreach (['product', 'productalt'] as $paymentarea) {
+            $area = ['component' => 'local_kabshop', 'paymentarea' => $paymentarea, 'itemid' => $id];
+            $n += $DB->count_records('payments', $area);
+            if ($DB->get_manager()->table_exists('paygw_kbb1')) {
+                $n += $DB->count_records('paygw_kbb1', $area);
+            }
         }
         if ($n) {
             $out[] = get_string('delblock_attempts', $p, $n);

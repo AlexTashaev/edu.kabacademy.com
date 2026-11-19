@@ -21,9 +21,11 @@ use local_kabshop\catalog;
 /**
  * Оплата товара витрины через core_payment.
  *
- * Зоны: 'product' — itemid = id товара, цена из товара;
- *       'custom'  — itemid = id выбранной суммы (local_kabshop_intent), сумма на выбор покупателя;
- *       'renewal' — itemid = id подписки (local_kabshop_sub), автосписание.
+ * Зоны: 'product'    — itemid = id товара, основная цена товара;
+ *       'productalt' — itemid = id товара, вторая цена (рубли через Robokassa);
+ *       'custom'     — itemid = id выбранной суммы (local_kabshop_intent), сумма на выбор покупателя;
+ *       'renewal'    — itemid = id подписки (local_kabshop_sub), автосписание.
+ * Товар отдаётся в валюте платежа (catalog::variant): цена, валюта и счёт — этой валюты.
  *
  * @package    local_kabshop
  * @copyright  2026 Kabacademy
@@ -36,19 +38,27 @@ class service_provider implements \core_payment\local\callback\service_provider 
      *
      * @param string $paymentarea
      * @param int $itemid
-     * @return array [товар, сумма, подписка|null]
+     * @return array [товар в валюте платежа, сумма, подписка|null]
      */
     protected static function resolve(string $paymentarea, int $itemid): array {
         if ($paymentarea === 'custom') {
             $intent = catalog::get_intent($itemid);
-            return [catalog::get_product($intent->productid), (float)$intent->amount, null];
+            $product = catalog::get_product($intent->productid);
+            return [catalog::variant($product, $intent->currency) ?: $product, (float)$intent->amount, null];
         }
         if ($paymentarea === 'renewal') {
             // Автосписание по подписке: itemid — id подписки.
             $sub = \local_kabshop\subscriptions::get($itemid);
-            return [catalog::get_product($sub->productid), (float)$sub->amount, $sub];
+            $product = catalog::get_product($sub->productid);
+            return [catalog::variant($product, $sub->currency) ?: $product, (float)$sub->amount, $sub];
         }
         $product = catalog::get_product($itemid);
+        if ($paymentarea === 'productalt') {
+            $product = catalog::alt($product);
+            if (!$product) {
+                throw new \moodle_exception('nopayment', 'local_kabshop');
+            }
+        }
         return [$product, (float)$product->price, null];
     }
 
@@ -85,7 +95,7 @@ class service_provider implements \core_payment\local\callback\service_provider 
         if ($product->courseid) {
             return new \moodle_url('/course/view.php', ['id' => $product->courseid]);
         }
-        return new \moodle_url('/local/kabshop/product.php', ['id' => $product->id, 'paid' => 1]);
+        return catalog::product_url($product, ['paid' => 1]);
     }
 
     /**

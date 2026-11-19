@@ -28,8 +28,10 @@ use local_kabshop\catalog;
 require_once(__DIR__ . '/../../config.php');
 
 $id = required_param('id', PARAM_INT);
-$product = catalog::get_product($id);
-$producturl = new moodle_url('/local/kabshop/product.php', ['id' => $id]);
+$record = catalog::get_product($id);
+// Гость нажал «Войти и купить» в выбранной валюте — после входа вернётся на неё.
+$product = catalog::variant($record, optional_param('cur', '', PARAM_ALPHA)) ?: $record;
+$producturl = catalog::product_url($product);
 
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url(new moodle_url('/local/kabshop/enrol.php', ['id' => $id]));
@@ -49,8 +51,9 @@ if (!$product->visible || !catalog::is_free($product) || $product->kind === 'ext
     redirect($producturl);
 }
 
-// Взнос из окна «Безвозмездная помощь» (кнопка «Записаться и сделать взнос»).
-$offer = optional_param('donate', 0, PARAM_BOOL) ? catalog::free_donation_offer($product, (int) $USER->id) : null;
+// Взнос из окна «Безвозмездная помощь» (кнопка «Записаться и сделать взнос») в выбранной там валюте.
+$offers = optional_param('donate', 0, PARAM_BOOL) ? catalog::free_donation_offer($product, (int) $USER->id) : null;
+$offer = $offers ? ($offers[strtoupper(optional_param('currency', '', PARAM_ALPHA))] ?? reset($offers)) : null;
 
 // Запись — всегда и первой: бросивший оплату взноса всё равно записан.
 if (!catalog::is_owned($product, $USER->id)) {
@@ -64,7 +67,7 @@ if (!$offer) {
 
 // Дальше — оплата взноса на странице товара-пожертвования.
 $donation = $offer['product'];
-$donationurl = new moodle_url('/local/kabshop/product.php', ['id' => $donation->id]);
+$donationurl = catalog::product_url($donation);
 if ($product->courseid) {
     // Ссылка «Перейти к курсу» на странице пожертвования — до оплаты и после неё.
     $SESSION->local_kabshop_aftercourse = ['productid' => (int) $donation->id, 'courseid' => (int) $product->courseid];
@@ -93,4 +96,5 @@ if (catalog::needs_taxid($donation)) {
     }
 }
 $intentid = catalog::create_intent($donation, (int) $USER->id, $amount, $tax);
-redirect(new moodle_url($donationurl, ['intent' => $intentid]), $message, null, \core\output\notification::NOTIFY_SUCCESS);
+redirect(new moodle_url('/local/kabshop/product.php', ['id' => $donation->id, 'intent' => $intentid]), $message, null,
+    \core\output\notification::NOTIFY_SUCCESS);
