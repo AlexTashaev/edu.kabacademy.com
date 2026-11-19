@@ -1593,15 +1593,17 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     column-gap: 2rem;
 }
 
+/* Номер — в потоке строки, а не абсолютом: иначе колонка разрывала квадрат пополам. */
 .kabshop-product-description ol > li {
     counter-increment: kabshop-ol;
-    position: relative;
     display: flex;
     align-items: center;
+    gap: 20px;
     min-height: 40px;
     margin: 0 0 1rem;
     break-inside: avoid;
-    padding-left: 60px;
+    page-break-inside: avoid;
+    padding: 0;
     font-family: "Montserrat", system-ui, sans-serif;
     font-size: 15px;
     font-weight: 400;
@@ -1611,10 +1613,7 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 
 .kabshop-product-description ol > li::before {
     content: counter(kabshop-ol);
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
+    flex: none;
     width: 40px;
     height: 40px;
     display: flex;
@@ -1840,7 +1839,7 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     }
 
     .kabshop-product-description ol > li {
-        padding-left: 54px;
+        gap: 14px;
         font-size: 14px;
     }
 
