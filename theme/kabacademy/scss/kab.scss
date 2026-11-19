@@ -428,9 +428,12 @@ $kab-navbar-line: #E6EEF4;
       align-items: center;
     }
 
+    // Высота фиксированная: по ней core/moremenu понимает, что пункты не влезли, и уносит их в «Ещё».
     .moremenu,
     .navigation {
-      height: auto;
+      height: $navbar-height;
+      display: flex;
+      align-items: center;
     }
 
     .moremenu .nav-link,
