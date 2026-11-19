@@ -215,5 +215,20 @@ function xmldb_local_kabshop_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026111800, 'local', 'kabshop');
     }
 
+    if ($oldversion < 2026111901) {
+        // Раздел в стиле kabacademy.com: иконка, вертикальная подпись, свёрнут при открытии каталога.
+        $table = new xmldb_table('local_kabshop_section');
+        foreach ([
+            new xmldb_field('icon', XMLDB_TYPE_CHAR, '20', null, null, null, null, 'visible'),
+            new xmldb_field('sidelabel', XMLDB_TYPE_CHAR, '100', null, null, null, null, 'icon'),
+            new xmldb_field('collapsed', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'sidelabel'),
+        ] as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        upgrade_plugin_savepoint(true, 2026111901, 'local', 'kabshop');
+    }
+
     return true;
 }

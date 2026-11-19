@@ -17,9 +17,10 @@
 {{!
     @template local_kabshop/catalog
 
-    Каталог витрины: навигация по разделам, герой (первый товар первого
-    раздела — крупно), дальше разделы с карточками. Вверху — ссылка на витрину
-    другого рынка (рубли ↔ карта и PayPal), внизу — продавец, контакты и оферта.
+    Каталог витрины в стиле главной kabacademy.com: навигация по разделам, разделы — сворачиваемые
+    <details> (иконка и вертикальная подпись слева, счётчик и стрелка в шапке). Первый раздел открыт,
+    его первый товар — крупно (герой); после него — блок «Об обучающей платформе…». В конце — блок
+    «Преподаватели академии», затем продавец, контакты и оферта.
 
     Example context (json):
     {
@@ -27,13 +28,16 @@
         "manageurl": "#",
         "isru": false,
         "switch": {"url": "#", "label": "Оплата в рублях для России"},
-        "legal": {"paylabel": "Продавец:", "seller": "Ассоциация", "email": "a@example.com",
-                  "phone": "1-700-509-209", "phonehref": "1700509209", "offerurl": "#",
-                  "offerlabel": "Публичная оферта", "privacyurl": "#",
-                  "privacylabel": "Политика конфиденциальности"},
+        "legal": null,
         "shownav": true,
+        "about": {"title": "Об обучающей платформе", "text": "<p>Текст</p>", "url": "#"},
+        "teachers": {"title": "Преподаватели академии", "logo": "#",
+                     "lead": {"name": "Михаэль Лайтман", "photo": null, "url": "#", "bio": "Каббалист"},
+                     "haspeople": true,
+                     "people": [{"name": "Александр Козлов", "photo": null, "url": null, "bio": "Преподаватель"}]},
         "sections": [
-            {"id": 1, "name": "Начать обучение", "description": "", "featured": true,
+            {"id": 1, "name": "Начать обучение", "description": "", "featured": true, "open": true,
+             "aboutafter": true, "icon": null, "sidelabel": "Для начинающих", "count": 2,
              "hero": {"id": 1, "name": "Классическая каббала", "summary": "15 уроков",
                       "price": "Бесплатно", "free": true, "image": null, "url": "#",
                       "external": false, "hidden": false},
@@ -54,7 +58,7 @@
     <p class="kabshop-ru-intro">{{#str}} ruintro, local_kabshop {{/str}}</p>
     {{/isru}}
     {{#switch}}
-    <p class="kabshop-switch"><a href="{{url}}">{{label}} →</a></p>
+    <p class="kabshop-switch"><a class="kabshop-action" href="{{url}}">{{label}}</a></p>
     {{/switch}}
     {{#shownav}}
     <nav class="kabshop-nav" aria-label="{{#str}} catalog, local_kabshop {{/str}}">
@@ -64,42 +68,118 @@
     </nav>
     {{/shownav}}
     {{#sections}}
-    <section class="kabshop-section{{#featured}} kabshop-section-featured{{/featured}}" id="kabshop-section-{{id}}">
-        <h2 class="kabshop-section-title">{{name}}</h2>
-        {{#description}}<div class="kabshop-section-desc">{{{description}}}</div>{{/description}}
-        {{#hero}}
-        <article class="kabshop-hero{{#hidden}} kabshop-card-hidden{{/hidden}}">
-            <div class="kabshop-hero-media">
-                {{#image}}<img src="{{image}}" alt="">{{/image}}
-                {{^image}}<span class="kabshop-card-placeholder" aria-hidden="true"></span>{{/image}}
-                {{#hidden}}<span class="kabshop-badge-hidden">{{#str}} hidden, local_kabshop {{/str}}</span>{{/hidden}}
-            </div>
-            <div class="kabshop-hero-body">
-                <h3 class="kabshop-hero-title"><a class="kabshop-card-link" href="{{url}}">{{name}}</a></h3>
-                {{#summary}}<p class="kabshop-hero-summary">{{{summary}}}</p>{{/summary}}
-                <div class="kabshop-hero-footer">
-                    {{#price}}<span class="kabshop-price kabshop-price-hero{{#free}} kabshop-price-free{{/free}}">{{price}}</span>{{/price}}
-                    <span class="kabshop-btn-cta" aria-hidden="true">
-                        {{#external}}{{#str}} gotoexternal, local_kabshop {{/str}}{{/external}}
-                        {{^external}}{{#str}} more, local_kabshop {{/str}}{{/external}}
-                    </span>
-                </div>
-            </div>
-        </article>
-        {{/hero}}
-        {{#hasproducts}}
-        <div class="kabshop-grid">
-            {{#products}}
-            {{> local_kabshop/card }}
-            {{/products}}
+    <div class="kabshop-section{{#featured}} kabshop-section-featured{{/featured}}" id="kabshop-section-{{id}}">
+        <div class="kabshop-section-aside" aria-hidden="true">
+            {{#icon}}<img class="kabshop-section-icon" src="{{icon}}" alt="">{{/icon}}
+            {{#sidelabel}}<span class="kabshop-section-side">{{sidelabel}}</span>{{/sidelabel}}
         </div>
-        {{/hasproducts}}
+        <details class="kabshop-section-main"{{#open}} open{{/open}}>
+            <summary class="kabshop-section-head">
+                <span class="kabshop-section-headline">
+                    <h2 class="kabshop-section-title">{{name}}<span class="kabshop-section-count">({{count}})</span></h2>
+                    {{#description}}<span class="kabshop-section-desc">{{{description}}}</span>{{/description}}
+                </span>
+                <span class="kabshop-section-toggle" aria-hidden="true"></span>
+            </summary>
+            <div class="kabshop-section-body">
+                {{#hero}}
+                <article class="kabshop-hero{{#hidden}} kabshop-card-hidden{{/hidden}}">
+                    <div class="kabshop-hero-media">
+                        {{#image}}<img src="{{image}}" alt="">{{/image}}
+                        {{^image}}<span class="kabshop-card-placeholder" aria-hidden="true"></span>{{/image}}
+                        {{#hidden}}<span class="kabshop-badge-hidden">{{#str}} hidden, local_kabshop {{/str}}</span>{{/hidden}}
+                    </div>
+                    <div class="kabshop-hero-body">
+                        <h3 class="kabshop-hero-title"><a class="kabshop-card-link" href="{{url}}">{{name}}</a></h3>
+                        {{#summary}}<p class="kabshop-hero-summary">{{{summary}}}</p>{{/summary}}
+                        <div class="kabshop-hero-footer">
+                            {{#price}}<span class="kabshop-price kabshop-price-hero{{#free}} kabshop-price-free{{/free}}">{{price}}</span>{{/price}}
+                            <span class="kabshop-btn-cta" aria-hidden="true">
+                                {{#external}}{{#str}} gotoexternal, local_kabshop {{/str}}{{/external}}
+                                {{^external}}{{#str}} more, local_kabshop {{/str}}{{/external}}
+                            </span>
+                        </div>
+                    </div>
+                </article>
+                {{/hero}}
+                {{#hasproducts}}
+                <div class="kabshop-grid">
+                    {{#products}}
+                    {{> local_kabshop/card }}
+                    {{/products}}
+                </div>
+                {{/hasproducts}}
+            </div>
+        </details>
+    </div>
+    {{#aboutafter}}{{#about}}
+    <section class="kabshop-about">
+        <div class="kabshop-about-inner">
+            <h2 class="kabshop-about-title">{{title}}</h2>
+            <div class="kabshop-about-text">{{{text}}}</div>
+            {{#url}}<a class="kabshop-action" href="{{url}}">{{#str}} readmore, local_kabshop {{/str}}</a>{{/url}}
+        </div>
     </section>
+    {{/about}}{{/aboutafter}}
     {{/sections}}
     {{^sections}}
     <p class="kabshop-empty">{{#str}} emptycatalog, local_kabshop {{/str}}</p>
     {{/sections}}
+    {{#teachers}}
+    <section class="kabshop-teachers" aria-labelledby="kabshop-teachers-title">
+        <div class="kabshop-teachers-lead">
+            <img class="kabshop-teachers-logo" src="{{logo}}" alt="{{#str}} academy, local_kabshop {{/str}}" width="168" height="35">
+            {{#lead}}
+            <div class="kabshop-teacher-lead">
+                {{#photo}}<img class="kabshop-teacher-lead-photo" src="{{photo}}" alt="" loading="lazy" width="144" height="183">{{/photo}}
+                <div>
+                    <h3 class="kabshop-teacher-lead-name">{{name}}</h3>
+                    <p class="kabshop-teacher-lead-bio">{{{bio}}}</p>
+                    {{#url}}<a class="kabshop-action kabshop-action-light" href="{{url}}">{{#str}} readfull, local_kabshop {{/str}}</a>{{/url}}
+                </div>
+            </div>
+            {{/lead}}
+        </div>
+        <div class="kabshop-teachers-list">
+            <h2 class="kabshop-teachers-title" id="kabshop-teachers-title">{{title}}</h2>
+            {{#people}}
+            <div class="kabshop-teacher">
+                {{#photo}}<img class="kabshop-teacher-photo" src="{{photo}}" alt="" loading="lazy" width="70" height="70">{{/photo}}
+                {{^photo}}<span class="kabshop-teacher-photo" aria-hidden="true"></span>{{/photo}}
+                <div>
+                    <h3 class="kabshop-teacher-name">{{#url}}<a href="{{url}}">{{name}}</a>{{/url}}{{^url}}{{name}}{{/url}}</h3>
+                    <p class="kabshop-teacher-bio">{{{bio}}}</p>
+                </div>
+            </div>
+            {{/people}}
+        </div>
+    </section>
+    {{/teachers}}
     {{#legal}}
     {{> local_kabshop/legal }}
     {{/legal}}
 </div>
+{{#js}}
+(function() {
+    // Пункт навигации и адрес с #kabshop-section-N раскрывают свёрнутый раздел.
+    var open = function(hash) {
+        if (!hash || hash.indexOf('#kabshop-section-') !== 0) {
+            return;
+        }
+        var section = document.getElementById(hash.slice(1));
+        var details = section && section.querySelector('details.kabshop-section-main');
+        if (details && !details.open) {
+            details.open = true;
+        }
+    };
+    document.querySelectorAll('.kabshop-nav-link').forEach(function(link) {
+        link.addEventListener('click', function() {
+            open(link.getAttribute('href'));
+        });
+    });
+    window.addEventListener('hashchange', function() {
+        open(window.location.hash);
+    });
+    open(window.location.hash);
+})();
+{{/js}}

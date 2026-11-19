@@ -35,6 +35,9 @@ class catalog {
     /** Валюта российской витрины. */
     const RU_CURRENCY = 'RUB';
 
+    /** Иконки разделов (pix/icons/*.svg — линейные иконки главной kabacademy.com). */
+    const SECTION_ICONS = ['chart', 'comment', 'youtube2', 'people', 'brain', 'calendar', 'clock'];
+
     /**
      * Рынок товара: 'ru' — цена в рублях (российская витрина, продавец в РФ), иначе 'main'.
      *
@@ -757,27 +760,39 @@ class catalog {
      * @return array
      */
     public static function export_catalog(string $market = 'main'): array {
+        global $OUTPUT;
         $out = [];
         foreach (self::get_sections(false, $market) as $s) {
             if (!$s->products) {
                 continue;
             }
+            $icon = in_array($s->icon ?? '', self::SECTION_ICONS, true)
+                ? $OUTPUT->image_url('icons/' . $s->icon, 'local_kabshop')->out(false) : null;
             $out[] = [
                 'id' => $s->id,
                 'name' => format_string($s->name),
                 'description' => format_text($s->description ?? '', FORMAT_HTML),
+                'icon' => $icon,
+                'sidelabel' => trim((string) ($s->sidelabel ?? '')) !== '' ? format_string($s->sidelabel) : null,
+                'open' => empty($s->collapsed),
+                'count' => count($s->products),
                 'products' => array_map([self::class, 'card'], array_values($s->products)),
                 'hasproducts' => true,
             ];
         }
-        // Первый раздел — витринный: его первый товар рисуется крупно (герой).
+        // Первый раздел — витринный: его первый товар рисуется крупно (герой), раздел всегда открыт,
+        // после него — блок «Об обучающей платформе…».
         if ($out) {
             $out[0]['featured'] = true;
+            $out[0]['open'] = true;
+            $out[0]['aboutafter'] = true;
             $out[0]['hero'] = array_shift($out[0]['products']);
             $out[0]['hasproducts'] = !empty($out[0]['products']);
         }
         return [
             'sections' => $out,
+            'about' => blocks::about(),
+            'teachers' => blocks::teachers(),
             'shownav' => count($out) > 1,
             'canmanage' => has_capability('local/kabshop:manage', context_system::instance()),
             'manageurl' => (new moodle_url('/local/kabshop/manage.php'))->out(false),

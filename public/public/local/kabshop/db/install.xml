@@ -11,6 +11,9 @@
         <FIELD NAME="description" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="visible" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
+        <FIELD NAME="icon" TYPE="char" LENGTH="20" NOTNULL="false" SEQUENCE="false" COMMENT="Иконка раздела из pix/icons; пусто — без иконки"/>
+        <FIELD NAME="sidelabel" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="Вертикальная подпись слева от раздела"/>
+        <FIELD NAME="collapsed" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Свёрнут при открытии каталога"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>

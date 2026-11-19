@@ -75,6 +75,26 @@ if ($hassiteconfig) {
     }
     $ADMIN->add('localplugins', $page);
 
+    // Блоки каталога, как на главной kabacademy.com. Пока не сохранены — \local_kabshop\blocks::DEFAULTS.
+    $page = new admin_settingpage('local_kabshop_blocks', get_string('blockssettings', 'local_kabshop'));
+    $bd = \local_kabshop\blocks::DEFAULTS;
+    $page->add(new admin_setting_heading('local_kabshop/about_heading', get_string('setting_about', 'local_kabshop'), ''));
+    $page->add(new admin_setting_configtext('local_kabshop/about_title', get_string('setting_about_title', 'local_kabshop'),
+        '', $bd['about_title'], PARAM_TEXT));
+    $page->add(new admin_setting_confightmleditor('local_kabshop/about_text', get_string('setting_about_text', 'local_kabshop'),
+        get_string('setting_about_text_desc', 'local_kabshop'), $bd['about_text']));
+    $page->add(new admin_setting_configtext('local_kabshop/about_url', get_string('setting_about_url', 'local_kabshop'),
+        get_string('setting_about_url_desc', 'local_kabshop'), $bd['about_url'], PARAM_URL));
+    $page->add(new admin_setting_heading('local_kabshop/teachers_heading', get_string('setting_teachers', 'local_kabshop'), ''));
+    $page->add(new admin_setting_configtext('local_kabshop/teachers_title', get_string('setting_teachers_title', 'local_kabshop'),
+        '', $bd['teachers_title'], PARAM_TEXT));
+    $page->add(new admin_setting_configtextarea('local_kabshop/teachers', get_string('setting_teachers_list', 'local_kabshop'),
+        get_string('setting_teachers_list_desc', 'local_kabshop'), $bd['teachers'], PARAM_RAW, 80, 20));
+    $page->add(new admin_setting_configstoredfile('local_kabshop/teacherphotos',
+        get_string('setting_teacherphotos', 'local_kabshop'), get_string('setting_teacherphotos_desc', 'local_kabshop'),
+        'teacherphotos', 0, ['maxfiles' => 30, 'accepted_types' => ['web_image']]));
+    $ADMIN->add('localplugins', $page);
+
     // Окно «Безвозмездная помощь» при бесплатной записи — как попап корзины WordPress.
     $page = new admin_settingpage('local_kabshop_freedonation', get_string('freedonationsettings', 'local_kabshop'));
     $choices = [0 => get_string('freedonation_off', 'local_kabshop')];

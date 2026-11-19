@@ -45,6 +45,20 @@ class section_form extends \moodleform {
 
         $mform->addElement('textarea', 'description', get_string('description', $p), ['rows' => 3, 'cols' => 60]);
         $mform->setType('description', PARAM_RAW);
+        $mform->addHelpButton('description', 'sectiondesc', $p);
+
+        $icons = ['' => get_string('sectionicon_none', $p)];
+        foreach (\local_kabshop\catalog::SECTION_ICONS as $icon) {
+            $icons[$icon] = get_string('sectionicon_' . $icon, $p);
+        }
+        $mform->addElement('select', 'icon', get_string('sectionicon', $p), $icons);
+
+        $mform->addElement('text', 'sidelabel', get_string('sectionsidelabel', $p), ['size' => 40, 'maxlength' => 100]);
+        $mform->setType('sidelabel', PARAM_TEXT);
+        $mform->addHelpButton('sidelabel', 'sectionsidelabel', $p);
+
+        $mform->addElement('advcheckbox', 'collapsed', get_string('sectioncollapsed', $p));
+        $mform->addHelpButton('collapsed', 'sectioncollapsed', $p);
 
         $mform->addElement('text', 'sortorder', get_string('sortorder', $p), ['size' => 4]);
         $mform->setType('sortorder', PARAM_INT);

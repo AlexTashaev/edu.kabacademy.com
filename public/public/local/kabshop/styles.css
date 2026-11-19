@@ -1,9 +1,16 @@
-/* local_kabshop — витрина. Дизайн-система kabacademy.com («Гостиная»):
-   Montserrat · голубой #52B0D8 · тёмно-синий #3C5D90 · ссылки #00789F
-   подложка #F4F9FD · рамка #D9E8F2. CSS самодостаточен: витрина выглядит
-   одинаково под theme_kabacademy и под чистым Boost. */
+/* local_kabshop — витрина. Дизайн главной kabacademy.com:
+   Montserrat (заголовки Light 300) · текст Open Sans Light · тёмно-синий #3C5D90 · голубой #3BA9DC
+   фиолетовый акцент #A42BB9 · подписи #B9CBD3 · подзаголовки #929292 · полосы #F5FAFD.
+   CSS самодостаточен: витрина выглядит одинаково под theme_kabacademy и под чистым Boost. */
 
-/* --- Шрифт: self-hosted Montserrat (те же файлы, что /kab/fonts.css) --- */
+/* --- Шрифты: self-hosted, файлы в /kab/fonts/ (те же, что на kabacademy.com) --- */
+@font-face {
+    font-family: "Montserrat";
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src: url("/kab/fonts/Montserrat-Light.woff2?v=1") format("woff2");
+}
 @font-face {
     font-family: "Montserrat";
     font-style: normal;
@@ -32,17 +39,39 @@
     font-display: swap;
     src: url("/kab/fonts/Montserrat-Bold.woff2?v=1") format("woff2");
 }
+@font-face {
+    font-family: "Open Sans";
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src: url("/kab/fonts/OpenSans-Light.woff2?v=1") format("woff2");
+}
+@font-face {
+    font-family: "Open Sans";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/kab/fonts/OpenSans-SemiBold.woff2?v=1") format("woff2");
+}
 
 .kabshop-catalog,
 .kabshop-product,
 .kabshop-doc {
     --kabshop-blue: #52b0d8;
+    --kabshop-sky: #3ba9dc;
     --kabshop-navy: #3c5d90;
     --kabshop-navy-dark: #33517e;
+    --kabshop-purple: #a42bb9;
+    --kabshop-purple-dark: #8b2199;
     --kabshop-link: #00789f;
     --kabshop-ink: #22303f;
     --kabshop-text: #3d4a57;
+    --kabshop-copy: #2c2c2c;
     --kabshop-muted: #637486;
+    --kabshop-sub: #929292;
+    --kabshop-side: #b9cbd3;
+    --kabshop-ghost: #d9e7f1;
+    --kabshop-band: #f5fafd;
     --kabshop-tint: #f4f9fd;
     --kabshop-border: #d9e8f2;
     --kabshop-line: #eff7fa;
@@ -51,6 +80,10 @@
     --kabshop-green-border: #cdeadb;
     --kabshop-shadow: 0 1px 2px rgba(34, 48, 63, .05), 0 10px 28px -14px rgba(60, 93, 144, .22);
     --kabshop-shadow-lift: 0 2px 4px rgba(34, 48, 63, .06), 0 18px 36px -14px rgba(60, 93, 144, .3);
+    --kabshop-body: "Open Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    /* Контурный треугольник «▷» ссылок-действий kabacademy.com (icon-triangle-right). */
+    --kabshop-tri-navy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 12'%3E%3Cpath fill='none' stroke='%233c5d90' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M1.42 10.58V1.42l8.44 4.58z'/%3E%3C/svg%3E");
+    --kabshop-tri-sky: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 12'%3E%3Cpath fill='none' stroke='%233ba9dc' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M1.42 10.58V1.42l8.44 4.58z'/%3E%3C/svg%3E");
     font-family: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     color: var(--kabshop-text);
 }
@@ -74,17 +107,68 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 
 /* ============================= Каталог ============================= */
 
-/* --- Навигация по разделам --- */
+.kabshop-catalog {
+    color: var(--kabshop-copy);
+}
+
+/* --- Ссылка-действие «ЧИТАЙ ДАЛЕЕ ▷»: прописные с разрядкой и контурный треугольник --- */
+.kabshop-action {
+    display: inline-flex;
+    align-items: center;
+    gap: .9rem;
+    color: var(--kabshop-navy);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .35em;
+    line-height: 20px;
+    text-transform: uppercase;
+    text-decoration: none;
+}
+
+.kabshop-action::after {
+    content: "";
+    flex: none;
+    width: 10px;
+    height: 11px;
+    background: var(--kabshop-tri-navy) center / contain no-repeat;
+    transition: transform .18s ease;
+}
+
+.kabshop-action:hover,
+.kabshop-action:focus-visible {
+    color: var(--kabshop-navy-dark);
+    text-decoration: none;
+}
+
+.kabshop-action:hover::after {
+    transform: translateX(3px);
+}
+
+.kabshop-action-light {
+    color: #3ca7db;
+    letter-spacing: .45em;
+}
+
+.kabshop-action-light::after {
+    background-image: var(--kabshop-tri-sky);
+}
+
+.kabshop-action:focus-visible {
+    outline: 2px solid var(--kabshop-sky);
+    outline-offset: 3px;
+}
+
+/* --- Навигация по разделам: светлая полоса, пункты с пунктиром, как верхнее меню сайта --- */
 .kabshop-nav {
     position: sticky;
     top: 65px; /* под фиксированной шапкой Boost (измерено на dev) */
     z-index: 10;
     display: flex;
-    gap: .5rem;
+    gap: 2.25rem;
     overflow-x: auto;
-    padding: .7rem .15rem;
-    margin: 0 0 1.25rem;
-    background: var(--bs-body-bg, #fff);
+    padding: 1.05rem 1.6rem;
+    margin: 0 0 1rem;
+    background: var(--kabshop-band);
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
 }
@@ -96,51 +180,183 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 .kabshop-nav-link {
     flex: 0 0 auto;
     white-space: nowrap;
-    padding: .45rem 1rem;
-    border-radius: 999px;
-    border: 1px solid var(--kabshop-border);
-    background: #fff;
-    color: var(--kabshop-navy);
-    font-weight: 500;
-    font-size: .88rem;
+    padding-bottom: 2px;
+    border-bottom: 1px dashed currentColor;
+    color: #000;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    text-transform: uppercase;
     text-decoration: none;
-    transition: background-color .15s ease, border-color .15s ease;
+    transition: color .15s ease;
 }
 
 .kabshop-nav-link:hover,
 .kabshop-nav-link:focus-visible {
-    background: var(--kabshop-tint);
-    border-color: var(--kabshop-blue);
-    color: var(--kabshop-navy);
+    color: var(--kabshop-sky);
     text-decoration: none;
 }
 
 .kabshop-nav-link:focus-visible {
-    outline: 2px solid var(--kabshop-blue);
-    outline-offset: 2px;
+    outline: 2px solid var(--kabshop-sky);
+    outline-offset: 3px;
 }
 
-/* --- Разделы --- */
+/* --- Раздел: слева иконка и вертикальная подпись, справа сворачиваемое содержимое --- */
 /* Специфичность выше правила ядра Boost (оно ставит секциям 70px). */
 .kabshop-catalog .kabshop-section {
-    margin-bottom: 3rem;
+    position: relative;
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    column-gap: 1.75rem;
+    padding-top: 3.25rem;
+    margin-bottom: 1.5rem;
     scroll-margin-top: 140px;
+}
+
+/* Светлая полоса над разделом, как на главной сайта. */
+.kabshop-catalog .kabshop-section::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 22px;
+    background: var(--kabshop-band);
+}
+
+.kabshop-catalog .kabshop-section-featured::before {
+    display: none;
+}
+
+.kabshop-catalog .kabshop-section-featured {
+    padding-top: 1.75rem;
+}
+
+.kabshop-section-aside {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.6rem;
+    padding-top: .15rem;
+}
+
+.kabshop-section-icon {
+    width: 38px;
+    height: 36px;
+}
+
+.kabshop-section-side {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    color: var(--kabshop-side);
+    font-size: 20px;
+    font-weight: 400;
+    letter-spacing: 6px;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+/* Свёрнутому разделу вертикальная подпись не нужна: она вытянула бы его по высоте. */
+.kabshop-section:has(> .kabshop-section-main:not([open])) .kabshop-section-side {
+    display: none;
+}
+
+.kabshop-section-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+    list-style: none;
+    cursor: pointer;
+}
+
+.kabshop-section-head::-webkit-details-marker {
+    display: none;
+}
+
+.kabshop-section-head:focus-visible {
+    outline: 2px solid var(--kabshop-sky);
+    outline-offset: 4px;
+}
+
+.kabshop-section-headline {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .6rem 2.5rem;
 }
 
 .kabshop-section-title {
     font-family: inherit;
-    font-size: 1.4rem;
-    font-weight: 700;
-    letter-spacing: -.01em;
-    color: var(--kabshop-ink);
-    margin-bottom: .3rem;
+    font-size: 2rem;
+    font-weight: 300;
+    letter-spacing: -.05em;
+    line-height: 1.2;
+    color: #000;
+    margin: 0;
+    transition: color .15s ease;
 }
 
+.kabshop-section-head:hover .kabshop-section-title {
+    color: var(--kabshop-navy);
+}
+
+.kabshop-section-count {
+    margin-left: .6rem;
+    font-size: 14px;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: .15em;
+    color: var(--kabshop-sub);
+    vertical-align: middle;
+}
+
+/* Описание раздела — подзаголовок справа: прописные с разрядкой. */
 .kabshop-section-desc {
-    color: var(--kabshop-muted);
-    font-size: .95rem;
-    margin-bottom: 1.1rem;
-    max-width: 48rem;
+    max-width: 32rem;
+    color: var(--kabshop-sub);
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: .2em;
+    line-height: 1.85;
+    text-transform: uppercase;
+}
+
+.kabshop-section-desc p {
+    margin: 0;
+}
+
+/* Стрелка свернуть/развернуть. */
+.kabshop-section-toggle {
+    flex: none;
+    width: 38px;
+    height: 38px;
+    margin-top: .1rem;
+    border: 1px solid var(--kabshop-border);
+    border-radius: 50%;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 8'%3E%3Cpath fill='none' stroke='%233ba9dc' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M1 1l6 6 6-6'/%3E%3C/svg%3E") center / 14px 8px no-repeat;
+    transition: transform .2s ease, border-color .15s ease;
+}
+
+.kabshop-section-head:hover .kabshop-section-toggle {
+    border-color: var(--kabshop-sky);
+}
+
+.kabshop-section-main[open] > .kabshop-section-head .kabshop-section-toggle {
+    transform: rotate(180deg);
+}
+
+/* Витринный раздел всегда открыт: стрелка ему не нужна. */
+.kabshop-section-featured .kabshop-section-toggle {
+    display: none;
+}
+
+.kabshop-section-body {
+    padding-top: 2rem;
 }
 
 .kabshop-manage-link {
@@ -150,58 +366,28 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 
 /* --- Две витрины: пояснение российской и ссылка на другую --- */
 .kabshop-ru-intro {
-    color: var(--kabshop-muted);
-    font-size: .95rem;
+    color: var(--kabshop-sub);
+    font-size: 13px;
     margin: 0 0 .4rem;
 }
 
 .kabshop-switch {
-    margin: 0 0 .9rem;
-    font-size: .92rem;
+    margin: 0 0 1.1rem;
 }
 
-.kabshop-switch a {
-    color: var(--kabshop-link);
-    font-weight: 500;
-    text-decoration: none;
-}
-
-.kabshop-switch a:hover,
-.kabshop-switch a:focus-visible {
-    text-decoration: underline;
-}
-
-/* --- Герой: первый товар первого раздела --- */
+/* --- Герой: первый товар первого раздела. Справа — рамка-градиент, как «СТАРТ» на сайте --- */
 .kabshop-hero {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
-    gap: 1.75rem;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
     align-items: center;
-    background: linear-gradient(130deg, var(--kabshop-tint) 0%, #fff 65%);
-    border: 1px solid var(--kabshop-border);
-    border-radius: 20px;
-    box-shadow: var(--kabshop-shadow);
-    padding: 1.5rem;
-    margin: 1.25rem 0 1.5rem;
-    transition: box-shadow .18s ease, border-color .18s ease;
-}
-
-.kabshop-hero:hover {
-    box-shadow: var(--kabshop-shadow-lift);
-    border-color: #bcd7ea;
-}
-
-.kabshop-hero:focus-within {
-    outline: 2px solid var(--kabshop-blue);
-    outline-offset: 2px;
+    margin: 0 0 3rem;
 }
 
 .kabshop-hero-media {
     aspect-ratio: 16 / 9;
-    border-radius: 12px;
     overflow: hidden;
-    background: var(--kabshop-tint);
+    background: var(--kabshop-band);
 }
 
 .kabshop-hero-media img {
@@ -211,23 +397,45 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     display: block;
 }
 
+.kabshop-hero-body {
+    position: relative;
+    z-index: 1;
+    margin-left: -3.5rem;
+    padding: 2rem 2.25rem 2.1rem;
+    background: #fff;
+    border: 18px solid transparent;
+    border-image: linear-gradient(160deg, #3ba9dc 0%, #6a68cf 50%, #a42bb9 100%) 1;
+    transition: box-shadow .18s ease;
+}
+
+.kabshop-hero:hover .kabshop-hero-body {
+    box-shadow: var(--kabshop-shadow-lift);
+}
+
+.kabshop-hero:focus-within {
+    outline: 2px solid var(--kabshop-sky);
+    outline-offset: 2px;
+}
+
 .kabshop-hero-title {
     font-family: inherit;
-    font-size: 1.45rem;
-    font-weight: 700;
-    line-height: 1.3;
-    letter-spacing: -.01em;
-    color: var(--kabshop-ink);
-    margin: 0 0 .6rem;
+    font-size: 1.85rem;
+    font-weight: 300;
+    line-height: 1.2;
+    letter-spacing: -.05em;
+    color: #000;
+    margin: 0 0 .9rem;
 }
 
 .kabshop-hero-summary {
-    color: var(--kabshop-muted);
-    font-size: .97rem;
-    line-height: 1.6;
-    margin: 0 0 1.1rem;
+    font-family: var(--kabshop-body);
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 22px;
+    color: var(--kabshop-copy);
+    margin: 0 0 1.3rem;
     display: -webkit-box;
-    -webkit-line-clamp: 4;
+    -webkit-line-clamp: 5;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -236,43 +444,32 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .9rem;
+    gap: 1rem 1.5rem;
 }
 
-/* Визуальная кнопка героя: ссылка — заголовок, растянутая на карточку. */
+/* Визуальная кнопка героя (ссылка — заголовок, растянутая на карточку): фиолетовая, как «Записаться». */
 .kabshop-btn-cta {
     display: inline-flex;
     align-items: center;
-    gap: .45rem;
-    background: var(--kabshop-navy);
+    background: var(--kabshop-purple);
     color: #fff;
-    font-weight: 600;
-    font-size: .95rem;
-    padding: .65rem 1.3rem;
-    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 28px;
+    padding: 8px 30px;
+    border-radius: 8px;
     transition: background-color .15s ease;
 }
 
-.kabshop-btn-cta::after {
-    content: "\2192";
-    display: inline-block;
-    transition: transform .18s ease;
-}
-
 .kabshop-hero:hover .kabshop-btn-cta {
-    background: var(--kabshop-navy-dark);
+    background: var(--kabshop-purple-dark);
 }
 
-.kabshop-hero:hover .kabshop-btn-cta::after {
-    transform: translateX(3px);
-}
-
-/* --- Сетка карточек --- */
+/* --- Сетка карточек: прямые углы, картинка, светлый заголовок --- */
 .kabshop-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1.25rem;
-    margin-top: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 2rem 1.75rem;
 }
 
 .kabshop-card {
@@ -280,22 +477,17 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    background: var(--bs-body-bg, #fff);
-    border: 1px solid var(--kabshop-border);
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 1px 2px rgba(34, 48, 63, .04);
-    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    background: #fff;
+    transition: box-shadow .2s ease, transform .2s ease;
 }
 
 .kabshop-card:hover {
     transform: translateY(-3px);
-    box-shadow: var(--kabshop-shadow-lift);
-    border-color: #bcd7ea;
+    box-shadow: 0 18px 40px -18px rgba(60, 93, 144, .38);
 }
 
 .kabshop-card:focus-within {
-    outline: 2px solid var(--kabshop-blue);
+    outline: 2px solid var(--kabshop-sky);
     outline-offset: 2px;
 }
 
@@ -309,7 +501,7 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 
 .kabshop-card-hidden {
     opacity: .6;
-    border-style: dashed;
+    outline: 1px dashed var(--kabshop-border);
 }
 
 /* Вся карточка кликабельна: ссылка-заголовок растянута псевдоэлементом. */
@@ -336,7 +528,8 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     display: block;
     position: relative;
     aspect-ratio: 16 / 9;
-    background: var(--kabshop-tint);
+    overflow: hidden;
+    background: var(--kabshop-band);
 }
 
 .kabshop-card-media img,
@@ -380,34 +573,36 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     font-weight: 600;
     letter-spacing: .03em;
     padding: .2rem .6rem;
-    border-radius: 999px;
 }
 
 .kabshop-card-body {
     display: flex;
     flex-direction: column;
     flex: 1;
-    gap: .5rem;
-    padding: 1rem 1.1rem 1.05rem;
+    gap: .6rem;
+    padding: 1.15rem 1.1rem 1.2rem;
 }
 
 .kabshop-card-title {
     font-family: inherit;
-    font-size: 1.02rem;
-    font-weight: 600;
-    line-height: 1.35;
+    font-size: 1.35rem;
+    font-weight: 300;
+    line-height: 1.25;
+    letter-spacing: -.05em;
     margin: 0;
-    color: var(--kabshop-ink);
+    color: #000;
 }
 
 .kabshop-card:hover .kabshop-card-title .kabshop-card-link {
-    color: var(--kabshop-link);
+    color: var(--kabshop-navy);
 }
 
 .kabshop-card-summary {
-    color: var(--kabshop-muted);
-    font-size: .88rem;
-    line-height: 1.55;
+    font-family: var(--kabshop-body);
+    color: var(--kabshop-copy);
+    font-size: 13px;
+    font-weight: 300;
+    line-height: 21px;
     margin: 0;
     display: -webkit-box;
     -webkit-line-clamp: 3;
@@ -420,13 +615,12 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: .5rem;
+    gap: .5rem 1rem;
     margin-top: auto;
-    padding-top: .7rem;
-    border-top: 1px solid var(--kabshop-line);
+    padding-top: .55rem;
 }
 
-/* --- Цена-пилюля --- */
+/* --- Цена в каталоге: прописные фиолетовым с разрядкой, как «35 СЕРИЙ» на сайте --- */
 .kabshop-price {
     display: inline-flex;
     align-items: center;
@@ -448,47 +642,312 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     color: var(--kabshop-green);
 }
 
-.kabshop-price-hero {
-    font-size: .95rem;
-    padding: .4rem .9rem;
+.kabshop-catalog .kabshop-price {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--kabshop-purple);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .25em;
+    text-transform: uppercase;
 }
 
-/* --- «Подробнее →» --- */
+.kabshop-catalog .kabshop-price-free {
+    color: var(--kabshop-sky);
+}
+
+.kabshop-catalog .kabshop-price-hero {
+    font-size: 18px;
+    letter-spacing: .25em;
+}
+
+/* --- «ПОДРОБНЕЕ ▷» в карточке --- */
 .kabshop-more {
     margin-left: auto;
     display: inline-flex;
     align-items: center;
-    gap: .3rem;
-    color: var(--kabshop-link);
+    gap: .7rem;
+    color: var(--kabshop-navy);
+    font-size: 11px;
     font-weight: 600;
-    font-size: .86rem;
+    letter-spacing: .3em;
+    text-transform: uppercase;
     white-space: nowrap;
 }
 
 .kabshop-more::after {
-    content: "\2192";
-    display: inline-block;
+    content: "";
+    width: 10px;
+    height: 11px;
+    background: var(--kabshop-tri-navy) center / contain no-repeat;
     transition: transform .18s ease;
-}
-
-.kabshop-more-external::after {
-    content: "\2197";
 }
 
 .kabshop-card:hover .kabshop-more::after {
     transform: translateX(3px);
 }
 
-.kabshop-card:hover .kabshop-more-external::after {
-    transform: translate(2px, -2px);
-}
-
 .kabshop-empty {
     border: 1px dashed var(--kabshop-border);
-    border-radius: 16px;
     padding: 2.5rem 1rem;
     text-align: center;
     color: var(--kabshop-muted);
+}
+
+/* --- Блок «Об обучающей платформе…»: заголовок слева, текст справа --- */
+.kabshop-about {
+    position: relative;
+    padding: 4rem 0 3.5rem calc(56px + 1.75rem);
+    margin-bottom: 1rem;
+}
+
+.kabshop-about::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 22px;
+    background: var(--kabshop-band);
+}
+
+.kabshop-about-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 1.5rem 4rem;
+    align-items: start;
+}
+
+.kabshop-about-title {
+    grid-row: span 2;
+    font-family: inherit;
+    font-size: 2rem;
+    font-weight: 300;
+    letter-spacing: -.05em;
+    line-height: 1.2;
+    color: #000;
+    margin: 0;
+}
+
+.kabshop-about-text {
+    font-family: var(--kabshop-body);
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 22px;
+    color: var(--kabshop-copy);
+}
+
+.kabshop-about-text p {
+    margin: 0 0 .8rem;
+}
+
+.kabshop-about-text p:last-child {
+    margin-bottom: 0;
+}
+
+.kabshop-about .kabshop-action {
+    grid-column: 2;
+    justify-self: start;
+}
+
+/* --- Блок «Преподаватели академии» --- */
+.kabshop-teachers {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr);
+    gap: 3rem 4.5rem;
+    padding: 4.5rem 3rem 2.5rem;
+    margin: 2.5rem 0 1rem;
+    background: linear-gradient(180deg, var(--kabshop-band) 0%, #fff 100%);
+}
+
+.kabshop-teachers-logo {
+    display: block;
+    width: auto;
+    height: 35px;
+    margin: .2rem 0 3.5rem;
+}
+
+.kabshop-teacher-lead {
+    display: flex;
+    align-items: flex-start;
+    gap: 3.1rem;
+}
+
+.kabshop-teacher-lead-photo {
+    flex: none;
+    width: 144px;
+    height: 183px;
+    object-fit: cover;
+    background: var(--kabshop-band);
+}
+
+.kabshop-teacher-lead-name {
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.3;
+    text-transform: uppercase;
+    color: #000;
+    margin: 0 0 1.1rem;
+}
+
+.kabshop-teacher-lead-bio {
+    font-family: var(--kabshop-body);
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 26px;
+    color: #000;
+    margin: 0 0 2.4rem;
+}
+
+.kabshop-teachers-title {
+    font-family: inherit;
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -.1em;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--kabshop-ghost);
+    margin: 0 0 2.75rem;
+}
+
+.kabshop-teacher {
+    display: grid;
+    grid-template-columns: 70px minmax(0, 1fr);
+    gap: 2.75rem;
+    margin-bottom: 2.6rem;
+}
+
+.kabshop-teacher-photo {
+    display: block;
+    width: 70px;
+    height: 70px;
+    object-fit: cover;
+    background: var(--kabshop-band);
+}
+
+.kabshop-teacher-name {
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 4px;
+    line-height: 1.6;
+    text-transform: uppercase;
+    color: var(--kabshop-navy);
+    margin: 0 0 .7rem;
+}
+
+.kabshop-teacher-name a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.kabshop-teacher-name a:hover {
+    text-decoration: underline;
+}
+
+.kabshop-teacher-bio {
+    font-family: var(--kabshop-body);
+    font-size: 12px;
+    font-weight: 300;
+    line-height: 22px;
+    color: #000;
+    margin: 0;
+}
+
+/* --- Каталог на планшете и телефоне --- */
+@media (max-width: 991.98px) {
+    .kabshop-teachers {
+        grid-template-columns: 1fr;
+        padding: 3rem 1.5rem 1.5rem;
+    }
+
+    .kabshop-about-inner {
+        grid-template-columns: 1fr;
+    }
+
+    .kabshop-about-title {
+        grid-row: auto;
+    }
+
+    .kabshop-about .kabshop-action {
+        grid-column: 1;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .kabshop-nav {
+        gap: 1.5rem;
+        padding: .9rem 1rem;
+    }
+
+    .kabshop-catalog .kabshop-section {
+        grid-template-columns: 1fr;
+        padding-top: 2.5rem;
+    }
+
+    .kabshop-section-aside {
+        display: none;
+    }
+
+    .kabshop-section-title,
+    .kabshop-about-title {
+        font-size: 1.55rem;
+    }
+
+    .kabshop-section-desc {
+        font-size: 11px;
+        letter-spacing: .15em;
+    }
+
+    .kabshop-section-body {
+        padding-top: 1.5rem;
+    }
+
+    .kabshop-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .kabshop-hero-body {
+        margin: -1.5rem .75rem 0;
+        padding: 1.4rem 1.25rem 1.5rem;
+        border-width: 12px;
+    }
+
+    .kabshop-hero-title {
+        font-size: 1.4rem;
+    }
+
+    .kabshop-hero-summary {
+        -webkit-line-clamp: 4;
+    }
+
+    .kabshop-about {
+        padding: 3rem 0 2.5rem;
+    }
+
+    .kabshop-teachers {
+        padding: 2.5rem 1rem 1rem;
+    }
+
+    .kabshop-teachers-title {
+        font-size: 28px;
+    }
+
+    .kabshop-teacher-lead {
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+
+    .kabshop-teacher {
+        gap: 1.25rem;
+    }
+
+    .kabshop-teacher-name {
+        letter-spacing: 2.5px;
+    }
 }
 
 /* ========================= Страница товара ========================= */
@@ -1018,27 +1477,9 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     color: var(--kabshop-link);
 }
 
-/* ============================ Мобильные ============================ */
+/* ===================== Мобильные: страница товара ===================== */
 
 @media (max-width: 767.98px) {
-    .kabshop-hero {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-        padding: 1rem;
-    }
-
-    .kabshop-hero-title {
-        font-size: 1.2rem;
-    }
-
-    .kabshop-hero-summary {
-        -webkit-line-clamp: 3;
-    }
-
-    .kabshop-section {
-        margin-bottom: 2.25rem;
-    }
-
     .kabshop-product-hero {
         grid-template-columns: 1fr;
         gap: 1.25rem;

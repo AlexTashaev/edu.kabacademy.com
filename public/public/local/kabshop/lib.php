@@ -23,7 +23,7 @@
  */
 
 /**
- * Отдача картинок товаров. Картинки витрины публичные — видят и гости.
+ * Отдача картинок товаров и фото преподавателей каталога. Картинки витрины публичные — видят и гости.
  *
  * @param stdClass $course
  * @param stdClass $cm
@@ -35,7 +35,7 @@
  * @return bool
  */
 function local_kabshop_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
-    if ($context->contextlevel != CONTEXT_SYSTEM || $filearea !== 'image') {
+    if ($context->contextlevel != CONTEXT_SYSTEM || !in_array($filearea, ['image', 'teacherphotos'], true)) {
         return false;
     }
     $itemid = (int)array_shift($args);
