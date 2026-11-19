@@ -422,10 +422,14 @@ $kab-navbar-line: #E6EEF4;
   .primary-navigation {
     margin-right: 1rem;
 
+    // Занимает всё место между логотипом и правой частью: иначе во флекс-строке сжимается до самого
+    // длинного пункта, и core/moremenu уносит в «Ещё» все пункты.
     @include media-breakpoint-up(md) {
       align-self: stretch;
       display: flex;
       align-items: center;
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
     // Высота фиксированная: по ней core/moremenu понимает, что пункты не влезли, и уносит их в «Ещё».
