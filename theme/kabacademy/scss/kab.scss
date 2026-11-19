@@ -420,10 +420,13 @@ $kab-navbar-line: #E6EEF4;
 
   // Меню: обычные буквы, текущий пункт — светло-голубая плашка.
   .primary-navigation {
-    align-self: stretch;
-    display: flex;
-    align-items: center;
     margin-right: 1rem;
+
+    @include media-breakpoint-up(md) {
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+    }
 
     .moremenu,
     .navigation {
@@ -476,6 +479,36 @@ $kab-navbar-line: #E6EEF4;
 
   .usermenu {
     margin-left: 8px !important;
+  }
+
+  @include media-breakpoint-down(md) {
+    .kab-brand {
+      margin-right: auto !important;
+    }
+
+    .kab-logo {
+      width: 150px;
+      height: 31px;
+    }
+
+    #usernavigation {
+      margin-left: 0 !important;
+
+      .kab-donate-wrap {
+        margin-right: 0;
+      }
+    }
+
+    .usermenu {
+      margin-left: 0 !important;
+    }
+  }
+
+  @media (max-width: 359.98px) {
+    .kab-logo {
+      width: 128px;
+      height: 27px;
+    }
   }
 }
 
@@ -564,29 +597,6 @@ $kab-navbar-line: #E6EEF4;
 }
 
 @include media-breakpoint-down(md) {
-  .navbar.kab-navbar {
-    .kab-brand {
-      margin-right: auto !important;
-    }
-
-    .kab-logo {
-      width: 150px;
-      height: 31px;
-    }
-
-    #usernavigation {
-      margin-left: 0 !important;
-
-      .kab-donate-wrap {
-        margin-right: 0;
-      }
-    }
-
-    .usermenu {
-      margin-left: 0 !important;
-    }
-  }
-
   // На телефоне кнопка — сердце, «Войти» — ключ; подписи остаются для экранных дикторов.
   .kab-donate {
     width: 44px;
@@ -624,9 +634,8 @@ $kab-navbar-line: #E6EEF4;
   }
 }
 
-@media (max-width: 359.98px) {
-  .navbar.kab-navbar .kab-logo {
-    width: 128px;
-    height: 27px;
-  }
+// Главная (витрина): заголовок страницы повторяет логотип в шапке — прячем визуально, для дикторов остаётся.
+#page-site-index #page-header .page-header-headings h1 {
+  @include visually-hidden();
 }
+

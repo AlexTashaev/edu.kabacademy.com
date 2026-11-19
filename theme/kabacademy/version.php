@@ -24,7 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026111900;
+$plugin->version   = 2026111901;
 $plugin->requires  = 2024100700; // Moodle 4.5+.
 $plugin->component = 'theme_kabacademy';
 $plugin->dependencies = [
