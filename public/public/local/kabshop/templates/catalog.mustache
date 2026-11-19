@@ -113,7 +113,7 @@
         </details>
     </div>
     {{#aboutafter}}{{#about}}
-    <section class="kabshop-about">
+    <section class="kabshop-about" id="kabshop-about">
         <div class="kabshop-about-inner">
             <h2 class="kabshop-about-title">{{title}}</h2>
             <div class="kabshop-about-text">{{{text}}}</div>
@@ -126,7 +126,7 @@
     <p class="kabshop-empty">{{#str}} emptycatalog, local_kabshop {{/str}}</p>
     {{/sections}}
     {{#teachers}}
-    <section class="kabshop-teachers" aria-labelledby="kabshop-teachers-title">
+    <section class="kabshop-teachers" id="kabshop-teachers" aria-labelledby="kabshop-teachers-title">
         <div class="kabshop-teachers-lead">
             <img class="kabshop-teachers-logo" src="{{logo}}" alt="{{#str}} academy, local_kabshop {{/str}}" width="168" height="35">
             {{#lead}}

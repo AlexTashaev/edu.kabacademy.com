@@ -161,7 +161,9 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 /* --- Навигация по разделам: светлая полоса, пункты с пунктиром, как верхнее меню сайта --- */
 .kabshop-nav {
     position: sticky;
-    top: 65px; /* под фиксированной шапкой Boost (измерено на dev) */
+    /* Под фиксированной шапкой: высоту отдаёт тема (--navbar-height: 72px у theme_kabacademy),
+       у Boost с полосой из БД шапка 65px при переменной 60px — поэтому не меньше 65px. */
+    top: max(var(--navbar-height, 65px), 65px);
     z-index: 10;
     display: flex;
     gap: 2.25rem;
@@ -701,6 +703,7 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 /* --- Блок «Об обучающей платформе…»: заголовок слева, текст справа --- */
 .kabshop-about {
     position: relative;
+    scroll-margin-top: 140px;
     padding: 4rem 0 3.5rem calc(56px + 1.75rem);
     margin-bottom: 1rem;
 }
@@ -756,6 +759,7 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 
 /* --- Блок «Преподаватели академии» --- */
 .kabshop-teachers {
+    scroll-margin-top: 140px;
     display: grid;
     grid-template-columns: minmax(0, .9fr) minmax(0, 1.2fr);
     gap: 3rem 3.5rem;
