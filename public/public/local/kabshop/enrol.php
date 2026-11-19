@@ -53,7 +53,8 @@ if (!$product->visible || !catalog::is_free($product) || $product->kind === 'ext
 
 // Взнос из окна «Безвозмездная помощь» (кнопка «Записаться и сделать взнос») в выбранной там валюте.
 $offers = optional_param('donate', 0, PARAM_BOOL) ? catalog::free_donation_offer($product, (int) $USER->id) : null;
-$offer = $offers ? ($offers[strtoupper(optional_param('currency', '', PARAM_ALPHA))] ?? reset($offers)) : null;
+$currency = strtoupper(optional_param('currency', '', PARAM_ALPHA));
+$offer = $offers ? ($offers[$currency] ?? reset($offers)) : null;
 
 // Запись — всегда и первой: бросивший оплату взноса всё равно записан.
 if (!catalog::is_owned($product, $USER->id)) {
@@ -73,8 +74,9 @@ if ($product->courseid) {
     $SESSION->local_kabshop_aftercourse = ['productid' => (int) $donation->id, 'courseid' => (int) $product->courseid];
 }
 
+// Готовые суммы в окне — по группе на валюту: preset_USD, preset_RUB.
 $amount = catalog::chosen_amount(optional_param('customvalue', '', PARAM_RAW_TRIMMED),
-    optional_param('preset', 0, PARAM_FLOAT));
+    optional_param('preset_' . $offer['product']->currency, 0, PARAM_FLOAT));
 if ($error = catalog::amount_error($donation, $amount)) {
     redirect($donationurl, $error, null, \core\output\notification::NOTIFY_ERROR);
 }

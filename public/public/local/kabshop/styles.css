@@ -1524,6 +1524,11 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     color: var(--kabshop-copy);
 }
 
+/* Размер шрифта, вписанный редактором WordPress прямо в текст, — по тексту описания. */
+.kabshop-product-description [style*="font-size"] {
+    font-size: inherit !important;
+}
+
 /* Пустые абзацы из редактора WordPress. */
 .kabshop-product-description p:empty,
 .kabshop-product-description p:has(> br:only-child) {
@@ -1577,16 +1582,15 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     opacity: 1;
 }
 
-/* Нумерованный список — программа курса: номера в голубых квадратах, в две колонки. */
+/* Нумерованный список — программа курса: номера в голубых квадратах, в две колонки
+   сверху вниз (1–8 слева, 9–15 справа), как «В программе курса» на сайте. */
 .kabshop-product-description ol {
     counter-reset: kabshop-ol;
     list-style: none;
     margin: 1.2rem 0 1.6rem;
     padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    columns: 2 260px;
     column-gap: 2rem;
-    row-gap: 1rem;
 }
 
 .kabshop-product-description ol > li {
@@ -1595,7 +1599,8 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     display: flex;
     align-items: center;
     min-height: 40px;
-    margin: 0;
+    margin: 0 0 1rem;
+    break-inside: avoid;
     padding-left: 60px;
     font-family: "Montserrat", system-ui, sans-serif;
     font-size: 15px;
@@ -1655,6 +1660,12 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 /* --- «Все курсы ▷» --- */
 .kabshop-back {
     margin: 2.5rem 0 0;
+}
+
+/* Продавец и оферта — по левому краю карточки покупки. */
+.kabshop-product > .kabshop-legal {
+    margin-left: 56px;
+    margin-right: 56px;
 }
 
 /* Окно взноса: группа сумм своей валюты. */
@@ -1755,6 +1766,11 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
         margin-top: -84px;
         max-width: 480px;
     }
+
+    .kabshop-product > .kabshop-legal {
+        margin-left: 32px;
+        margin-right: 32px;
+    }
 }
 
 @media (max-width: 767.98px) {
@@ -1812,6 +1828,11 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 
     .kabshop-pp-main {
         padding-top: 32px;
+    }
+
+    .kabshop-product > .kabshop-legal {
+        margin-left: 4px;
+        margin-right: 4px;
     }
 
     .kabshop-product-description h2 {

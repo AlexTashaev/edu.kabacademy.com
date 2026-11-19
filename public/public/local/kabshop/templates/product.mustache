@@ -112,7 +112,7 @@
                                     <legend class="kabshop-donate-legend">{{#str}} chooseamount, local_kabshop {{/str}}</legend>
                                     <div class="kabshop-presets">
                                         {{#presets}}
-                                        <input type="radio" class="btn-check" name="preset" id="kabshop-fd-{{code}}-{{value}}" value="{{value}}" {{#checked}}checked{{/checked}}>
+                                        <input type="radio" class="btn-check" name="preset_{{code}}" id="kabshop-fd-{{code}}-{{value}}" value="{{value}}" {{#checked}}checked{{/checked}}>
                                         <label class="btn" for="kabshop-fd-{{code}}-{{value}}">{{label}}</label>
                                         {{/presets}}
                                     </div>
@@ -150,7 +150,9 @@
                                     dialog.close();
                                 }
                             });
-                            // Группа сумм на валюту: видна и отправляется только выбранная.
+                            // Группа сумм на валюту: видна и отправляется только выбранная. У радиокнопок
+                            // каждой группы своё имя (preset_USD, preset_RUB): с общим выбор в одной
+                            // валюте снимал сумму по умолчанию в другой.
                             var groups = dialog.querySelectorAll('.kabshop-fd-group');
                             dialog.querySelectorAll('[name="currency"]').forEach(function(r) {
                                 r.addEventListener('change', function() {
@@ -164,8 +166,8 @@
                             // Своя сумма снимает выбор готовой; стёрли — вернулась сумма по умолчанию.
                             groups.forEach(function(g) {
                                 var custom = g.querySelector('[name="customvalue"]');
-                                var radios = g.querySelectorAll('[name="preset"]');
-                                var preset = g.querySelector('[name="preset"]:checked');
+                                var radios = g.querySelectorAll('input[type="radio"]');
+                                var preset = g.querySelector('input[type="radio"]:checked');
                                 custom.addEventListener('input', function() {
                                     radios.forEach(function(r) {
                                         r.checked = custom.value === '' && r === preset;
