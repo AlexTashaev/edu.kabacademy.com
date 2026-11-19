@@ -87,3 +87,13 @@ function theme_kabacademy_get_extra_scss($theme) {
     return theme_boost_get_extra_scss(theme_kabacademy_boost_config())
         . "\n" . file_get_contents(__DIR__ . '/scss/kab.scss');
 }
+
+/**
+ * Кнопка «Поддержать академию» в шапке (вариант «Б»): Boost выводит её в output.navbar_plugin_output.
+ *
+ * @param renderer_base $renderer
+ * @return string
+ */
+function theme_kabacademy_render_navbar_output(renderer_base $renderer): string {
+    return \theme_kabacademy\navbar::donate_button($renderer);
+}
