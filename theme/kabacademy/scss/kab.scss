@@ -639,3 +639,9 @@ $kab-navbar-line: #E6EEF4;
   @include visually-hidden();
 }
 
+
+// Ящик меню на телефоне: «В начало» повторяет пункт «Курсы» (главная = витрина). В шапке его прячет
+// SCSS Boost из БД ([data-key="home"]), в ящике у пункта нет data-key — первый пункт со ссылкой на главную.
+.drawer-primary .drawercontent > .list-group > a.list-group-item:first-child[href$="/"] {
+  display: none;
+}
