@@ -419,7 +419,8 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 
 .kabshop-hero-title {
     font-family: inherit;
-    font-size: 1.85rem;
+    font-size: 1.7rem;
+    text-wrap: balance;
     font-weight: 300;
     line-height: 1.2;
     letter-spacing: -.05em;
@@ -586,6 +587,7 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 .kabshop-card-title {
     font-family: inherit;
     font-size: 1.35rem;
+    text-wrap: balance;
     font-weight: 300;
     line-height: 1.25;
     letter-spacing: -.05em;
@@ -755,8 +757,8 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 /* --- Блок «Преподаватели академии» --- */
 .kabshop-teachers {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr);
-    gap: 3rem 4.5rem;
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.2fr);
+    gap: 3rem 3.5rem;
     padding: 4.5rem 3rem 2.5rem;
     margin: 2.5rem 0 1rem;
     background: linear-gradient(180deg, var(--kabshop-band) 0%, #fff 100%);
@@ -804,7 +806,8 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 
 .kabshop-teachers-title {
     font-family: inherit;
-    font-size: 38px;
+    font-size: clamp(24px, 2.55vw, 38px);
+    white-space: nowrap;
     font-weight: 700;
     letter-spacing: -.1em;
     line-height: 1;
@@ -933,7 +936,8 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     }
 
     .kabshop-teachers-title {
-        font-size: 28px;
+        font-size: 26px;
+        white-space: normal;
     }
 
     .kabshop-teacher-lead {
