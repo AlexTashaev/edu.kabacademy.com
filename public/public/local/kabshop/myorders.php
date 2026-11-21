@@ -43,9 +43,14 @@ echo $OUTPUT->header();
 echo html_writer::div(html_writer::link(new moodle_url('/local/kabshop/subscriptions.php'),
     get_string('mysubscriptions', $p)), 'mb-3');
 
+// Оплаты старого сайта (WordPress): блок реестра local_kabwporders, если этот плагин установлен.
+$oldpayments = class_exists('\local_kabwporders\myorders') ? \local_kabwporders\myorders::render($USER) : '';
+
 [$rows, $total] = orders::search(['userid' => $USER->id], $page);
 if (!$rows) {
-    echo $OUTPUT->notification(get_string('noorders', $p), 'info');
+    if ($oldpayments === '') {
+        echo $OUTPUT->notification(get_string('noorders', $p), 'info');
+    }
 } else {
     $fmt = get_string('strftimedate', 'langconfig');
     $t = new html_table();
@@ -65,5 +70,6 @@ if (!$rows) {
     echo html_writer::table($t);
     echo $OUTPUT->paging_bar($total, $page, orders::PERPAGE, $url);
 }
+echo $oldpayments;
 echo html_writer::tag('p', get_string('mail_receipt', $p), ['class' => 'text-muted']);
 echo $OUTPUT->footer();
