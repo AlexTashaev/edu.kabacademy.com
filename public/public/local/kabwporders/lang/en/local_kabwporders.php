@@ -88,6 +88,17 @@ $string['err_empty'] = 'orders.tsv has no orders';
 $string['err_header'] = 'the header of {$a} does not match the expected one';
 $string['err_columns'] = '{$a} has a row with a wrong number of columns';
 
+$string['my_title'] = 'My earlier payments';
+$string['my_heading'] = 'Earlier payments';
+$string['my_help'] = 'Your payments on kabacademy.com made before payment moved to this platform. If a payment is missing here, contact support.';
+$string['my_empty'] = 'No earlier payments found. If you paid on kabacademy.com with a different email, contact support.';
+$string['my_col_date'] = 'Date';
+$string['my_refunded'] = 'refunded {$a}';
+$string['my_note_cancelled'] = 'order cancelled';
+$string['my_note_failed'] = 'order not completed';
+$string['my_note_pending'] = 'order pending';
+$string['my_note_onhold'] = 'order on hold';
+
 $string['kabwporders:view'] = 'View old site payments';
 $string['kabwporders:import'] = 'Import old site payments';
 
