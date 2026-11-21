@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/kabwporders/db" VERSION="20261119" COMMENT="XMLDB file for local_kabwporders"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="local_kabwporders_order" COMMENT="Оплаченные заказы старого WordPress: кто, когда, сколько">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="wporderid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Номер заказа WordPress"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="user.id; 0 — человек не найден"/>
+        <FIELD NAME="wpuserid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Пользователь WordPress; 0 — гостевой заказ"/>
+        <FIELD NAME="payeremail" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="Почта плательщика на момент оплаты"/>
+        <FIELD NAME="payername" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Имя плательщика на момент оплаты"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Дата заказа"/>
+        <FIELD NAME="timepaid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Дата оплаты; 0 — в WordPress не записана"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" COMMENT="completed|processing|refunded|cancelled|failed|pending|on-hold"/>
+        <FIELD NAME="amount" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="currency" TYPE="char" LENGTH="3" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="refunded" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2" COMMENT="Сумма возвратов"/>
+        <FIELD NAME="gateway" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false" COMMENT="Шлюз, как был в WordPress"/>
+        <FIELD NAME="gatewaytitle" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="txnid" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="Номер транзакции у шлюза"/>
+        <FIELD NAME="timeimported" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="wporderid" TYPE="unique" FIELDS="wporderid"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
+        <INDEX NAME="payeremail" UNIQUE="false" FIELDS="payeremail"/>
+        <INDEX NAME="txnid" UNIQUE="false" FIELDS="txnid"/>
+        <INDEX NAME="timecreated" UNIQUE="false" FIELDS="timecreated"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_kabwporders_item" COMMENT="Позиции оплаченных заказов старого WordPress: за что">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="wporderid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="wpitemid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="wpproductid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="wpvariationid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="productname" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Название товара в момент покупки"/>
+        <FIELD NAME="qty" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
+        <FIELD NAME="linetotal" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="courseids" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Курсы Moodle, к которым был привязан товар: ID через запятую; пусто — не привязан"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="wporderid" UNIQUE="false" FIELDS="wporderid"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>
