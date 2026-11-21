@@ -88,6 +88,17 @@ $string['err_empty'] = 'в orders.tsv нет ни одного заказа';
 $string['err_header'] = 'заголовок файла {$a} не совпадает с ожидаемым';
 $string['err_columns'] = 'в файле {$a} есть строка с неверным числом колонок';
 
+$string['my_title'] = 'Мои прежние оплаты';
+$string['my_heading'] = 'Прежние оплаты';
+$string['my_help'] = 'Ваши оплаты на сайте kabacademy.com, сделанные до переноса оплаты на эту платформу. Если какой-то оплаты здесь нет, напишите в поддержку.';
+$string['my_empty'] = 'Прежних оплат не найдено. Если вы платили на kabacademy.com с другой почты, напишите в поддержку.';
+$string['my_col_date'] = 'Дата';
+$string['my_refunded'] = 'возврат {$a}';
+$string['my_note_cancelled'] = 'заказ отменён';
+$string['my_note_failed'] = 'заказ не завершён';
+$string['my_note_pending'] = 'заказ ожидает';
+$string['my_note_onhold'] = 'заказ на удержании';
+
 $string['kabwporders:view'] = 'Смотреть оплаты старого сайта';
 $string['kabwporders:import'] = 'Импортировать оплаты старого сайта';
 

@@ -143,15 +143,15 @@ class api {
     }
 
     /**
-     * Старые оплаты человека — в том же виде, в каком карточка local_kabperson получает их из WordPress.
+     * Строки реестра одного человека с позициями, новые сверху.
      *
      * Ищем по userid; заказы без человека (гостевые) — по почте плательщика.
      *
      * @param int $userid user.id (0 — неизвестен)
-     * @param string $email нормализованный email
-     * @return array заказы, новые сверху
+     * @param string $email email
+     * @return \stdClass[] заказы с полем items
      */
-    public static function for_user(int $userid, string $email = ''): array {
+    public static function records_for_user(int $userid, string $email = ''): array {
         global $DB;
 
         $email = \core_text::strtolower(trim($email));
@@ -170,9 +170,19 @@ class api {
         }
         $rows = $DB->get_records_select('local_kabwporders_order', implode(' OR ', $where), $params,
             'timecreated DESC, wporderid DESC');
+        return self::with_items($rows);
+    }
 
+    /**
+     * Старые оплаты человека — в том же виде, в каком карточка local_kabperson получает их из WordPress.
+     *
+     * @param int $userid user.id (0 — неизвестен)
+     * @param string $email email
+     * @return array заказы, новые сверху
+     */
+    public static function for_user(int $userid, string $email = ''): array {
         $out = [];
-        foreach (self::with_items($rows) as $o) {
+        foreach (self::records_for_user($userid, $email) as $o) {
             $product = self::products($o);
             $isdonation = (bool) preg_match('/пожертвован|взнос в фонд|donat/iu', $product);
             $out[] = [
