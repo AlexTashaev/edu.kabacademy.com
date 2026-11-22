@@ -351,8 +351,12 @@ $data['facts'] = $facts;
 $data['hasfacts'] = !empty($facts);
 $data['program'] = $program;
 $data['hasprogram'] = !empty($program);
+// «Этот курс»: с программой — полосой на всю ширину под карточкой, без неё — справа от карточки.
+// rich — у товара есть программа или этот блок: описание тогда идёт ниже на всю ширину.
 $data['about'] = $about;
-$data['hasabout'] = !empty($about);
+$data['aboutband'] = $about && $program;
+$data['aboutside'] = $about && !$program;
+$data['rich'] = $about || $program;
 $data['sale'] = $salenotice;
 $data['saleuntil'] = $saleuntil;
 $data['ownednote'] = ($owned && $product->courseid) ? get_string('youareenrolled', 'local_kabshop') : null;
