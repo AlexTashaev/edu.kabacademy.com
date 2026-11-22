@@ -260,6 +260,37 @@ class manager {
     }
 
     /**
+     * Issue a login link on behalf of another KAB plugin (e.g. the course
+     * signup welcome e-mail), without sending anything itself.
+     *
+     * The account must pass the same eligibility rules as on the request form;
+     * the row counts towards the address's rate limit like any issued link.
+     *
+     * @param \stdClass $user target user (id and email are used)
+     * @param string $wantsurl page to open after the login
+     * @param string $ip requester's IP, for the log
+     * @return string|null the full login URL, or null when the plugin is
+     *                     disabled or the account may not be signed in by a link
+     */
+    public static function issue_link(\stdClass $user, string $wantsurl = '', string $ip = ''): ?string {
+        global $DB;
+        if (!is_enabled_auth('kabmagic') || self::eligible_user((int)$user->id) === null) {
+            return null;
+        }
+        $token = random_bytes(self::TOKEN_BYTES);
+        $record = new \stdClass();
+        $record->userid = (int)$user->id;
+        $record->emailhash = self::email_hash((string)$user->email);
+        $record->tokenhash = hash('sha256', $token);
+        $record->wantsurl = self::clean_wantsurl($wantsurl);
+        $record->timecreated = time();
+        $record->timeused = 0;
+        $record->ip = \core_text::substr($ip, 0, 45);
+        $DB->insert_record('auth_kabmagic_tokens', $record);
+        return (new \moodle_url('/auth/kabmagic/login.php', ['t' => self::encode($token)]))->out(false);
+    }
+
+    /**
      * Look a token up without consuming it: the row if it is live, else null.
      *
      * @param string $encoded token from the URL

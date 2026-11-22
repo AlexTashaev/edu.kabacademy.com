@@ -1,0 +1,103 @@
+/* local_kabsignup — signup pages (body.kabsignup). Campaign colours and fonts
+   come inline from \local_kabsignup\skin::style(); here only the layout. */
+
+/* One column: labels above the fields, as on a checkout page. */
+body.kabsignup .login-container {
+    max-width: 32rem;
+}
+body.kabsignup .mform .fitem > .col-md-3,
+body.kabsignup .mform .fitem > .col-md-9 {
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+body.kabsignup .mform .fitem > .col-md-3 {
+    padding-bottom: .25rem;
+}
+/* Bootstrap's d-flex is !important: so are the overrides. */
+body.kabsignup .mform .femptylabel > .col-md-3,
+body.kabsignup .mform .ks-consent > .col-md-3,
+body.kabsignup .mform .ks-consent .form-check .text-danger,
+body.kabsignup .mform .form-label-addon,
+body.kabsignup .mform .fdescription.required {
+    display: none !important;
+}
+body.kabsignup .mform .felement > .form-control,
+body.kabsignup .mform .felement .iti {
+    width: 100%;
+}
+body.kabsignup .mform .femptylabel .felement > .fitem {
+    flex: 1 1 100%;
+    margin-bottom: 0;
+}
+body.kabsignup .mform .femptylabel .felement > .fitem > [data-fieldtype="submit"] {
+    display: block;
+}
+body.kabsignup .mform #id_submitbutton {
+    width: 100%;
+    padding: .75rem 1rem;
+    font-weight: 600;
+}
+body.kabsignup .mform .fitem_fcheckbox label,
+body.kabsignup .mform .ks-consent {
+    font-size: .9rem;
+}
+
+/* Logo, intro and the course card above the form. */
+body.kabsignup .ks-logo {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+body.kabsignup .ks-logo img {
+    max-height: 3rem;
+    max-width: 100%;
+}
+body.kabsignup .ks-intro {
+    margin-bottom: 1rem;
+}
+body.kabsignup .ks-card {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    border: 1px solid rgba(0, 0, 0, .12);
+    border-radius: .75rem;
+    padding: .75rem 1rem;
+    margin: 0 0 1.25rem;
+}
+body.kabsignup .ks-card-img {
+    width: 3.5rem;
+    height: 3.5rem;
+    object-fit: cover;
+    border-radius: .375rem;
+    flex: 0 0 auto;
+}
+body.kabsignup .ks-card-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+body.kabsignup .ks-card-title {
+    font-weight: 600;
+    line-height: 1.3;
+}
+body.kabsignup .ks-card-note {
+    font-size: .875rem;
+    opacity: .75;
+}
+body.kabsignup .ks-card-price {
+    font-weight: 600;
+    white-space: nowrap;
+}
+body.kabsignup .ks-below {
+    text-align: center;
+    font-size: .9rem;
+    opacity: .8;
+    margin-top: .75rem;
+}
+body.kabsignup .ks-preview {
+    margin-bottom: 1rem;
+}
+
+/* Signup log (requests.php). */
+.path-local-kabsignup .ks-requests td,
+.path-local-kabsignup .ks-requests th {
+    white-space: nowrap;
+}
