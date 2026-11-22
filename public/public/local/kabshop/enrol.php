@@ -46,8 +46,8 @@ if (!data_submitted() || !confirm_sesskey()) {
 }
 
 if (!$product->visible || !catalog::is_free($product) || $product->kind === 'external'
-        || !catalog::prerequisite_ok($product, $USER->id)) {
-    // Не прошедшему условие записи страница товара объяснит, почему.
+        || !catalog::prerequisite_ok($product, $USER->id) || catalog::sale_state($product) !== 'open') {
+    // Не прошедшему условие записи и при закрытой записи страница товара объяснит, почему.
     redirect($producturl);
 }
 

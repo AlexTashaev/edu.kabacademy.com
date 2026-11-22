@@ -37,7 +37,7 @@ $PAGE->set_url(new moodle_url('/local/kabshop/donate.php', ['id' => $id]));
 require_login(null, false);
 $taxform = catalog::needs_taxid($product) && !catalog::is_free($product);
 if (isguestuser() || !$product->visible || (empty($product->customamount) && !$taxform)
-        || !catalog::prerequisite_ok($product, $USER->id)) {
+        || !catalog::prerequisite_ok($product, $USER->id) || catalog::sale_state($product) !== 'open') {
     redirect($producturl);
 }
 require_sesskey();

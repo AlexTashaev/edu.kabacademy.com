@@ -75,10 +75,16 @@ class service_provider implements \core_payment\local\callback\service_provider 
         // Начать оплату товара с условием записи может только прошедший его — так часть 2 не купить
         // в обход страницы товара. Проверяется только живой покупатель: автосписания (свои и
         // рекуррент Robokassa из cron, где $USER — админ) и колбэки шлюзов без входа не трогаем.
+        // Так же — закрытая запись («ещё не открыта», «завершена»): начать оплату нельзя, а уже
+        // начатая до закрытия доходит до выдачи — deliver_order состояние записи не смотрит.
         if ($paymentarea !== 'renewal' && !CLI_SCRIPT && isloggedin() && !isguestuser()
-                && !has_capability('local/kabshop:manage', \context_system::instance())
-                && !catalog::prerequisite_ok($product, (int) $USER->id)) {
-            throw new \moodle_exception('noprereq', 'local_kabshop', '', catalog::prerequisite_names($product));
+                && !has_capability('local/kabshop:manage', \context_system::instance())) {
+            if (!catalog::prerequisite_ok($product, (int) $USER->id)) {
+                throw new \moodle_exception('noprereq', 'local_kabshop', '', catalog::prerequisite_names($product));
+            }
+            if (catalog::sale_state($product) !== 'open') {
+                throw new \moodle_exception('saleclosed', 'local_kabshop');
+            }
         }
         return new \core_payment\local\entities\payable($amount, $product->currency, (int)$product->accountid);
     }

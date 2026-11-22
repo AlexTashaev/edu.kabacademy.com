@@ -22,16 +22,19 @@
 
     Example context (json):
     {"id": 1, "name": "Классическая каббала", "summary": "15 уроков", "price": "Бесплатно",
-     "free": true, "image": null, "url": "#", "external": false, "hidden": false}
+     "free": true, "image": null, "url": "#", "external": false, "hidden": false,
+     "meta": "Начало — 1 октября · 15 недель", "salebadge": "Запись завершена"}
 }}
 <article class="kabshop-card{{#hidden}} kabshop-card-hidden{{/hidden}}">
     <div class="kabshop-card-media">
         {{#image}}<img src="{{image}}" alt="" loading="lazy">{{/image}}
         {{^image}}<span class="kabshop-card-placeholder" aria-hidden="true"></span>{{/image}}
         {{#hidden}}<span class="kabshop-badge-hidden">{{#str}} hidden, local_kabshop {{/str}}</span>{{/hidden}}
+        {{#salebadge}}<span class="kabshop-badge-sale">{{salebadge}}</span>{{/salebadge}}
     </div>
     <div class="kabshop-card-body">
         <h3 class="kabshop-card-title"><a class="kabshop-card-link" href="{{url}}">{{name}}</a></h3>
+        {{#meta}}<p class="kabshop-card-meta">{{{meta}}}</p>{{/meta}}
         {{#summary}}<p class="kabshop-card-summary">{{{summary}}}</p>{{/summary}}
         <div class="kabshop-card-footer">
             {{#price}}<span class="kabshop-price{{#free}} kabshop-price-free{{/free}}">{{price}}</span>{{/price}}

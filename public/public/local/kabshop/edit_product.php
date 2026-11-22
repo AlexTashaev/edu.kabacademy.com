@@ -39,7 +39,8 @@ if ($id) {
     $product = $DB->get_record('local_kabshop_product', ['id' => $id], '*', MUST_EXIST);
 } else {
     $product = (object)['id' => 0, 'description' => '', 'descriptionformat' => FORMAT_HTML, 'visible' => 1,
-        'currency' => 'USD', 'kind' => 'course', 'price' => 0, 'sortorder' => 0, 'altprice' => 0, 'altaccountid' => 0];
+        'currency' => 'USD', 'kind' => 'course', 'price' => 0, 'sortorder' => 0, 'altprice' => 0, 'altaccountid' => 0,
+        'startdate' => 0, 'salestate' => 'auto', 'saleopen' => 0, 'saleclose' => 0];
 }
 $product = file_prepare_standard_editor($product, 'description', $editoroptions, $context);
 $product = file_prepare_standard_filemanager($product, 'image', $fileoptions, $context, 'local_kabshop', 'image',
@@ -67,6 +68,20 @@ if ($form->is_cancelled()) {
         $data->altpresets = null;
         $data->altaccountid = 0;
     }
+    // Дата начала — полдень UTC выбранного дня: читателю в любом часовом поясе это тот же день.
+    if (!empty($data->startdate)) {
+        $day = usergetdate($data->startdate);
+        $data->startdate = gmmktime(12, 0, 0, $day['mon'], $day['mday'], $day['year']);
+    } else {
+        $data->startdate = 0;
+    }
+    $data->duration = trim((string) ($data->duration ?? '')) ?: null;
+    $data->program = implode(PHP_EOL, \local_kabshop\catalog::lines($data->program ?? '', true)) ?: null;
+    $data->about = implode(PHP_EOL, \local_kabshop\catalog::lines($data->about ?? '')) ?: null;
+    $data->salestate = in_array($data->salestate ?? '', ['soon', 'closed'], true) ? $data->salestate : 'auto';
+    $data->saleopen = (int) ($data->saleopen ?? 0);
+    $data->saleclose = (int) ($data->saleclose ?? 0);
+    $data->salenote = trim((string) ($data->salenote ?? '')) ?: null;
     $data->timemodified = time();
     if ($data->id) {
         $DB->update_record('local_kabshop_product', $data);

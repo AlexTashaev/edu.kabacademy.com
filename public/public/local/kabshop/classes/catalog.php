@@ -280,6 +280,105 @@ class catalog {
         return $s;
     }
 
+    /**
+     * Состояние записи на товар: 'open' — можно записаться или купить, 'soon' — запись ещё не
+     * открыта, 'closed' — завершена.
+     *
+     * Вручную — «ещё не открыта» или «завершена»; иначе по датам: до «Запись открывается» —
+     * ещё не открыта, с «Запись закрывается» — завершена. Внешней ссылке запись не нужна.
+     * Товар на витрине остаётся в любом состоянии — меняется только кнопка.
+     *
+     * @param \stdClass $product
+     * @param int|null $now для проверок; по умолчанию — сейчас
+     * @return string
+     */
+    public static function sale_state(\stdClass $product, ?int $now = null): string {
+        if ($product->kind === 'external') {
+            return 'open';
+        }
+        $manual = (string) ($product->salestate ?? '');
+        if ($manual === 'soon' || $manual === 'closed') {
+            return $manual;
+        }
+        $now = $now ?? time();
+        if (!empty($product->saleopen) && $now < (int) $product->saleopen) {
+            return 'soon';
+        }
+        if (!empty($product->saleclose) && $now >= (int) $product->saleclose) {
+            return 'closed';
+        }
+        return 'open';
+    }
+
+    /**
+     * Блок состояния записи для страницы товара и карточки каталога.
+     *
+     * @param \stdClass $product
+     * @return array|null null — запись открыта; иначе state, title, text (когда откроется), note
+     */
+    public static function sale_notice(\stdClass $product): ?array {
+        $state = self::sale_state($product);
+        if ($state === 'open') {
+            return null;
+        }
+        $text = null;
+        // Дата открытия — только когда запись откроется по ней сама.
+        if ($state === 'soon' && ($product->salestate ?? '') !== 'soon' && !empty($product->saleopen)) {
+            $text = get_string('saleopens', 'local_kabshop', self::day_string((int) $product->saleopen));
+        }
+        $note = trim((string) ($product->salenote ?? ''));
+        return [
+            'state' => $state,
+            'title' => get_string('sale_' . $state, 'local_kabshop'),
+            'text' => $text,
+            'note' => $note !== '' ? format_string($note, true, ['context' => context_system::instance()]) : null,
+        ];
+    }
+
+    /**
+     * Дата словами: «1 октября», в другом году — «1 октября 2027».
+     *
+     * @param int $time
+     * @param string|int $timezone 99 — часовой пояс читателя
+     * @return string
+     */
+    public static function day_string(int $time, $timezone = 99): string {
+        $thisyear = userdate($time, '%Y', $timezone) === userdate(time(), '%Y', $timezone);
+        return userdate($time, get_string($thisyear ? 'strftimedateshort' : 'strftimedate', 'langconfig'), $timezone);
+    }
+
+    /**
+     * Дата начала курса словами. Хранится полуднем UTC выбранного дня и читается в UTC —
+     * день один и тот же, где бы ни был читатель.
+     *
+     * @param \stdClass $product
+     * @return string|null
+     */
+    public static function start_string(\stdClass $product): ?string {
+        return empty($product->startdate) ? null : self::day_string((int) $product->startdate, 'UTC');
+    }
+
+    /**
+     * Строки списка из текстового поля (темы уроков, абзацы): по одной на строку, без пустых.
+     *
+     * @param string|null $raw
+     * @param bool $stripmarkers срезать номер или маркер в начале строки («1. », «— », «• »)
+     * @return string[]
+     */
+    public static function lines(?string $raw, bool $stripmarkers = false): array {
+        $out = [];
+        foreach (preg_split('/\R/u', (string) $raw) as $line) {
+            if ($stripmarkers) {
+                $line = preg_replace('/^\s*(?:\d{1,3}[.)]|[-–—•*])\s+/u', '', $line);
+            }
+            $line = trim($line);
+            if ($line !== '') {
+                $out[] = $line;
+            }
+        }
+        return $out;
+    }
+
     /** Наибольшая сумма на выбор — защита от опечаток. */
     const MAX_AMOUNT = 100000;
 
@@ -844,7 +943,18 @@ class catalog {
             ? $product->externalurl
             : self::product_url($product)->out(false);
         $summary = (string) ($product->summary ?? '');
+        // Строка под названием: «Начало — 1 октября · 15 недель».
+        $meta = [];
+        if ($start = self::start_string($product)) {
+            $meta[] = get_string('startson', 'local_kabshop', $start);
+        }
+        if (trim((string) ($product->duration ?? '')) !== '') {
+            $meta[] = format_string($product->duration, true, ['context' => $context]);
+        }
+        $sale = self::sale_notice($product);
         return [
+            'meta' => $meta ? implode(' · ', $meta) : null,
+            'salebadge' => $sale['title'] ?? null,
             'id' => $product->id,
             'name' => format_string($product->name, true, ['context' => $context]),
             'summary' => format_text($summary, FORMAT_PLAIN, ['context' => $context, 'para' => false]),

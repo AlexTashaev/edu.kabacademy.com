@@ -246,5 +246,25 @@ function xmldb_local_kabshop_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026111904, 'local', 'kabshop');
     }
 
+    if ($oldversion < 2026112200) {
+        // Страница курса: начало, продолжительность, программа, блок «Этот курс», состояние записи.
+        $table = new xmldb_table('local_kabshop_product');
+        foreach ([
+            new xmldb_field('startdate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'descriptionformat'),
+            new xmldb_field('duration', XMLDB_TYPE_CHAR, '100', null, null, null, null, 'startdate'),
+            new xmldb_field('program', XMLDB_TYPE_TEXT, null, null, null, null, null, 'duration'),
+            new xmldb_field('about', XMLDB_TYPE_TEXT, null, null, null, null, null, 'program'),
+            new xmldb_field('salestate', XMLDB_TYPE_CHAR, '10', null, XMLDB_NOTNULL, null, 'auto', 'about'),
+            new xmldb_field('saleopen', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'salestate'),
+            new xmldb_field('saleclose', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'saleopen'),
+            new xmldb_field('salenote', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'saleclose'),
+        ] as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        upgrade_plugin_savepoint(true, 2026112200, 'local', 'kabshop');
+    }
+
     return true;
 }

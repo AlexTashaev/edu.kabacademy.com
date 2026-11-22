@@ -71,8 +71,11 @@ $free = catalog::is_free($product);
 // Условие записи (часть 2 — только учившимся на части 1). Купленному и подписчику не мешает.
 $prereqok = $owned || $activesub || $product->kind === 'external'
     || catalog::prerequisite_ok($product, $loggedin ? (int) $USER->id : 0);
+// Состояние записи: «ещё не открыта» и «завершена» убирают кнопку у тех, кто ещё не записан.
+$salenotice = ($owned || $activesub) ? null : catalog::sale_notice($product);
+$saleopen = $salenotice === null;
 $prereqnotice = null;
-if (!$prereqok) {
+if (!$prereqok && $saleopen) {
     $names = catalog::prerequisite_names($product);
     $prereqnotice = $loggedin
         ? get_string('prereqdenied', 'local_kabshop', (object) ['required' => $names, 'email' => s($USER->email)])
@@ -102,6 +105,9 @@ if ($product->kind === 'external') {
         'href' => (new moodle_url('/local/kabshop/subscriptions.php'))->out(false),
         'label' => get_string('managesub', 'local_kabshop'),
     ];
+} else if (!$saleopen) {
+    // Запись ещё не открыта или завершена: вместо кнопки — блок состояния, без оплаты и промокода.
+    $action = null;
 } else if (!$loggedin) {
     $action = [
         'href' => (new moodle_url('/local/kabshop/enrol.php', ['id' => $id] + (count($variants) > 1
@@ -263,9 +269,10 @@ if ($product->kind === 'external') {
 }
 
 // Выбор валюты у товара с двумя ценами: рубли — Robokassa, основная — карта и PayPal. После
-// покупки или при действующей подписке выбирать нечего.
+// покупки, при действующей подписке или закрытой записи выбирать нечего — вторая цена тогда
+// остаётся видна рядом с основной (priceother).
 $currencies = [];
-if (count($variants) > 1 && !$owned && !$activesub && !$paid) {
+if (count($variants) > 1 && !$owned && !$activesub && !$paid && $saleopen) {
     foreach ($variants as $code => $v) {
         $currencies[] = [
             'code' => $code,
@@ -296,7 +303,59 @@ if ($loggedin && $after && (int) $after['productid'] === $id
 // Раздел витрины — ленточка над названием, как «Базовый онлайн-курс» на kabacademy.com.
 $sectionname = $DB->get_field('local_kabshop_section', 'name', ['id' => $record->sectionid]);
 
+// Вторая цена — всегда рядом с первой: и записанному, и при закрытой записи.
+$otherprices = [];
+foreach ($variants as $code => $v) {
+    if ($code !== strtoupper((string) $product->currency)) {
+        $otherprices[] = catalog::price_string($v);
+    }
+}
+
+// Начало и продолжительность — сверху карточки покупки.
+$facts = [];
+if ($start = catalog::start_string($record)) {
+    $facts[] = [
+        'key' => 'start',
+        'icon' => $OUTPUT->image_url('icons/calendar', 'local_kabshop')->out(false),
+        'label' => get_string('fact_start', 'local_kabshop'),
+        'value' => $start,
+    ];
+}
+if (trim((string) ($record->duration ?? '')) !== '') {
+    $facts[] = [
+        'key' => 'duration',
+        'icon' => $OUTPUT->image_url('icons/clock', 'local_kabshop')->out(false),
+        'label' => get_string('fact_duration', 'local_kabshop'),
+        'value' => format_string($record->duration, true, ['context' => $context]),
+    ];
+}
+
+// Темы уроков и блок «Этот курс»: строка — тема или абзац.
+$format = function(string $line) use ($context): string {
+    return format_string($line, true, ['context' => $context]);
+};
+$program = array_map($format, catalog::lines($record->program ?? '', true));
+$about = array_map($format, catalog::lines($record->about ?? ''));
+
+// Запись открыта, но закроется — предупредить заранее.
+$saleuntil = null;
+if ($saleopen && !$owned && !$activesub && $product->kind !== 'external'
+        && ($record->salestate ?? '') !== 'soon' && ($record->salestate ?? '') !== 'closed'
+        && !empty($record->saleclose)) {
+    $saleuntil = get_string('saleuntil', 'local_kabshop', catalog::day_string((int) $record->saleclose));
+}
+
 $data = catalog::card($product);
+$data['priceother'] = $otherprices ? get_string('priceor', 'local_kabshop', implode(' · ', $otherprices)) : null;
+$data['facts'] = $facts;
+$data['hasfacts'] = !empty($facts);
+$data['program'] = $program;
+$data['hasprogram'] = !empty($program);
+$data['about'] = $about;
+$data['hasabout'] = !empty($about);
+$data['sale'] = $salenotice;
+$data['saleuntil'] = $saleuntil;
+$data['ownednote'] = ($owned && $product->courseid) ? get_string('youareenrolled', 'local_kabshop') : null;
 $data['description'] = trim(strip_tags((string) $record->description, '<img><iframe><video>')) !== ''
     ? format_text($record->description, $record->descriptionformat, ['context' => $context]) : null;
 $data['section'] = $sectionname !== false ? format_string($sectionname, true, ['context' => $context]) : null;
@@ -314,7 +373,7 @@ $data['changeurl'] = !empty($action['autopay']) ? $changeurl : null;
 $data['changelabel'] = get_string($couponinfo ? 'couponremove' : ($taxinfo ? 'changedonation' : 'changeamount'),
     'local_kabshop');
 $data['prereqnotice'] = $prereqnotice;
-$data['nopayment'] = $prereqok && !$free && !$product->accountid && $product->kind !== 'external';
+$data['nopayment'] = $saleopen && $prereqok && !$free && !$product->accountid && $product->kind !== 'external';
 $data['paid'] = $paid;
 $data['aftercourse'] = $aftercourse;
 $data['canmanage'] = $canmanage;

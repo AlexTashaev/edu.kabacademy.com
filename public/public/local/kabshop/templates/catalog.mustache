@@ -88,9 +88,11 @@
                         {{#image}}<img src="{{image}}" alt="">{{/image}}
                         {{^image}}<span class="kabshop-card-placeholder" aria-hidden="true"></span>{{/image}}
                         {{#hidden}}<span class="kabshop-badge-hidden">{{#str}} hidden, local_kabshop {{/str}}</span>{{/hidden}}
+                        {{#salebadge}}<span class="kabshop-badge-sale">{{salebadge}}</span>{{/salebadge}}
                     </div>
                     <div class="kabshop-hero-body">
                         <h3 class="kabshop-hero-title"><a class="kabshop-card-link" href="{{url}}">{{name}}</a></h3>
+                        {{#meta}}<p class="kabshop-card-meta">{{{meta}}}</p>{{/meta}}
                         {{#summary}}<p class="kabshop-hero-summary">{{{summary}}}</p>{{/summary}}
                         <div class="kabshop-hero-footer">
                             {{#price}}<span class="kabshop-price kabshop-price-hero{{#free}} kabshop-price-free{{/free}}">{{price}}</span>{{/price}}

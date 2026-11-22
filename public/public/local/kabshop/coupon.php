@@ -40,7 +40,7 @@ $PAGE->set_url(new moodle_url('/local/kabshop/coupon.php', ['id' => $id]));
 require_login(null, false);
 // Пожертвованию с данными жертвователя промокод не нужен: купон завёл бы оплату без этих данных.
 if (isguestuser() || !$product->visible || catalog::needs_taxid($product)
-        || !catalog::prerequisite_ok($product, $USER->id)) {
+        || !catalog::prerequisite_ok($product, $USER->id) || catalog::sale_state($product) !== 'open') {
     redirect($producturl);
 }
 require_sesskey();

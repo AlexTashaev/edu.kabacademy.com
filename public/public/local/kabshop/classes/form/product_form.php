@@ -58,6 +58,50 @@ class product_form extends \moodleform {
             ['subdirs' => 0, 'maxfiles' => 1, 'accepted_types' => ['web_image']]);
         $mform->addHelpButton('image_filemanager', 'image', $p);
 
+        // Страница курса: начало и продолжительность — в карточке покупки, темы уроков — списком
+        // «В программе курса», короткий текст — блок «Этот курс» под карточкой.
+        $mform->addElement('header', 'hdrpage', get_string('hdrpage', $p));
+        $mform->setExpanded('hdrpage', true);
+
+        $mform->addElement('date_selector', 'startdate', get_string('startdate', $p), ['optional' => true]);
+        $mform->addHelpButton('startdate', 'startdate', $p);
+
+        $mform->addElement('text', 'duration', get_string('duration', $p), ['size' => 30, 'maxlength' => 100]);
+        $mform->setType('duration', PARAM_TEXT);
+        $mform->addHelpButton('duration', 'duration', $p);
+
+        $mform->addElement('textarea', 'program', get_string('program', $p), ['rows' => 10, 'cols' => 60]);
+        $mform->setType('program', PARAM_TEXT);
+        $mform->addHelpButton('program', 'program', $p);
+
+        $mform->addElement('textarea', 'about', get_string('about', $p), ['rows' => 6, 'cols' => 60]);
+        $mform->setType('about', PARAM_TEXT);
+        $mform->addHelpButton('about', 'about', $p);
+
+        // Запись: товар на витрине всегда, а кнопка — только пока запись открыта.
+        $mform->addElement('header', 'hdrsale', get_string('hdrsale', $p));
+        $mform->setExpanded('hdrsale', true);
+
+        $mform->addElement('select', 'salestate', get_string('salestate', $p), [
+            'auto' => get_string('salestate_auto', $p),
+            'soon' => get_string('salestate_soon', $p),
+            'closed' => get_string('salestate_closed', $p),
+        ]);
+        $mform->addHelpButton('salestate', 'salestate', $p);
+        $mform->setDefault('salestate', 'auto');
+
+        $mform->addElement('date_time_selector', 'saleopen', get_string('saleopen', $p), ['optional' => true]);
+        $mform->hideIf('saleopen', 'salestate', 'neq', 'auto');
+        $mform->addElement('date_time_selector', 'saleclose', get_string('saleclose', $p), ['optional' => true]);
+        $mform->hideIf('saleclose', 'salestate', 'neq', 'auto');
+
+        $mform->addElement('text', 'salenote', get_string('salenote', $p), ['size' => 60, 'maxlength' => 255]);
+        $mform->setType('salenote', PARAM_TEXT);
+        $mform->addHelpButton('salenote', 'salenote', $p);
+
+        $mform->addElement('header', 'hdrprice', get_string('hdrprice', $p));
+        $mform->setExpanded('hdrprice', true);
+
         $kinds = [];
         foreach (\local_kabshop\catalog::KINDS as $k) {
             $kinds[$k] = get_string('kind_' . $k, $p);
@@ -171,6 +215,10 @@ class product_form extends \moodleform {
         }
         if ($data['price'] < 0) {
             $errors['price'] = get_string('invalidprice', 'local_kabshop');
+        }
+        if (($data['salestate'] ?? 'auto') === 'auto' && !empty($data['saleopen']) && !empty($data['saleclose'])
+                && $data['saleclose'] <= $data['saleopen']) {
+            $errors['saleclose'] = get_string('salecloseearly', 'local_kabshop');
         }
         if ($data['kind'] === 'external' && empty($data['externalurl'])) {
             $errors['externalurl'] = get_string('required');

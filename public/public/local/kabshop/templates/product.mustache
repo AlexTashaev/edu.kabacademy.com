@@ -18,8 +18,12 @@
     @template local_kabshop/product
 
     Страница товара в стиле страницы курса kabacademy.com: светло-голубая шапка курса
-    (ленточка с разделом витрины, название, «Коротко», обложка справа), под ней слева
-    карточка покупки в рамке-градиенте (на компьютере липнет при прокрутке), справа описание.
+    (ленточка с разделом витрины, название, «Коротко», обложка справа), под ней две колонки
+    на всю длину. Слева — карточка покупки в рамке-градиенте: начало и продолжительность
+    (facts), цена (у товара с двумя ценами вторая — рядом, priceother), кнопка или блок
+    состояния записи (sale: «Запись ещё не открыта», «Запись завершена»); под карточкой —
+    блок «Этот курс» (about). Справа — «В программе курса» (program, темы уроков) и описание.
+    Без блока «Этот курс» карточка на компьютере липнет при прокрутке.
     Название в шапке — для глаз: заголовок страницы Moodle остаётся для чтения с экрана.
 
     currencies — выбор «чем платить» у товара с двумя ценами (ссылки на ту же страницу в
@@ -31,7 +35,15 @@
 
     Example context (json):
     {"name": "Система мироздания", "summary": "Спецкурс", "description": "<p>Описание</p>",
-     "section": "Начать обучение", "price": "70,00 $", "free": false, "image": null, "paid": false,
+     "section": "Начать обучение", "price": "70,00 $", "priceother": "или 5 250,00 ₽", "free": false,
+     "image": null, "paid": false,
+     "hasfacts": true,
+     "facts": [{"key": "start", "icon": "#", "label": "Начало", "value": "1 октября"},
+               {"key": "duration", "icon": "#", "label": "Продолжительность", "value": "15 недель"}],
+     "hasprogram": true, "program": ["Суть науки каббала", "Развитие желаний"],
+     "hasabout": true, "about": ["Знакомит с основами каббалы."],
+     "sale": {"state": "closed", "title": "Запись завершена", "text": null, "note": "Следующий поток — весной"},
+     "saleuntil": null, "ownednote": null,
      "nopayment": false, "canmanage": false, "editurl": "#", "catalogurl": "#",
      "hascurrencies": true,
      "currencies": [{"code": "USD", "name": "Доллары", "hint": "Карта или PayPal", "url": "#", "current": true},
@@ -59,8 +71,19 @@
         </div>
     </div>
     <div class="kabshop-pp-body">
-        <div class="kabshop-pp-aside">
+        <div class="kabshop-pp-aside{{#hasabout}} kabshop-pp-aside-stack{{/hasabout}}">
             <div class="kabshop-buy">
+                {{#hasfacts}}
+                <dl class="kabshop-facts">
+                    {{#facts}}
+                    <div class="kabshop-fact kabshop-fact-{{key}}">
+                        <img class="kabshop-fact-icon" src="{{icon}}" alt="" width="34" height="34">
+                        <dt>{{label}}</dt>
+                        <dd>{{{value}}}</dd>
+                    </div>
+                    {{/facts}}
+                </dl>
+                {{/hasfacts}}
                 {{#hascurrencies}}
                 <nav class="kabshop-currency" aria-label="{{#str}} paycurrency, local_kabshop {{/str}}">
                     <span class="kabshop-currency-label" aria-hidden="true">{{#str}} paycurrency, local_kabshop {{/str}}</span>
@@ -74,7 +97,15 @@
                     </div>
                 </nav>
                 {{/hascurrencies}}
-                {{#price}}<div class="kabshop-price-lg{{#free}} kabshop-price-lg-free{{/free}}">{{price}}</div>{{/price}}
+                {{#price}}<div class="kabshop-price-lg{{#free}} kabshop-price-lg-free{{/free}}">{{price}}{{#priceother}} <span class="kabshop-price-other">{{priceother}}</span>{{/priceother}}</div>{{/price}}
+                {{#ownednote}}<div class="kabshop-owned">{{ownednote}}</div>{{/ownednote}}
+                {{#sale}}
+                <div class="kabshop-sale kabshop-sale-{{state}}" role="status">
+                    <strong class="kabshop-sale-title">{{title}}</strong>
+                    {{#text}}<span class="kabshop-sale-text">{{text}}</span>{{/text}}
+                    {{#note}}<span class="kabshop-sale-text">{{{note}}}</span>{{/note}}
+                </div>
+                {{/sale}}
                 {{#subinfo}}<div class="alert alert-info">{{subinfo}}</div>{{/subinfo}}
                 {{#couponinfo}}<div class="alert alert-success">{{couponinfo}}</div>{{/couponinfo}}
                 {{#taxinfo}}<div class="alert alert-light kabshop-taxinfo">{{taxinfo}}</div>{{/taxinfo}}
@@ -292,6 +323,7 @@
                 {{/js}}
                 {{/tax}}
                 {{/donateform}}
+                {{#saleuntil}}<div class="kabshop-sale-until">{{saleuntil}}</div>{{/saleuntil}}
                 {{#nopayment}}
                 <div class="alert alert-warning">{{#str}} nopayment, local_kabshop {{/str}}</div>
                 {{/nopayment}}
@@ -302,8 +334,22 @@
                 <div class="kabshop-editlink"><a href="{{editurl}}">{{#str}} editproduct, local_kabshop {{/str}}</a></div>
                 {{/canmanage}}
             </div>
+            {{#hasabout}}
+            <section class="kabshop-aboutcourse" aria-labelledby="kabshop-aboutcourse-title">
+                <h2 class="kabshop-aboutcourse-title" id="kabshop-aboutcourse-title">{{#str}} abouttitle, local_kabshop {{/str}}</h2>
+                {{#about}}<p>{{{.}}}</p>{{/about}}
+            </section>
+            {{/hasabout}}
         </div>
         <div class="kabshop-pp-main">
+            {{#hasprogram}}
+            <section class="kabshop-program" aria-labelledby="kabshop-program-title">
+                <h2 class="kabshop-pp-heading" id="kabshop-program-title">{{#str}} programtitle, local_kabshop {{/str}}</h2>
+                <ol class="kabshop-program-list">
+                    {{#program}}<li>{{{.}}}</li>{{/program}}
+                </ol>
+            </section>
+            {{/hasprogram}}
             {{#description}}
             <div class="kabshop-product-description">{{{description}}}</div>
             {{/description}}

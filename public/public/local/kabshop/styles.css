@@ -578,6 +578,37 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     padding: .2rem .6rem;
 }
 
+/* Пометка состояния записи на обложке: «Запись завершена», «Запись ещё не открыта». */
+.kabshop-badge-sale {
+    position: absolute;
+    left: 0;
+    bottom: .8rem;
+    z-index: 2;
+    padding: .34rem .9rem .34rem .8rem;
+    background: rgba(255, 255, 255, .94);
+    color: var(--kabshop-purple);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    line-height: 1.4;
+    text-transform: uppercase;
+}
+
+/* Строка под названием: «Начало — 1 октября · 15 недель». */
+.kabshop-card-meta {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    line-height: 1.5;
+    text-transform: uppercase;
+    color: var(--kabshop-navy);
+}
+
+.kabshop-hero-body .kabshop-card-meta {
+    margin: -.3rem 0 .9rem;
+}
+
 .kabshop-card-body {
     display: flex;
     flex-direction: column;
@@ -1079,11 +1110,177 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     box-shadow: 0 22px 44px -26px rgba(60, 93, 144, .45);
 }
 
+/* Карточка липнет при прокрутке, пока под ней пусто; с блоком «Этот курс» колонка занята им. */
 @media (min-width: 992px) {
-    .kabshop-buy {
+    .kabshop-pp-aside:not(.kabshop-pp-aside-stack) .kabshop-buy {
         position: sticky;
         top: calc(var(--navbar-height, 72px) + 16px);
     }
+}
+
+/* Начало и продолжительность — сверху карточки, как «НАЧАЛО — 1 ОКТЯБРЯ · 15 НЕДЕЛЬ» на сайте. */
+.kabshop-facts {
+    display: grid;
+    gap: 16px;
+    margin: 0 0 22px;
+    padding: 0 0 22px;
+    border-bottom: 1px solid var(--kabshop-border);
+}
+
+.kabshop-fact {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    column-gap: 16px;
+    align-items: center;
+}
+
+.kabshop-fact-icon {
+    grid-row: 1 / span 2;
+    width: 34px;
+    height: 34px;
+}
+
+.kabshop-fact dt {
+    margin: 0;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .26em;
+    line-height: 1.4;
+    text-transform: uppercase;
+    color: #6b7680;
+}
+
+.kabshop-fact dd {
+    margin: 2px 0 0;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    color: var(--kabshop-navy);
+}
+
+.kabshop-fact-start dd {
+    color: var(--kabshop-purple);
+}
+
+/* Вторая цена — рядом с основной, спокойнее: «90,00 $ или 6 750,00 ₽». */
+.kabshop-price-other {
+    display: inline-block;
+    margin-left: .15em;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--kabshop-navy);
+    white-space: nowrap;
+}
+
+/* «Вы записаны на этот курс» — над кнопкой «Перейти к курсу». */
+.kabshop-owned {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: -6px 0 16px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--kabshop-green);
+}
+
+.kabshop-owned::before {
+    content: "";
+    flex: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='m4 8.3 2.6 2.6L12 5.5'/%3E%3C/svg%3E") center / 12px no-repeat,
+        var(--kabshop-green);
+}
+
+/* Состояние записи вместо кнопки: «Запись ещё не открыта», «Запись завершена». */
+.kabshop-sale {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-height: 54px;
+    justify-content: center;
+    padding: 16px 18px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.kabshop-sale-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    line-height: 1.4;
+    text-transform: uppercase;
+}
+
+.kabshop-sale-text {
+    font-family: var(--kabshop-body);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.45;
+}
+
+.kabshop-sale-closed {
+    background: #eef2f6;
+    color: #4d6078;
+}
+
+.kabshop-sale-soon {
+    background: #f6edf9;
+    color: var(--kabshop-purple-dark);
+}
+
+.kabshop-sale-until {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1.4;
+    text-align: center;
+    color: var(--kabshop-muted);
+}
+
+/* Блок «Этот курс» под карточкой: подложка и полоса-градиент слева, заголовок — как на сайте. */
+.kabshop-aboutcourse {
+    position: relative;
+    margin-top: 32px;
+    padding: 28px 28px 14px 32px;
+    background: var(--kabshop-tint);
+}
+
+.kabshop-aboutcourse::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #3ba9dc 0%, #6f78d2 52%, #a42bb9 100%);
+}
+
+.kabshop-aboutcourse-title {
+    margin: 0 0 16px;
+    font-family: "Montserrat", system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .22em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    color: var(--kabshop-purple);
+}
+
+.kabshop-aboutcourse p {
+    margin: 0 0 1em;
+    font-family: var(--kabshop-body);
+    font-size: 15px;
+    font-weight: 300;
+    line-height: 1.7;
+    color: var(--kabshop-copy);
 }
 
 /* Выбор «чем платить»: две плашки в светлой полосе, выбранная — белая. */
@@ -1582,9 +1779,46 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     opacity: 1;
 }
 
+/* Заголовок блока справа («В программе курса»): кружок-градиент со значком списка. */
+.kabshop-pp-heading {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin: 0 0 1.6rem;
+    font-family: "Montserrat", system-ui, sans-serif;
+    font-size: 30px;
+    font-weight: 300;
+    letter-spacing: -.02em;
+    line-height: 1.2;
+    color: var(--kabshop-navy);
+}
+
+.kabshop-pp-heading::before {
+    content: "";
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round' d='M7.5 5.5h8M7.5 10h8M7.5 14.5h8'/%3E%3Ccircle cx='4.3' cy='5.5' r='1' fill='%23fff'/%3E%3Ccircle cx='4.3' cy='10' r='1' fill='%23fff'/%3E%3Ccircle cx='4.3' cy='14.5' r='1' fill='%23fff'/%3E%3C/svg%3E") center / 22px no-repeat,
+        linear-gradient(135deg, #3ba9dc 0%, #6f78d2 55%, #a42bb9 100%);
+}
+
+.kabshop-program {
+    margin-bottom: 2.6rem;
+    padding-bottom: 1.4rem;
+    border-bottom: 1px solid var(--kabshop-border);
+}
+
+.kabshop-program:last-child {
+    border-bottom: 0;
+}
+
 /* Нумерованный список — программа курса: номера в голубых квадратах, в две колонки
-   сверху вниз (1–8 слева, 9–15 справа), как «В программе курса» на сайте. */
-.kabshop-product-description ol {
+   сверху вниз (1–8 слева, 9–15 справа), как «В программе курса» на сайте. Тот же вид —
+   у списка тем из поля «Программа курса» и у нумерованного списка в описании. */
+.kabshop-product-description ol,
+.kabshop-program-list {
     counter-reset: kabshop-ol;
     list-style: none;
     margin: 1.2rem 0 1.6rem;
@@ -1593,8 +1827,13 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     column-gap: 2rem;
 }
 
+.kabshop-program-list {
+    margin: 0;
+}
+
 /* Номер — в потоке строки, а не абсолютом: иначе колонка разрывала квадрат пополам. */
-.kabshop-product-description ol > li {
+.kabshop-product-description ol > li,
+.kabshop-program-list > li {
     counter-increment: kabshop-ol;
     display: flex;
     align-items: center;
@@ -1611,7 +1850,8 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     color: var(--kabshop-ink);
 }
 
-.kabshop-product-description ol > li::before {
+.kabshop-product-description ol > li::before,
+.kabshop-program-list > li::before {
     content: counter(kabshop-ol);
     flex: none;
     width: 40px;
@@ -1763,6 +2003,10 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 
     .kabshop-pp-aside {
         margin-top: -84px;
+    }
+
+    /* Карточка — не шире 480px, блок «Этот курс» под ней — во всю ширину. */
+    .kabshop-buy {
         max-width: 480px;
     }
 
@@ -1813,12 +2057,32 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 
     .kabshop-pp-aside {
         margin-top: -52px;
-        max-width: none;
     }
 
     .kabshop-buy {
+        max-width: none;
         border-width: 8px;
         padding: 20px 16px 22px;
+    }
+
+    .kabshop-aboutcourse {
+        margin-top: 24px;
+        padding: 22px 18px 8px 22px;
+    }
+
+    .kabshop-pp-heading {
+        gap: 14px;
+        font-size: 25px;
+    }
+
+    .kabshop-pp-heading::before {
+        width: 38px;
+        height: 38px;
+    }
+
+    .kabshop-program-list > li {
+        gap: 14px;
+        font-size: 14px;
     }
 
     .kabshop-price-lg {
