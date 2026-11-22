@@ -1066,8 +1066,11 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     letter-spacing: -.01em;
     text-transform: uppercase;
     color: #2f5288;
-    overflow-wrap: anywhere;
-    hyphens: auto;
+    /* Слова не рвём и не переносим по слогам («КАБ-БАЛА»): слово целиком уходит на следующую
+       строку, строки выравниваются по длине. Рвётся только слово, которое длиннее всей строки. */
+    overflow-wrap: break-word;
+    hyphens: manual;
+    text-wrap: balance;
 }
 
 .kabshop-pp-lead {
