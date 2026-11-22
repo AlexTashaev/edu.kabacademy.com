@@ -40,3 +40,14 @@ if ($hassiteconfig || has_capability('local/kabwporders:import', $syscontext)) {
         'local/kabwporders:import'
     ));
 }
+
+if ($hassiteconfig) {
+    $page = new admin_settingpage('local_kabwporders_settings', get_string('pluginname', 'local_kabwporders'));
+    $page->add(new admin_setting_configcheckbox(
+        'local_kabwporders/usermenu',
+        get_string('setting_usermenu', 'local_kabwporders'),
+        get_string('setting_usermenu_desc', 'local_kabwporders'),
+        1
+    ));
+    $ADMIN->add('localplugins', $page);
+}

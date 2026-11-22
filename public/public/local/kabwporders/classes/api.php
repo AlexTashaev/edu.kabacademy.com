@@ -174,6 +174,23 @@ class api {
     }
 
     /**
+     * Есть ли у человека прежние оплаты (по userid или гостевые с его почты).
+     *
+     * \param int $userid user.id
+     * \param string $email email
+     * \return bool
+     */
+    public static function has_orders(int $userid, string $email = ''): bool {
+        global $DB;
+
+        if ($userid > 0 && $DB->record_exists('local_kabwporders_order', ['userid' => $userid])) {
+            return true;
+        }
+        $email = \core_text::strtolower(trim($email));
+        return $email !== '' && $DB->record_exists('local_kabwporders_order', ['userid' => 0, 'payeremail' => $email]);
+    }
+
+    /**
      * Старые оплаты человека — в том же виде, в каком карточка local_kabperson получает их из WordPress.
      *
      * @param int $userid user.id (0 — неизвестен)

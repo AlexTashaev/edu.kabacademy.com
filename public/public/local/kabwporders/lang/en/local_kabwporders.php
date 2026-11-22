@@ -88,6 +88,9 @@ $string['err_empty'] = 'orders.tsv has no orders';
 $string['err_header'] = 'the header of {$a} does not match the expected one';
 $string['err_columns'] = '{$a} has a row with a wrong number of columns';
 
+$string['my_menu'] = 'Earlier payments';
+$string['setting_usermenu'] = '"Earlier payments" item in the user menu';
+$string['setting_usermenu_desc'] = 'Show a link to the earlier payments page in the user menu. Only users who have such payments see it. Once "My orders" of the shop is in the menu this item can be switched off: "My orders" shows the same payments as a block.';
 $string['my_title'] = 'My earlier payments';
 $string['my_heading'] = 'Earlier payments';
 $string['my_help'] = 'Your payments on kabacademy.com made before payment moved to this platform. If a payment is missing here, contact support.';
