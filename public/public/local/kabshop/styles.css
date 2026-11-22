@@ -584,9 +584,9 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     left: 0;
     bottom: .8rem;
     z-index: 2;
-    padding: .34rem .9rem .34rem .8rem;
-    background: rgba(255, 255, 255, .94);
-    color: var(--kabshop-purple);
+    padding: .4rem 1rem .4rem .85rem;
+    background: var(--kabshop-purple);
+    color: #fff;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: .2em;
@@ -1268,9 +1268,6 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     gap: 0 40px;
 }
 
-.kabshop-program + .kabshop-aboutcourse {
-    margin-top: 32px;
-}
 
 .kabshop-aboutcourse::before {
     content: "";
