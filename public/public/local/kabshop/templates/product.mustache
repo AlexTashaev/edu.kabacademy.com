@@ -1,0 +1,382 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_kabshop/product
+
+    Страница товара в стиле страницы курса kabacademy.com: светло-голубая шапка курса
+    (ленточка с разделом витрины, название, «Коротко», обложка справа), под ней слева
+    карточка покупки в рамке-градиенте: начало и продолжительность (facts), цена (у товара
+    с двумя ценами вторая — рядом, priceother), кнопка или блок состояния записи (sale:
+    «Запись ещё не открыта», «Запись завершена»).
+
+    У товара с темами уроков или блоком «Этот курс» (rich) пустого места под карточкой нет:
+    справа от неё — «В программе курса» (program), ниже на всю ширину — «Этот курс»
+    (aboutband, абзацы колонками) и описание в две колонки. Без программы «Этот курс» встаёт
+    справа от карточки (aboutside). У остальных товаров описание справа, карточка на
+    компьютере липнет при прокрутке.
+    Название в шапке — для глаз: заголовок страницы Moodle остаётся для чтения с экрана.
+
+    currencies — выбор «чем платить» у товара с двумя ценами (ссылки на ту же страницу в
+    другой валюте). prereqnotice — объяснение условия записи (HTML: названия курсов уже
+    прошли format_string). action.donation — окно «Безвозмездная помощь» на кнопке
+    «Записаться бесплатно» (взнос или запись без взноса, как в корзине WordPress), по группе
+    сумм на валюту; aftercourse — ссылка на курс, куда человек записался из этого окна, на
+    странице пожертвования. Внизу — продавец, контакты и оферта выбранной валюты.
+
+    Example context (json):
+    {"name": "Система мироздания", "summary": "Спецкурс", "description": "<p>Описание</p>",
+     "section": "Начать обучение", "price": "70,00 $", "priceother": "или 5 250,00 ₽", "free": false,
+     "image": null, "paid": false,
+     "hasfacts": true,
+     "facts": [{"key": "start", "icon": "#", "label": "Начало", "value": "1 октября"},
+               {"key": "duration", "icon": "#", "label": "Продолжительность", "value": "15 недель"}],
+     "hasprogram": true, "program": ["Суть науки каббала", "Развитие желаний"],
+     "about": ["Знакомит с основами каббалы."], "aboutside": false, "aboutband": true, "rich": true,
+     "sale": {"state": "closed", "title": "Запись завершена", "text": null, "note": "Следующий поток — весной"},
+     "saleuntil": null, "ownednote": null,
+     "nopayment": false, "canmanage": false, "editurl": "#", "catalogurl": "#",
+     "hascurrencies": true,
+     "currencies": [{"code": "USD", "name": "Доллары", "hint": "Карта или PayPal", "url": "#", "current": true},
+                    {"code": "RUB", "name": "Рубли", "hint": "Robokassa", "url": "#", "current": false}],
+     "action": {"href": "#", "label": "Войти и купить"},
+     "legal": {"paylabel": "Продавец:", "seller": "Ассоциация", "email": "a@example.com",
+               "phone": "1-700-509-209", "phonehref": "1700509209", "offerurl": "#",
+               "offerlabel": "Публичная оферта", "privacyurl": "#",
+               "privacylabel": "Политика конфиденциальности"}
+    }
+}}
+<div class="kabshop-product">
+    {{#paid}}
+    <div class="alert alert-success kabshop-paid">{{#str}} thankyou, local_kabshop {{/str}}{{#aftercourse}} <a href="{{href}}">{{label}}</a>{{/aftercourse}}</div>
+    {{/paid}}
+    <div class="kabshop-pp-hero{{#image}} kabshop-pp-hero-image{{/image}}">
+        <div class="kabshop-pp-hero-media" aria-hidden="true">
+            {{#image}}<img src="{{image}}" alt="">{{/image}}
+            {{^image}}<span class="kabshop-card-placeholder"></span>{{/image}}
+        </div>
+        <div class="kabshop-pp-hero-text">
+            {{#section}}<span class="kabshop-pp-ribbon">{{section}}</span>{{/section}}
+            <p class="kabshop-pp-title" aria-hidden="true">{{name}}</p>
+            {{#summary}}<p class="kabshop-pp-lead">{{{summary}}}</p>{{/summary}}
+        </div>
+    </div>
+    <div class="kabshop-pp-body">
+        <div class="kabshop-pp-aside">
+            <div class="kabshop-buy">
+                {{#hasfacts}}
+                <dl class="kabshop-facts">
+                    {{#facts}}
+                    <div class="kabshop-fact kabshop-fact-{{key}}">
+                        <img class="kabshop-fact-icon" src="{{icon}}" alt="" width="34" height="34">
+                        <dt>{{label}}</dt>
+                        <dd>{{{value}}}</dd>
+                    </div>
+                    {{/facts}}
+                </dl>
+                {{/hasfacts}}
+                {{#hascurrencies}}
+                <nav class="kabshop-currency" aria-label="{{#str}} paycurrency, local_kabshop {{/str}}">
+                    <span class="kabshop-currency-label" aria-hidden="true">{{#str}} paycurrency, local_kabshop {{/str}}</span>
+                    <div class="kabshop-currency-tabs">
+                        {{#currencies}}
+                        <a class="kabshop-currency-tab{{#current}} is-current{{/current}}" href="{{url}}" {{#current}}aria-current="page"{{/current}}>
+                            <span class="kabshop-currency-name">{{name}}</span>
+                            <span class="kabshop-currency-hint">{{hint}}</span>
+                        </a>
+                        {{/currencies}}
+                    </div>
+                </nav>
+                {{/hascurrencies}}
+                {{#price}}<div class="kabshop-price-lg{{#free}} kabshop-price-lg-free{{/free}}">{{price}}{{#priceother}} <span class="kabshop-price-other">{{priceother}}</span>{{/priceother}}</div>{{/price}}
+                {{#ownednote}}<div class="kabshop-owned">{{ownednote}}</div>{{/ownednote}}
+                {{#sale}}
+                <div class="kabshop-sale kabshop-sale-{{state}}" role="status">
+                    <strong class="kabshop-sale-title">{{title}}</strong>
+                    {{#text}}<span class="kabshop-sale-text">{{text}}</span>{{/text}}
+                    {{#note}}<span class="kabshop-sale-text">{{{note}}}</span>{{/note}}
+                </div>
+                {{/sale}}
+                {{#subinfo}}<div class="alert alert-info">{{subinfo}}</div>{{/subinfo}}
+                {{#couponinfo}}<div class="alert alert-success">{{couponinfo}}</div>{{/couponinfo}}
+                {{#taxinfo}}<div class="alert alert-light kabshop-taxinfo">{{taxinfo}}</div>{{/taxinfo}}
+                {{#prereqnotice}}<div class="alert alert-info kabshop-prereq">{{{prereqnotice}}}</div>{{/prereqnotice}}
+                {{#action}}
+                    {{#href}}<a class="btn btn-primary btn-lg" href="{{href}}">{{label}}</a>{{/href}}
+                    {{#post}}
+                    <form method="post" action="{{post}}">
+                        <input type="hidden" name="id" value="{{id}}">
+                        <input type="hidden" name="sesskey" value="{{sesskey}}">
+                        <button type="submit" class="btn btn-primary btn-lg" {{#donation}}data-kabshop-freedonation="1"{{/donation}}>{{label}}</button>
+                        {{#donation}}
+                        <dialog class="kabshop-dialog" id="kabshop-freedonation" aria-labelledby="kabshop-freedonation-title">
+                            <div class="kabshop-dialog-body">
+                                <button type="button" class="kabshop-dialog-close" data-kabshop-close aria-label="{{#str}} closebuttontitle {{/str}}">&times;</button>
+                                <h2 class="kabshop-dialog-title" id="kabshop-freedonation-title">{{#str}} freedonation_title, local_kabshop {{/str}}</h2>
+                                {{#text}}<div class="kabshop-dialog-text">{{{text}}}</div>{{/text}}
+                                {{#switch}}
+                                <fieldset class="kabshop-currency">
+                                    <legend class="kabshop-donate-legend">{{#str}} paycurrency, local_kabshop {{/str}}</legend>
+                                    <div class="kabshop-currency-tabs">
+                                        {{#groups}}
+                                        <input type="radio" class="btn-check" name="currency" id="kabshop-fd-cur-{{code}}" value="{{code}}" {{#selected}}checked{{/selected}}>
+                                        <label class="kabshop-currency-tab" for="kabshop-fd-cur-{{code}}">
+                                            <span class="kabshop-currency-name">{{currencyname}}</span>
+                                            <span class="kabshop-currency-hint">{{hint}}</span>
+                                        </label>
+                                        {{/groups}}
+                                    </div>
+                                </fieldset>
+                                {{/switch}}
+                                {{^switch}}{{#groups}}<input type="hidden" name="currency" value="{{code}}">{{/groups}}{{/switch}}
+                                {{#groups}}
+                                <fieldset class="kabshop-fd-group" data-kabshop-cur="{{code}}" {{^selected}}hidden disabled{{/selected}}>
+                                    <legend class="kabshop-donate-legend">{{#str}} chooseamount, local_kabshop {{/str}}</legend>
+                                    <div class="kabshop-presets">
+                                        {{#presets}}
+                                        <input type="radio" class="btn-check" name="preset_{{code}}" id="kabshop-fd-{{code}}-{{value}}" value="{{value}}" {{#checked}}checked{{/checked}}>
+                                        <label class="btn" for="kabshop-fd-{{code}}-{{value}}">{{label}}</label>
+                                        {{/presets}}
+                                    </div>
+                                    <label class="kabshop-custom-label" for="kabshop-fd-custom-{{code}}">{{#str}} otheramount, local_kabshop {{/str}}</label>
+                                    <div class="input-group kabshop-custom">
+                                        <input type="number" class="form-control" id="kabshop-fd-custom-{{code}}" name="customvalue" min="{{min}}" max="{{max}}" step="0.01" inputmode="decimal">
+                                        <span class="input-group-text">{{code}}</span>
+                                    </div>
+                                </fieldset>
+                                {{/groups}}
+                                <div class="kabshop-dialog-actions">
+                                    <button type="submit" name="donate" value="1" class="btn btn-primary btn-lg" autofocus>{{#str}} freedonation_yes, local_kabshop {{/str}}</button>
+                                    <button type="submit" name="donate" value="0" class="btn btn-link kabshop-dialog-skip" formnovalidate>{{#str}} freedonation_no, local_kabshop {{/str}}</button>
+                                </div>
+                            </div>
+                        </dialog>
+                        {{#js}}
+                        (function() {
+                            var open = document.querySelector('[data-kabshop-freedonation]');
+                            var dialog = document.getElementById('kabshop-freedonation');
+                            // Без поддержки <dialog> кнопка просто записывает, как раньше.
+                            if (!open || !dialog || typeof dialog.showModal !== 'function') {
+                                return;
+                            }
+                            open.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                dialog.showModal();
+                            });
+                            dialog.querySelector('[data-kabshop-close]').addEventListener('click', function() {
+                                dialog.close();
+                            });
+                            // Клик по затемнению вокруг окна закрывает его.
+                            dialog.addEventListener('click', function(e) {
+                                if (e.target === dialog) {
+                                    dialog.close();
+                                }
+                            });
+                            // Группа сумм на валюту: видна и отправляется только выбранная. У радиокнопок
+                            // каждой группы своё имя (preset_USD, preset_RUB): с общим выбор в одной
+                            // валюте снимал сумму по умолчанию в другой.
+                            var groups = dialog.querySelectorAll('.kabshop-fd-group');
+                            dialog.querySelectorAll('[name="currency"]').forEach(function(r) {
+                                r.addEventListener('change', function() {
+                                    groups.forEach(function(g) {
+                                        var on = g.getAttribute('data-kabshop-cur') === r.value;
+                                        g.hidden = !on;
+                                        g.disabled = !on;
+                                    });
+                                });
+                            });
+                            // Своя сумма снимает выбор готовой; стёрли — вернулась сумма по умолчанию.
+                            groups.forEach(function(g) {
+                                var custom = g.querySelector('[name="customvalue"]');
+                                var radios = g.querySelectorAll('input[type="radio"]');
+                                var preset = g.querySelector('input[type="radio"]:checked');
+                                custom.addEventListener('input', function() {
+                                    radios.forEach(function(r) {
+                                        r.checked = custom.value === '' && r === preset;
+                                    });
+                                });
+                                radios.forEach(function(r) {
+                                    r.addEventListener('change', function() {
+                                        custom.value = '';
+                                    });
+                                });
+                            });
+                        })();
+                        {{/js}}
+                        {{/donation}}
+                    </form>
+                    {{/post}}
+                    {{#payment}}
+                    <button type="button" class="btn btn-primary btn-lg"
+                            {{#autopay}}data-kabshop-autopay="1"{{/autopay}}
+                            data-action="core_payment/triggerPayment"
+                            data-component="{{component}}"
+                            data-paymentarea="{{paymentarea}}"
+                            data-itemid="{{itemid}}"
+                            data-cost="{{cost}}"
+                            data-successurl="{{successurl}}"
+                            data-description="{{description}}">{{label}}</button>
+                    {{/payment}}
+                {{/action}}
+                {{#couponform}}
+                <details class="kabshop-coupon">
+                    <summary>{{#str}} couponlabel, local_kabshop {{/str}}</summary>
+                    <form method="post" action="{{url}}">
+                        <input type="hidden" name="id" value="{{id}}">
+                        <input type="hidden" name="cur" value="{{cur}}">
+                        <input type="hidden" name="sesskey" value="{{sesskey}}">
+                        <label class="visually-hidden sr-only" for="kabshop-coupon">{{#str}} couponcode, local_kabshop {{/str}}</label>
+                        <div class="input-group kabshop-custom">
+                            <input type="text" class="form-control" id="kabshop-coupon" name="code" autocomplete="off" maxlength="64">
+                            <button type="submit" class="btn btn-outline-secondary">{{#str}} couponapply, local_kabshop {{/str}}</button>
+                        </div>
+                    </form>
+                </details>
+                {{/couponform}}
+                {{#changeurl}}
+                <div class="kabshop-changeamount"><a href="{{changeurl}}">{{changelabel}}</a></div>
+                {{/changeurl}}
+                {{#donateform}}
+                <form method="post" action="{{url}}" class="kabshop-donate">
+                    <input type="hidden" name="id" value="{{id}}">
+                    <input type="hidden" name="cur" value="{{cur}}">
+                    <input type="hidden" name="sesskey" value="{{sesskey}}">
+                    {{#custom}}
+                    <fieldset>
+                        <legend class="kabshop-donate-legend">{{#str}} chooseamount, local_kabshop {{/str}}</legend>
+                        <div class="kabshop-presets">
+                            {{#presets}}
+                            <input type="radio" class="btn-check" name="preset" id="kabshop-preset-{{value}}" value="{{value}}" {{#checked}}checked{{/checked}}>
+                            <label class="btn" for="kabshop-preset-{{value}}">{{label}}</label>
+                            {{/presets}}
+                        </div>
+                        <label class="kabshop-custom-label" for="kabshop-custom">{{#str}} otheramount, local_kabshop {{/str}}</label>
+                        <div class="input-group kabshop-custom">
+                            <input type="number" class="form-control" id="kabshop-custom" name="customvalue" min="{{min}}" step="0.01" inputmode="decimal" value="{{customvalue}}">
+                            <span class="input-group-text">{{currency}}</span>
+                        </div>
+                    </fieldset>
+                    {{/custom}}
+                    {{#tax}}
+                    <fieldset class="kabshop-tax">
+                        <legend class="kabshop-donate-legend">{{#str}} taxlegend, local_kabshop {{/str}}</legend>
+                        <label class="kabshop-custom-label" for="kabshop-taxcountry">{{#str}} taxcountry, local_kabshop {{/str}}</label>
+                        <select class="form-select custom-select" id="kabshop-taxcountry" name="taxcountry" required>
+                            <option value="">{{#str}} choosecountry, local_kabshop {{/str}}</option>
+                            {{#countries}}
+                            <option value="{{code}}" {{#selected}}selected{{/selected}}>{{name}}</option>
+                            {{/countries}}
+                        </select>
+                        <div class="kabshop-taxtype" {{^isil}}hidden{{/isil}}>
+                            {{#types}}
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="taxtype" id="kabshop-taxtype-{{value}}" value="{{value}}" {{#checked}}checked{{/checked}}>
+                                <label class="form-check-label" for="kabshop-taxtype-{{value}}">{{label}}</label>
+                            </div>
+                            {{/types}}
+                        </div>
+                        <div class="kabshop-taxid" {{^showid}}hidden{{/showid}}>
+                            <label class="kabshop-custom-label" for="kabshop-taxid">{{#str}} taxid, local_kabshop {{/str}}</label>
+                            <input type="text" class="form-control" id="kabshop-taxid" name="taxid" value="{{taxidvalue}}" inputmode="numeric" maxlength="9" autocomplete="off">
+                            <div class="form-text">{{#str}} taxid_note, local_kabshop {{/str}}</div>
+                        </div>
+                    </fieldset>
+                    {{/tax}}
+                    <button type="submit" class="btn btn-primary btn-lg mt-3">{{#str}} continue {{/str}}</button>
+                </form>
+                {{#tax}}
+                {{#js}}
+                (function() {
+                    var form = document.querySelector('.kabshop-donate');
+                    var country = form && form.querySelector('[name="taxcountry"]');
+                    if (!country) {
+                        return;
+                    }
+                    var types = form.querySelector('.kabshop-taxtype');
+                    var idbox = form.querySelector('.kabshop-taxid');
+                    var id = form.querySelector('[name="taxid"]');
+                    // Тип жертвователя — только для Израиля, номер — для частного лица и организации.
+                    var sync = function() {
+                        var il = country.value === 'IL';
+                        var type = form.querySelector('[name="taxtype"]:checked');
+                        types.hidden = !il;
+                        idbox.hidden = !(il && type && type.value !== '9');
+                    };
+                    country.addEventListener('change', sync);
+                    form.querySelectorAll('[name="taxtype"]').forEach(function(r) {
+                        r.addEventListener('change', sync);
+                    });
+                    id.addEventListener('input', function() {
+                        id.value = id.value.replace(/\D/g, '');
+                    });
+                    sync();
+                })();
+                {{/js}}
+                {{/tax}}
+                {{/donateform}}
+                {{#saleuntil}}<div class="kabshop-sale-until">{{saleuntil}}</div>{{/saleuntil}}
+                {{#nopayment}}
+                <div class="alert alert-warning">{{#str}} nopayment, local_kabshop {{/str}}</div>
+                {{/nopayment}}
+                {{^paid}}{{#aftercourse}}
+                <a class="kabshop-aftercourse" href="{{href}}">{{label}}</a>
+                {{/aftercourse}}{{/paid}}
+                {{#canmanage}}
+                <div class="kabshop-editlink"><a href="{{editurl}}">{{#str}} editproduct, local_kabshop {{/str}}</a></div>
+                {{/canmanage}}
+            </div>
+        </div>
+        <div class="kabshop-pp-main">
+            {{#hasprogram}}
+            <section class="kabshop-program" aria-labelledby="kabshop-program-title">
+                <h2 class="kabshop-pp-heading" id="kabshop-program-title">{{#str}} programtitle, local_kabshop {{/str}}</h2>
+                <ol class="kabshop-program-list">
+                    {{#program}}<li>{{{.}}}</li>{{/program}}
+                </ol>
+            </section>
+            {{/hasprogram}}
+            {{#aboutside}}
+            <section class="kabshop-aboutcourse" aria-labelledby="kabshop-aboutcourse-title">
+                <h2 class="kabshop-aboutcourse-title" id="kabshop-aboutcourse-title">{{#str}} abouttitle, local_kabshop {{/str}}</h2>
+                <div class="kabshop-aboutcourse-text">{{#about}}<p>{{{.}}}</p>{{/about}}</div>
+            </section>
+            {{/aboutside}}
+            {{^rich}}
+            {{#description}}
+            <div class="kabshop-product-description">{{{description}}}</div>
+            {{/description}}
+            <p class="kabshop-back"><a class="kabshop-action" href="{{catalogurl}}">{{#str}} backtocatalog, local_kabshop {{/str}}</a></p>
+            {{/rich}}
+        </div>
+    </div>
+    {{#rich}}
+    <div class="kabshop-pp-wide">
+        {{#aboutband}}
+        <section class="kabshop-aboutcourse kabshop-aboutcourse-band" aria-labelledby="kabshop-aboutcourse-title">
+            <h2 class="kabshop-aboutcourse-title" id="kabshop-aboutcourse-title">{{#str}} abouttitle, local_kabshop {{/str}}</h2>
+            <div class="kabshop-aboutcourse-text">{{#about}}<p>{{{.}}}</p>{{/about}}</div>
+        </section>
+        {{/aboutband}}
+        {{#description}}
+        <div class="kabshop-product-description kabshop-product-description-wide">{{{description}}}</div>
+        {{/description}}
+        <p class="kabshop-back"><a class="kabshop-action" href="{{catalogurl}}">{{#str}} backtocatalog, local_kabshop {{/str}}</a></p>
+    </div>
+    {{/rich}}
+    {{#legal}}
+    {{> local_kabshop/legal }}
+    {{/legal}}
+</div>
