@@ -36,7 +36,7 @@
         <FIELD NAME="saleopen" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Запись открывается; 0 — без границы"/>
         <FIELD NAME="saleclose" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Запись закрывается; 0 — без границы"/>
         <FIELD NAME="salenote" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Пояснение к закрытой записи"/>
-        <FIELD NAME="kind"TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="course" SEQUENCE="false" COMMENT="course|contribution|donation|service|external"/>
+        <FIELD NAME="kind" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="course" SEQUENCE="false" COMMENT="course|contribution|donation|service|external"/>
         <FIELD NAME="price" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2"/>
         <FIELD NAME="currency" TYPE="char" LENGTH="3" NOTNULL="true" DEFAULT="USD" SEQUENCE="false"/>
         <FIELD NAME="pricelabel" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="Подпись к цене: в месяц, от"/>

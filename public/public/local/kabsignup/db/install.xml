@@ -13,7 +13,7 @@
         <FIELD NAME="newuser" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 when this signup created the account"/>
         <FIELD NAME="campaign" TYPE="char" LENGTH="64" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="camp= slug from the signup link"/>
         <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="created / enrolled / already / loggedin / exists / throttled / noprereq / badmail"/>
-        <FIELD NAME="flags" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Markers: geo, dup:<signals>, co:ok|co:skip, capi|capi:err"/>
+        <FIELD NAME="flags" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Markers: geo, dup:signals, co:ok|co:skip, capi|capi:err"/>
         <FIELD NAME="ip" TYPE="char" LENGTH="45" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="IP address of the request"/>
         <FIELD NAME="attribution" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON of the ad and quiz parameters the link carried (utm_*, pres, click ids, quiz_score, qa)"/>
         <FIELD NAME="quizscore" TYPE="int" LENGTH="5" NOTNULL="false" SEQUENCE="false" COMMENT="Quiz score from the link, when there was one"/>
