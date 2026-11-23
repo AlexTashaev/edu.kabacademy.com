@@ -38,6 +38,8 @@ if ($hassiteconfig) {
         get_string('chatwootaccount', $p), get_string('chatwootaccount_desc', $p), '', PARAM_INT));
     $settings->add(new admin_setting_configpasswordunmask($p . '/chatwoottoken',
         get_string('chatwoottoken', $p), get_string('chatwoottoken_desc', $p), ''));
+    $settings->add(new admin_setting_configpasswordunmask($p . '/viewkey',
+        get_string('viewkey', $p), get_string('viewkey_desc', $p), ''));
     $settings->add(new admin_setting_configtext($p . '/frameancestors',
         get_string('frameancestors', $p), get_string('frameancestors_desc', $p), '', PARAM_RAW_TRIMMED));
 
