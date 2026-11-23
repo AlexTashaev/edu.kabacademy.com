@@ -18,7 +18,8 @@ namespace local_kabperson;
 
 /**
  * Сборка карточки человека: Moodle (идентичность, обучение) + касса local_kabshop
- * + заказы старого WP kabacademy (адаптер source\kabacademy_wp, этап 2).
+ * + заказы старого WP kabacademy: живой WP (адаптер source\kabacademy_wp, этап 2) или
+ * реестр local_kabwporders (source\kabacademy_archive, этап 6) — по настройке wpmode.
  *
  * Только чтение. Контракт JSON — §9 спеки spec_person_card_moodle_2026-10.md
  * (репо kabacademy.com). kabbalah.info и books — этап 5, в sources они «off».
@@ -103,6 +104,22 @@ class api {
     }
 
     /**
+     * Откуда брать заказы старого WP: live — живой WP по HTTP, archive — реестр
+     * local_kabwporders, off — не показывать. До 0.3 был флажок enablewp: если режим
+     * ещё не сохранён, читаем флажок (не записанный — «включено», как раньше).
+     *
+     * @return string live|archive|off
+     */
+    public static function wp_mode(): string {
+        $mode = get_config('local_kabperson', 'wpmode');
+        if (in_array($mode, ['live', 'archive', 'off'], true)) {
+            return $mode;
+        }
+        $enabled = get_config('local_kabperson', 'enablewp');
+        return ($enabled !== false && empty($enabled)) ? 'off' : 'live';
+    }
+
+    /**
      * Карточка по email: из MUC-кэша (10 минут) или собрать заново.
      *
      * @param string $email
@@ -143,6 +160,7 @@ class api {
             'moodle'        => 'ok',
             'kabshop'       => 'off',
             'kabacademy_wp' => 'off',
+            'kabacademy_archive' => 'off', // Этап 6: реестр старых оплат вместо живого WP.
             'kabbalah_info' => 'off',   // Этап 5.
             'books'         => 'off',   // Этап 5.
         ];
@@ -153,8 +171,13 @@ class api {
         ];
 
         $user = self::find_user($email, $dupsignals);
-        $wp = source\kabacademy_wp::fetch($email, $user ? (int) $user->id : 0);
-        $sources['kabacademy_wp'] = $wp['state'];
+        if (self::wp_mode() === 'archive') {
+            $wp = source\kabacademy_archive::fetch($email, $user ? (int) $user->id : 0);
+            $sources['kabacademy_archive'] = $wp['state'];
+        } else {
+            $wp = source\kabacademy_wp::fetch($email, $user ? (int) $user->id : 0);
+            $sources['kabacademy_wp'] = $wp['state'];
+        }
 
         // По email Moodle никого не нашёл, а WP знает связь — тот же человек, в Moodle
         // у него другой адрес (§4: опрашиваем все известные адреса).
@@ -232,7 +255,7 @@ class api {
      * Влить в карточку данные старого WP: wp_user_id, адрес WP, сигналы, заказы, пожертвования.
      *
      * @param array $card (by ref) карточка с identity и payments
-     * @param array $wp результат source\kabacademy_wp::fetch()
+     * @param array $wp результат source\kabacademy_wp::fetch() или source\kabacademy_archive::fetch()
      */
     protected static function merge_wp(array &$card, array $wp): void {
         if (empty($wp['found'])) {
