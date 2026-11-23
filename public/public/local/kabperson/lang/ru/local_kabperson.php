@@ -37,6 +37,8 @@ $string['chatwootaccount'] = 'Chatwoot account id';
 $string['chatwootaccount_desc'] = 'Числовой id аккаунта из адресной строки Chatwoot.';
 $string['chatwoottoken'] = 'Токен API Chatwoot';
 $string['chatwoottoken_desc'] = 'Access token агента/бота с чтением контактов. Хранится в настройках Moodle, не в git.';
+$string['viewkey'] = 'Ключ Dashboard App';
+$string['viewkey_desc'] = 'Без входа в Moodle view.php открывается только с этим ключом в адресе: https://…/local/kabperson/view.php?k=КЛЮЧ — такой адрес вписан в Dashboard App Chatwoot, его видят только агенты. Неверный или пустой ключ — 404. Пустая настройка — карточка открывается только вошедшим в Moodle с правом local/kabperson:view. Сменили ключ — поменяйте адрес Dashboard App в Chatwoot.';
 $string['frameancestors'] = 'Кому можно встраивать в iframe (frame-ancestors)';
 $string['frameancestors_desc'] = 'Через пробел — origin\'ы, которым разрешено открывать view.php в iframe (Dashboard App Chatwoot), напр. https://support.edu.kabacademy.com. От них же страница принимает контакт через postMessage. Пусто — встроить страницу может только сам Moodle, postMessage выключен.';
 $string['settings_sources'] = 'Источники';

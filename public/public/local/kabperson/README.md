@@ -42,11 +42,22 @@ kabacademy.com) со своим токеном `X-KAB-Token`, таймаут 4 �
 
 | Что | Кому | Защита |
 |---|---|---|
-| `/local/kabperson/view.php` (без параметров) | URL Dashboard App в Chatwoot | оболочка без данных: ждёт контакт через `postMessage` (только от origin'ов из `frameancestors`) и переходит на `?email=&contact_id=[&unverified=1]` |
-| `/local/kabperson/view.php?email=…` | Dashboard App Chatwoot (iframe, без сессии Moodle); залогиненный оператор | PII-гейт (ниже) **или** право `local/kabperson:view` у залогиненного |
+| `/local/kabperson/view.php?k=<ключ>` | URL Dashboard App в Chatwoot | оболочка без данных: ждёт контакт через `postMessage` (только от origin'ов из `frameancestors`) и переходит на `?k=&email=&contact_id=[&unverified=1]` |
+| `/local/kabperson/view.php?k=…&email=…` | Dashboard App Chatwoot (iframe, без сессии Moodle); залогиненный оператор | ключ `viewkey` **и** PII-гейт (ниже) **или** право `local/kabperson:view` у залогиненного |
 | `…view.php?…&format=json` | то же, но JSON контрактом | та же |
 | `…view.php?…&refresh=1` | кнопка «Обновить» | та же; пересобирает карточку мимо кэша |
 | WS `local_kabperson_get_person(email, refresh)` | бот поддержки | служба `kabperson_card`, свой токен, право `local/kabperson:view` |
+
+**Ключ Dashboard App** (0.3.1, аудит 23.11.2026). Без входа в Moodle любая выдача `view.php`
+(оболочка, HTML, JSON) требует `?k=` равный настройке `viewkey`, иначе 404 без подробностей.
+Причина: гейт ниже проверяет того, о ком спрашивают, а не того, кто спрашивает. До 0.3.1
+карточку получал любой, кто знал e-mail писавшего в чат, а `kab_alt_email` аноним ставил
+себе сам, написав адрес боту. Ключ заводит апгрейд (40 символов), его видно в настройках
+плагина; адрес Dashboard App в Chatwoot — `https://<moodle>/local/kabperson/view.php?k=<ключ>`.
+Ключ знают только агенты. Сменили ключ — сразу поменять адрес Dashboard App (Chatwoot →
+Настройки → Интеграции → Dashboard Apps, или `DashboardApp#update` в rails-консоли), иначе у
+операторов 404. Пустой `viewkey` закрывает анонимный доступ совсем. Страница отдаёт
+`Referrer-Policy: no-referrer` и `Cache-Control: no-store`.
 
 **PII-гейт** (перенос с WP-карточки `kab-person-card.php` 0.2): карточка отдаётся только
 по email, у которого в Chatwoot есть контакт с хотя бы одним диалогом; для анонимов
@@ -82,8 +93,8 @@ Chatwoot (nginx) выбрасывает заголовки с подчёркив
    авторизованного пользователя (со своей ролью, в которой разрешено
    `local/kabperson:view`) → создать токен. Протокол REST должен быть включён.
 5. Chatwoot → Настройки → Интеграции → Dashboard Apps: новое приложение с URL
-   `https://<moodle>/local/kabperson/view.php` (без параметров). Старая вкладка WP-карточки
-   остаётся рядом, пока не переключили (этапы 3–4 спеки).
+   `https://<moodle>/local/kabperson/view.php?k=<ключ из настройки viewkey>` (с 0.3.1 без
+   ключа — 404).
 
 ## Кэш
 
