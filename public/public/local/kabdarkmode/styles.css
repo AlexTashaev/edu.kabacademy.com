@@ -188,6 +188,14 @@ html[data-bs-theme="dark"] .text-dark:not([class*="bg-"]):not(.badge) {
     color: var(--kabdm-text) !important;
 }
 
+/* Moodle «вдавливает» значки и бейджи в подложку через multiply — на тёмном фоне это
+   делает их чёрными с нечитаемым текстом (условия выполнения в шапке активности). */
+html[data-bs-theme="dark"] .activity-item .activityiconcontainer,
+html[data-bs-theme="dark"] .activity-item .badge,
+html[data-bs-theme="dark"] .path-mod .automatic-completion-conditions .badge {
+    mix-blend-mode: normal !important;
+}
+
 html[data-bs-theme="dark"] .progress {
     --bs-progress-bg: var(--kabdm-surface-3);
     background-color: var(--kabdm-surface-3);
