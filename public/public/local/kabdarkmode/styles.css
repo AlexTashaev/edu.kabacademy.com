@@ -179,9 +179,18 @@ html[data-bs-theme="dark"] .text-bg-light {
     background-color: var(--kabdm-surface-2) !important;
 }
 
+/* text-dark на светлой подложке (бейджи условий выполнения: bg-light text-dark) — подложка
+   стала тёмной, текст светлеет. На жёлтых/голубых подложках text-dark остаётся тёмным. */
 html[data-bs-theme="dark"] .text-bg-light,
+html[data-bs-theme="dark"] .text-dark:is(.bg-light, .bg-white),
+html[data-bs-theme="dark"] :is(.bg-light, .bg-white) > .text-dark,
 html[data-bs-theme="dark"] .text-dark:not([class*="bg-"]):not(.badge) {
     color: var(--kabdm-text) !important;
+}
+
+html[data-bs-theme="dark"] .progress {
+    --bs-progress-bg: var(--kabdm-surface-3);
+    background-color: var(--kabdm-surface-3);
 }
 
 /* Ссылки в тексте. Брендинг из БД красит все <a> в #196cb3 — на тёмном не читается.
@@ -234,22 +243,29 @@ html[data-bs-theme="dark"] .navbar .logo img {
     filter: brightness(1.35);
 }
 
-html[data-bs-theme="dark"] .navbar .primary-navigation .moremenu .nav-link,
-html[data-bs-theme="dark"] .navbar .primary-navigation .navigation .nav-link {
+/* Меню шапки. kab.scss пишет эти правила и с #page-wrapper — поэтому ID и здесь. */
+html[data-bs-theme="dark"] #page-wrapper .navbar .primary-navigation .moremenu .nav-link,
+html[data-bs-theme="dark"] #page-wrapper .navbar .primary-navigation .navigation .nav-link {
     color: var(--kabdm-text);
 }
 
 html[data-bs-theme="dark"] .moremenu .nav-link:hover,
 html[data-bs-theme="dark"] .moremenu .nav-link:focus,
-html[data-bs-theme="dark"] .navbar .primary-navigation .moremenu .nav-link:hover,
-html[data-bs-theme="dark"] .navbar .primary-navigation .moremenu .nav-link:focus {
+html[data-bs-theme="dark"] #page-wrapper .navbar .primary-navigation .moremenu .nav-link:hover,
+html[data-bs-theme="dark"] #page-wrapper .navbar .primary-navigation .moremenu .nav-link:focus,
+html[data-bs-theme="dark"] #page-wrapper .navbar .primary-navigation .navigation .nav-link:hover,
+html[data-bs-theme="dark"] #page-wrapper .navbar .primary-navigation .navigation .nav-link:focus {
     background-color: var(--kabdm-surface-3);
     color: var(--kabdm-text);
 }
 
 html[data-bs-theme="dark"] .moremenu .nav-link.active,
-html[data-bs-theme="dark"] .navbar .primary-navigation .moremenu .nav-link.active,
-html[data-bs-theme="dark"] .navbar .primary-navigation .navigation .nav-link.active {
+html[data-bs-theme="dark"] #page-wrapper .navbar .primary-navigation .moremenu .nav-link.active,
+html[data-bs-theme="dark"] #page-wrapper .navbar .primary-navigation .moremenu .nav-link.active:hover,
+html[data-bs-theme="dark"] #page-wrapper .navbar .primary-navigation .moremenu .nav-link.active:focus,
+html[data-bs-theme="dark"] #page-wrapper .navbar .primary-navigation .navigation .nav-link.active,
+html[data-bs-theme="dark"] #page-wrapper .navbar .primary-navigation .navigation .nav-link.active:hover,
+html[data-bs-theme="dark"] #page-wrapper .navbar .primary-navigation .navigation .nav-link.active:focus {
     background-color: var(--kabdm-surface-3);
     color: var(--kabdm-navy);
 }
@@ -500,6 +516,233 @@ html[data-bs-theme="dark"] table.kab-table tr > td {
 
 html[data-bs-theme="dark"] .kab-divider {
     border-top-color: var(--kabdm-border);
+}
+
+/* ===== Точные переопределения цветов Moodle =====
+   Сгенерировано по скомпилированному CSS Moodle 5.1.9 (dev, 23.11.2026) для отобранных
+   студенческих селекторов: светлый фон → поверхность, светлая рамка → --kabdm-border
+   (та же сторона, что в оригинале), тёмный текст → светлый. */
+
+html[data-bs-theme="dark"] .ai-drawer,
+html[data-bs-theme="dark"] .block_myoverview .whitebutton .btn-secondary,
+html[data-bs-theme="dark"] .choosercontainer #chooseform .selected,
+html[data-bs-theme="dark"] .icon-box,
+html[data-bs-theme="dark"] .course-section.hidden .section-item,
+html[data-bs-theme="dark"] .course-section.orphaned .section-item,
+html[data-bs-theme="dark"] .modchoosercontent .optionscontainer .option:not(.selected):hover,
+html[data-bs-theme="dark"] .modchooser .optionsummary,
+html[data-bs-theme="dark"] .simplesearchform .collapse.show,
+html[data-bs-theme="dark"] .simplesearchform .collapsing,
+html[data-bs-theme="dark"] #quiz-timer-wrapper #quiz-timer,
+html[data-bs-theme="dark"] #page-report-outline-index #outlinereport tbody tr {
+    background-color: var(--kabdm-surface);
+}
+
+html[data-bs-theme="dark"] .path-mod-assign [data-region="assignment-info"],
+html[data-bs-theme="dark"] #choice-list,
+html[data-bs-theme="dark"] .moodle-dialogue-base .moodle-dialogue-wrap .moodle-dialogue-hd,
+html[data-bs-theme="dark"] .notification-area .content-area .header,
+html[data-bs-theme="dark"] .path-mod .activity-information .activity-dates,
+html[data-bs-theme="dark"] .path-mod .activity-information .completion-info,
+html[data-bs-theme="dark"] .popover-region-toggle::before,
+html[data-bs-theme="dark"] .popover-region-header-container,
+html[data-bs-theme="dark"] .content-item-container,
+html[data-bs-theme="dark"] .tertiary-navigation.full-width-bottom-border {
+    border-bottom-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .forumpost.unread .header {
+    background-color: var(--kabdm-surface);
+    border-bottom-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .path-mod-forum article .nav .nav-link+.nav-link,
+html[data-bs-theme="dark"] .preferences-container .preference-table tr th {
+    border-left-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .block_completion_progress .progressBarCell {
+    border-left-color: var(--kabdm-border);
+    border-top-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .tour-actions>ul>li,
+html[data-bs-theme="dark"] .collapse-list .collapse-list-item:hover,
+html[data-bs-theme="dark"] .collapse-list .collapse-list-item:focus {
+    background-color: var(--kabdm-surface-2);
+    border-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .fa-border,
+html[data-bs-theme="dark"] .dropzone-container .dropzone,
+html[data-bs-theme="dark"] .card.active,
+html[data-bs-theme="dark"] .course-section .section-item,
+html[data-bs-theme="dark"] .activity.subsection>.activity-item,
+html[data-bs-theme="dark"] #frontpage-available-course-list .coursebox,
+html[data-bs-theme="dark"] #frontpage-course-list .coursebox,
+html[data-bs-theme="dark"] .course-search-result .coursebox,
+html[data-bs-theme="dark"] .preferences-container .preference-table,
+html[data-bs-theme="dark"] .preferences-container .preference-table tr td:nth-child(even),
+html[data-bs-theme="dark"] .notification-area,
+html[data-bs-theme="dark"] .login-container .login-identityproviders .login-identityprovider-btn,
+html[data-bs-theme="dark"] .forumpost,
+html[data-bs-theme="dark"] #page-report-outline-user .section,
+html[data-bs-theme="dark"] .custom-control-label::before {
+    border-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .bg-primary-light,
+html[data-bs-theme="dark"] .statusbox.inactive,
+html[data-bs-theme="dark"] .action-menu .dropdown-subpanel.content-displayed,
+html[data-bs-theme="dark"] .course-section .availabilityinfo,
+html[data-bs-theme="dark"] .modchoosercontent .optionscontainer .option.selected,
+html[data-bs-theme="dark"] .content-item-container.unread {
+    background-color: var(--kabdm-surface-2);
+}
+
+html[data-bs-theme="dark"] .moodle-dialogue-base .moodle-dialogue-wrap,
+html[data-bs-theme="dark"] .formlisting {
+    background-color: var(--kabdm-surface);
+    border-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .formlistingrow {
+    border-color: var(--kabdm-border);
+    border-left-color: var(--kabdm-border);
+    border-right-color: var(--kabdm-border);
+    background-color: var(--kabdm-surface-2);
+}
+
+html[data-bs-theme="dark"] .statusbox.active,
+html[data-bs-theme="dark"] .course-section .availabilityinfo .editavailability a:hover,
+html[data-bs-theme="dark"] .path-mod-feedback table.analysis tr:hover,
+html[data-bs-theme="dark"] .tertiary-navigation .navitem-divider {
+    background-color: var(--kabdm-surface-3);
+}
+
+html[data-bs-theme="dark"] .inplaceeditable.inplaceeditingon .editinstructions {
+    color: var(--kabdm-muted);
+    border-color: var(--kabdm-border);
+    background-color: var(--kabdm-surface-2);
+}
+
+html[data-bs-theme="dark"] .matchtext {
+    background-color: var(--kabdm-surface-3);
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] .page-mycourses .block_myoverview .block-cards,
+html[data-bs-theme="dark"] .course-section .section-summary-activities+.section,
+html[data-bs-theme="dark"] .activity,
+html[data-bs-theme="dark"] .activity-item .activity-groupmode-info,
+html[data-bs-theme="dark"] .activity-item .activity-altcontent.activity-description,
+html[data-bs-theme="dark"] .activity-item .activity-afterlink,
+html[data-bs-theme="dark"] .login-container .login-divider,
+html[data-bs-theme="dark"] .path-mod-forum .nested-v2-display-mode .forum-post-container .replies-container .forum-post-container,
+html[data-bs-theme="dark"] .path-mod-forum.nested-v2-display-mode .forum-post-container .replies-container .forum-post-container,
+html[data-bs-theme="dark"] .path-mod-feedback table.analysis,
+html[data-bs-theme="dark"] .search-widget .dropdown-menu .unsearchablecontentcontainer,
+html[data-bs-theme="dark"] .popover-region-footer-container {
+    border-top-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .block .block-cards .course-summaryitem,
+html[data-bs-theme="dark"] .modchoosernav .nav-link:not(.active):hover,
+html[data-bs-theme="dark"] .popover-region-container {
+    border-color: var(--kabdm-border);
+    background-color: var(--kabdm-surface);
+}
+
+html[data-bs-theme="dark"] .course-content .divider .btn.add-content {
+    color: var(--kabdm-text);
+    background-color: var(--kabdm-surface-3);
+}
+
+html[data-bs-theme="dark"] .modchoosernav {
+    background-color: var(--kabdm-surface) !important;
+}
+
+html[data-bs-theme="dark"] .modchoosernav .nav-link {
+    border-color: var(--kabdm-border) !important;
+}
+
+html[data-bs-theme="dark"] .notification-area .control-area {
+    border-right-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .notification-area .content-area .toggle-mode {
+    border-right-color: var(--kabdm-border);
+    border-bottom-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .simplesearchform .btn-submit {
+    color: var(--kabdm-muted);
+    background-color: var(--kabdm-surface);
+}
+
+html[data-bs-theme="dark"] .form-autocomplete-suggestions li.suggestions-heading {
+    color: var(--kabdm-text);
+    background-color: var(--kabdm-surface);
+}
+
+html[data-bs-theme="dark"] .path-mod-forum .nested-v2-display-mode .badge-light,
+html[data-bs-theme="dark"] .path-mod-forum.nested-v2-display-mode .badge-light,
+html[data-bs-theme="dark"] .path-mod-forum .nested-v2-display-mode .rating-aggregate-container,
+html[data-bs-theme="dark"] .path-mod-forum.nested-v2-display-mode .rating-aggregate-container,
+html[data-bs-theme="dark"] .btn-add-content:hover,
+html[data-bs-theme="dark"] .btn-add-content:focus {
+    background-color: var(--kabdm-surface-2);
+    color: var(--kabdm-muted);
+}
+
+html[data-bs-theme="dark"] .btn-icon.icons-collapse-expand {
+    color: var(--kabdm-link);
+    background-color: var(--kabdm-surface-2);
+}
+
+html[data-bs-theme="dark"] .btn-add-content {
+    border-color: var(--kabdm-border);
+    color: var(--kabdm-muted);
+    background-color: var(--kabdm-surface);
+}
+
+html[data-bs-theme="dark"] .border-right {
+    border-right-color: var(--kabdm-border) !important;
+}
+
+html[data-bs-theme="dark"] .border-left {
+    border-left-color: var(--kabdm-border) !important;
+}
+
+html[data-bs-theme="dark"] .popover-region-toggle::after {
+    border-bottom-color: var(--kabdm-surface);
+}
+
+html[data-bs-theme="dark"] .message-app .message.send .tail {
+    border-bottom-color: #24425a;
+}
+
+html[data-bs-theme="dark"] .message-app .message.received .tail {
+    border-bottom-color: var(--kabdm-surface-3);
+}
+
+/* Свои полосы прокрутки Moodle (панели, таблицы). */
+html[data-bs-theme="dark"] #page.drawers::-webkit-scrollbar-track,
+html[data-bs-theme="dark"] .drawercontent::-webkit-scrollbar-track,
+html[data-bs-theme="dark"] .table-responsive::-webkit-scrollbar-track,
+html[data-bs-theme="dark"] .visual-scroll-x::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
+html[data-bs-theme="dark"] #page.drawers::-webkit-scrollbar-thumb,
+html[data-bs-theme="dark"] .drawercontent::-webkit-scrollbar-thumb,
+html[data-bs-theme="dark"] .table-responsive::-webkit-scrollbar-thumb {
+    background-color: #3a4856;
+}
+
+html[data-bs-theme="dark"] #page.drawers,
+html[data-bs-theme="dark"] .drawercontent {
+    scrollbar-color: #3a4856 transparent;
 }
 
 /* ===== Старый контент уроков с инлайн-цветами =====
