@@ -135,6 +135,11 @@ class product_form extends \moodleform {
         $mform->addHelpButton('presets', 'presets', $p);
         $mform->hideIf('presets', 'customamount', 'notchecked');
 
+        $mform->addElement('text', 'defaultamount', get_string('defaultamount', $p), ['size' => 10]);
+        $mform->setType('defaultamount', PARAM_FLOAT);
+        $mform->addHelpButton('defaultamount', 'defaultamount', $p);
+        $mform->hideIf('defaultamount', 'customamount', 'notchecked');
+
         $recur = [0 => get_string('recur_none', $p)];
         foreach (\local_kabshop\subscriptions::PERIODS as $m) {
             $recur[$m] = get_string('recur_' . $m, $p);
@@ -163,6 +168,10 @@ class product_form extends \moodleform {
         $mform->setType('altpresets', PARAM_TEXT);
         $mform->hideIf('altpresets', 'altcurrency', 'eq', '');
         $mform->hideIf('altpresets', 'customamount', 'notchecked');
+        $mform->addElement('text', 'altdefaultamount', get_string('altdefaultamount', $p), ['size' => 10]);
+        $mform->setType('altdefaultamount', PARAM_FLOAT);
+        $mform->hideIf('altdefaultamount', 'altcurrency', 'eq', '');
+        $mform->hideIf('altdefaultamount', 'customamount', 'notchecked');
         $mform->addElement('select', 'altaccountid', get_string('altaccount', $p), $accounts);
         $mform->hideIf('altaccountid', 'altcurrency', 'eq', '');
 
@@ -236,6 +245,18 @@ class product_form extends \moodleform {
         }
         if ($paid && $data['kind'] !== 'external' && empty($data['accountid'])) {
             $errors['accountid'] = get_string('accountrequired', 'local_kabshop');
+        }
+        // Сумма по умолчанию — в пределах, которые примет страница оплаты: от цены (минимума) до MAX_AMOUNT.
+        if ($custom) {
+            $def = (float) ($data['defaultamount'] ?? 0);
+            if ($def != 0 && ($def < (float) $data['price'] || $def > \local_kabshop\catalog::MAX_AMOUNT)) {
+                $errors['defaultamount'] = get_string('defaultamount_range', 'local_kabshop');
+            }
+            $altdef = (float) ($data['altdefaultamount'] ?? 0);
+            if (!empty($data['altcurrency']) && $altdef != 0
+                    && ($altdef < (float) $data['altprice'] || $altdef > \local_kabshop\catalog::MAX_AMOUNT)) {
+                $errors['altdefaultamount'] = get_string('defaultamount_range', 'local_kabshop');
+            }
         }
         if (!empty($data['altcurrency'])) {
             if ($data['altcurrency'] === $data['currency']) {

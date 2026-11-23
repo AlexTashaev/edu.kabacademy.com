@@ -42,6 +42,10 @@ if ($id) {
         'currency' => 'USD', 'kind' => 'course', 'price' => 0, 'sortorder' => 0, 'altprice' => 0, 'altaccountid' => 0,
         'startdate' => 0, 'salestate' => 'auto', 'saleopen' => 0, 'saleclose' => 0];
 }
+// Сумма по умолчанию 0 — «не задана»: в форме пустое поле, а не «0.00».
+foreach (['defaultamount', 'altdefaultamount'] as $f) {
+    $product->$f = (float) ($product->$f ?? 0) > 0 ? $product->$f : '';
+}
 $product = file_prepare_standard_editor($product, 'description', $editoroptions, $context);
 $product = file_prepare_standard_filemanager($product, 'image', $fileoptions, $context, 'local_kabshop', 'image',
     $product->id ?: null);
@@ -63,9 +67,16 @@ if ($form->is_cancelled()) {
         $data->customamount = 1;
     }
     $data->altcurrency = trim((string) ($data->altcurrency ?? '')) ?: null;
+    $data->defaultamount = max(0, round((float) ($data->defaultamount ?? 0), 2));
+    $data->altdefaultamount = max(0, round((float) ($data->altdefaultamount ?? 0), 2));
+    if (empty($data->customamount)) {
+        $data->defaultamount = 0;
+        $data->altdefaultamount = 0;
+    }
     if (!$data->altcurrency) {
         $data->altprice = 0;
         $data->altpresets = null;
+        $data->altdefaultamount = 0;
         $data->altaccountid = 0;
     }
     // Дата начала — полдень UTC выбранного дня: читателю в любом часовом поясе это тот же день.

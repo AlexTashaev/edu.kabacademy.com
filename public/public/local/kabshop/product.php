@@ -162,6 +162,16 @@ if ($product->kind === 'external') {
         if ($savedamount !== null && $pick === null) {
             $customvalue = format_float($savedamount, 2, false);
         }
+        // Сумма по умолчанию из товара, пока человек сам ничего не вводил: среди готовых — её кнопка,
+        // иначе — в поле «Другая сумма». Не задана — первая кнопка, как раньше.
+        $default = round((float) ($product->defaultamount ?? 0), 2);
+        if ($savedamount === null && $default > 0) {
+            if (in_array($default, $values)) {
+                $pick = $default;
+            } else {
+                $customvalue = format_float($default, 2, false);
+            }
+        }
         foreach ($values as $i => $v) {
             $presets[] = [
                 'value' => $v,

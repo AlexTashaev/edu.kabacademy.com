@@ -43,11 +43,13 @@
         <FIELD NAME="pricelabel" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="Подпись к цене: в месяц, от"/>
         <FIELD NAME="customamount" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Сумма на выбор; price = минимум"/>
         <FIELD NAME="presets" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Готовые суммы через запятую"/>
+        <FIELD NAME="defaultamount" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2" COMMENT="Сумма, выбранная заранее; 0 — первая готовая"/>
         <FIELD NAME="recurmonths" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Автосписание раз в N месяцев; 0 = разово"/>
         <FIELD NAME="accountid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="payment_accounts.id"/>
         <FIELD NAME="altcurrency" TYPE="char" LENGTH="3" NOTNULL="false" SEQUENCE="false" COMMENT="Валюта второй цены; пусто — второй цены нет"/>
         <FIELD NAME="altprice" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2" COMMENT="Вторая цена; у суммы на выбор — минимум"/>
         <FIELD NAME="altpresets" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Готовые суммы во второй валюте"/>
+        <FIELD NAME="altdefaultamount" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2" COMMENT="Сумма, выбранная заранее, во второй валюте"/>
         <FIELD NAME="altaccountid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="payment_accounts.id второй валюты"/>
         <FIELD NAME="sku" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Код для Priority; пусто = SKU по умолчанию счёта"/>
         <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Курс, куда записывает"/>

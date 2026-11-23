@@ -276,5 +276,19 @@ function xmldb_local_kabshop_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026112301, 'local', 'kabshop');
     }
 
+    if ($oldversion < 2026112304) {
+        // Сумма по умолчанию у товара с суммой на выбор (взносы): в основной и во второй валюте.
+        $table = new xmldb_table('local_kabshop_product');
+        foreach ([
+            new xmldb_field('defaultamount', XMLDB_TYPE_NUMBER, '12, 2', null, XMLDB_NOTNULL, null, '0', 'presets'),
+            new xmldb_field('altdefaultamount', XMLDB_TYPE_NUMBER, '12, 2', null, XMLDB_NOTNULL, null, '0', 'altpresets'),
+        ] as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        upgrade_plugin_savepoint(true, 2026112304, 'local', 'kabshop');
+    }
+
     return true;
 }

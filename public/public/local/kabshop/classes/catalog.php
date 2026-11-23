@@ -75,6 +75,7 @@ class catalog {
         $v->currency = $cur;
         $v->price = $product->altprice;
         $v->presets = $product->altpresets;
+        $v->defaultamount = $product->altdefaultamount ?? 0;
         $v->accountid = $product->altaccountid;
         $v->isalt = true;
         return $v;
