@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_kabdarkmode';
-$plugin->version   = 2026112303;
+$plugin->version   = 2026112304;
 $plugin->requires  = 2025041400; // Moodle 5.0+ (Bootstrap 5.3 с color modes).
 $plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = '0.1.3';
+$plugin->release   = '0.1.4';

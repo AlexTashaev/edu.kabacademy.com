@@ -804,3 +804,138 @@ html[data-bs-theme="dark"] :is(#page, .modal) :is(
 ) {
     background-color: var(--kabdm-tint) !important;
 }
+
+/* ===== Витрина кассы (local_kabshop: главная, ru.php, страница курса, документы) =====
+   Цвета витрины — переменные --kabshop-* на её обёртках: переопределяем их, а то, что
+   записано в её styles.css числом (#000 у заголовков, #fff у карточек), — правилами ниже.
+   Фиолетовый не трогаем: на нём кнопки и плашки с белым текстом; фиолетовый текст — отдельно. */
+
+html[data-bs-theme="dark"] :is(.kabshop-catalog, .kabshop-product, .kabshop-doc) {
+    --kabshop-blue: #6cc0ea;
+    --kabshop-sky: #5bbde8;
+    --kabshop-navy: #9ec0ea;
+    --kabshop-navy-dark: #b8d2f0;
+    --kabshop-link: #6cc0ea;
+    --kabshop-ink: #dfe6ed;
+    --kabshop-text: #c3cfdb;
+    --kabshop-copy: #c3cfdb;
+    --kabshop-muted: #9fb0c0;
+    --kabshop-sub: #95a3b1;
+    --kabshop-side: #70869a;
+    --kabshop-ghost: #3a4b5b;
+    --kabshop-band: #151d25;
+    --kabshop-tint: #1d2832;
+    --kabshop-border: #303d4a;
+    --kabshop-line: #25313c;
+    --kabshop-green: #5fd3a1;
+    --kabshop-green-bg: #163428;
+    --kabshop-green-border: #24543f;
+    --kabshop-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 28px -14px rgba(0, 0, 0, .6);
+    --kabshop-shadow-lift: 0 2px 4px rgba(0, 0, 0, .35), 0 18px 36px -14px rgba(0, 0, 0, .7);
+    --kabshop-tri-navy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 12'%3E%3Cpath fill='none' stroke='%239ec0ea' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M1.42 10.58V1.42l8.44 4.58z'/%3E%3C/svg%3E");
+}
+
+/* Заголовки и текст, у которых в витрине чёрный цвет числом. */
+html[data-bs-theme="dark"] :is(
+    .kabshop-nav-link, .kabshop-section-title, .kabshop-hero-title, .kabshop-card-title, .kabshop-about-title,
+    .kabshop-teacher-lead-name, .kabshop-teacher-lead-bio, .kabshop-teacher-bio
+) {
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] .kabshop-nav-link:is(:hover, :focus-visible) {
+    color: var(--kabshop-sky);
+}
+
+html[data-bs-theme="dark"] .kabshop-pp-title {
+    color: var(--kabdm-navy);
+}
+
+html[data-bs-theme="dark"] .kabshop-doc-body {
+    color: var(--kabshop-text);
+}
+
+html[data-bs-theme="dark"] :is(.kabshop-fact dt, .kabshop-currency-label, .kabshop-currency > legend, .kabshop-currency-hint) {
+    color: var(--kabdm-muted);
+}
+
+/* Белые карточки и плашки — поверхностью. */
+html[data-bs-theme="dark"] :is(.kabshop-hero-body, .kabshop-card, .kabshop-section-toggle, .kabshop-pp-ribbon) {
+    background-color: var(--kabdm-surface-2);
+}
+
+html[data-bs-theme="dark"] .kabshop-card:hover {
+    box-shadow: 0 18px 40px -18px rgba(0, 0, 0, .75);
+}
+
+html[data-bs-theme="dark"] .kabshop-teachers {
+    background: linear-gradient(180deg, var(--kabshop-band) 0%, var(--kabdm-surface) 100%);
+}
+
+html[data-bs-theme="dark"] .kabshop-pp-hero {
+    background: linear-gradient(100deg, #172533 0%, #1b2c3c 52%, #162432 100%);
+}
+
+html[data-bs-theme="dark"] .kabshop-buy {
+    background:
+        linear-gradient(var(--kabdm-surface-2), var(--kabdm-surface-2)) padding-box,
+        linear-gradient(165deg, #3ba9dc 0%, #6f78d2 52%, #a42bb9 100%) border-box;
+    box-shadow: 0 22px 44px -26px rgba(0, 0, 0, .8);
+}
+
+html[data-bs-theme="dark"] .kabshop-sale-closed {
+    background: var(--kabdm-surface-3);
+    color: #b9c6d3;
+}
+
+html[data-bs-theme="dark"] .kabshop-sale-soon {
+    background: #2f2238;
+    color: var(--kabdm-purple);
+}
+
+html[data-bs-theme="dark"] .kabshop-currency-tab:hover {
+    background: rgba(255, 255, 255, .06);
+}
+
+html[data-bs-theme="dark"] :is(.kabshop-currency-tab.is-current, .btn-check:checked + .kabshop-currency-tab) {
+    background: var(--kabdm-surface-3);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 14px -8px rgba(0, 0, 0, .7);
+}
+
+/* Суммы на кнопках «Свой взнос»: выбранная — тёмно-синяя с белым, как в светлом. */
+html[data-bs-theme="dark"] .kabshop-presets .btn {
+    --bs-btn-bg: var(--kabdm-surface-2);
+    --bs-btn-active-bg: #3c5d90;
+    --bs-btn-active-border-color: #3c5d90;
+    background: var(--kabdm-surface-2);
+}
+
+html[data-bs-theme="dark"] .kabshop-presets .btn-check:checked + .btn {
+    background: #3c5d90;
+    border-color: #3c5d90;
+    color: #fff;
+}
+
+html[data-bs-theme="dark"] :is(.kabshop-product-description ol > li, .kabshop-program-list > li)::before {
+    background: #22384a;
+}
+
+html[data-bs-theme="dark"] .kabshop-product-description ul > li::before {
+    background-color: #1f3445;
+}
+
+/* Фиолетовый текст (цены, «Начало», «Этот курс») — светлее, фон кнопок тот же. */
+html[data-bs-theme="dark"] .kabshop-catalog .kabshop-price,
+html[data-bs-theme="dark"] .kabshop-price-lg,
+html[data-bs-theme="dark"] .kabshop-pp-ribbon,
+html[data-bs-theme="dark"] .kabshop-fact-start dd,
+html[data-bs-theme="dark"] .kabshop-aboutcourse-title,
+html[data-bs-theme="dark"] .kabshop-currency-tab.is-current .kabshop-currency-name,
+html[data-bs-theme="dark"] .btn-check:checked + .kabshop-currency-tab .kabshop-currency-name {
+    color: var(--kabdm-purple);
+}
+
+html[data-bs-theme="dark"] .kabshop-catalog .kabshop-price-free,
+html[data-bs-theme="dark"] .kabshop-price-lg.kabshop-price-lg-free {
+    color: var(--kabshop-sky);
+}
