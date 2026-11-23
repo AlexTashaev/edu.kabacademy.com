@@ -661,8 +661,12 @@ class catalog {
             $product->id, 'filename', false);
         if ($files) {
             $f = reset($files);
-            return moodle_url::make_pluginfile_url($f->get_contextid(), 'local_kabshop', 'image',
-                $f->get_itemid(), $f->get_filepath(), $f->get_filename())->out(false);
+            // rev — начало хэша содержимого: Cloudflare держит картинку сутки по адресу, и без него
+            // замена обложки файлом с тем же именем не видна до конца кэша (товар 55, 23.11.2026).
+            $url = moodle_url::make_pluginfile_url($f->get_contextid(), 'local_kabshop', 'image',
+                $f->get_itemid(), $f->get_filepath(), $f->get_filename());
+            $url->param('rev', substr($f->get_contenthash(), 0, 8));
+            return $url->out(false);
         }
         global $DB;
         if ($product->courseid && ($course = $DB->get_record('course', ['id' => $product->courseid]))) {

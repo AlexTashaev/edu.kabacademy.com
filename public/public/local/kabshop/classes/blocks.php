@@ -135,8 +135,13 @@ class blocks {
         }
         $context = context_system::instance();
         $file = get_file_storage()->get_file($context->id, 'local_kabshop', 'teacherphotos', 0, '/', $photo);
-        return $file ? moodle_url::make_pluginfile_url($context->id, 'local_kabshop', 'teacherphotos', 0, '/',
-            $photo)->out(false) : null;
+        if (!$file) {
+            return null;
+        }
+        // rev — начало хэша содержимого, как у обложек: замена фото с тем же именем сразу видна за Cloudflare.
+        $url = moodle_url::make_pluginfile_url($context->id, 'local_kabshop', 'teacherphotos', 0, '/', $photo);
+        $url->param('rev', substr($file->get_contenthash(), 0, 8));
+        return $url->out(false);
     }
 
     /**
