@@ -39,7 +39,7 @@ class myorders {
      * @return string
      */
     public static function render(\stdClass $user): string {
-        $orders = api::records_for_user((int) ($user->id ?? 0), (string) ($user->email ?? ''));
+        $orders = api::records_for_user((int) ($user->id ?? 0), api::guest_email($user));
         if (!$orders) {
             return '';
         }

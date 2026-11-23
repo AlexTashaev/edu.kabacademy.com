@@ -109,11 +109,24 @@ if ($product->kind === 'external') {
     // Запись ещё не открыта или завершена: вместо кнопки — блок состояния, без оплаты и промокода.
     $action = null;
 } else if (!$loggedin) {
-    $action = [
-        'href' => (new moodle_url('/local/kabshop/enrol.php', ['id' => $id] + (count($variants) > 1
-            ? ['cur' => $product->currency] : [])))->out(false),
-        'label' => get_string($free ? 'loginandenrol' : ($custom ? 'loginanddonate' : 'loginandbuy'), 'local_kabshop'),
-    ];
+    // Гость: без условия записи — «Записаться / Купить / Поддержать» на странице local_kabsignup
+    // «e-mail → аккаунт → сюда же» (§5.2 спеки лендов); с условием (часть 2) и без kabsignup —
+    // вход, как раньше: учившиеся на части 1 аккаунт уже имеют.
+    $buyurl = (class_exists('\local_kabsignup\manager') && method_exists('\local_kabsignup\manager', 'buy_url')
+            && \local_kabsignup\manager::shop_product((int) $product->id, count($variants) > 1 ? $product->currency : ''))
+        ? \local_kabsignup\manager::buy_url($product, 'shop') : null;
+    if ($buyurl) {
+        $action = [
+            'href' => $buyurl->out(false),
+            'label' => get_string($free ? 'enrol' : ($custom ? 'guestdonate' : 'buy'), 'local_kabshop'),
+        ];
+    } else {
+        $action = [
+            'href' => (new moodle_url('/local/kabshop/enrol.php', ['id' => $id] + (count($variants) > 1
+                ? ['cur' => $product->currency] : [])))->out(false),
+            'label' => get_string($free ? 'loginandenrol' : ($custom ? 'loginanddonate' : 'loginandbuy'), 'local_kabshop'),
+        ];
+    }
 } else if (!$prereqok) {
     // Вошёл, но условие не выполнено: только объяснение, без оплаты и промокода.
     $action = null;

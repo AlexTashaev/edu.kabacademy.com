@@ -222,6 +222,7 @@ $string['legal_pay_ru'] = 'Payments in rubles. Seller:';
 $string['legalsettings'] = 'Storefront: sellers and contacts';
 $string['loginandbuy'] = 'Log in and buy';
 $string['loginanddonate'] = 'Log in and donate';
+$string['guestdonate'] = 'Donate';
 $string['loginandenrol'] = 'Log in and enrol';
 $string['mail_course'] = 'You are enrolled in "{$a->course}":';
 $string['mail_course_extended'] = 'Your access to "{$a->course}" is extended:';

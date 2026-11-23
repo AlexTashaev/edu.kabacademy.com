@@ -47,6 +47,18 @@ class manager {
     const DEFAULT_PERSONAS = 'edik, mushi, gavriel, senja, rav, itzik';
 
     /**
+     * @var string User preference set on accounts created here: nobody has proven yet that the
+     * mailbox belongs to whoever filled in the form. Cleared by the first real login (password
+     * or login link — both come only by e-mail), see observer::user_loggedin(). While it is set,
+     * local_kabwporders shows no guest WP orders of that address and local_kabchat does not
+     * vouch for the address in the support chat (1.4.0, audit of 23.11.2026).
+     */
+    const PREF_UNVERIFIED = 'local_kabsignup_unverified';
+
+    /** @var bool True while this plugin itself signs a just-created account in (not a proof of the mailbox). */
+    public static $autologin = false;
+
+    /**
      * Plugin settings with defaults applied.
      *
      * @return \stdClass courses (id => thank-you URL or ''), prerequisites, defaultthankyou,
@@ -538,6 +550,7 @@ class manager {
         try {
             if ($user === null) {
                 [$user, $password] = self::create_user($firstname, $lastname, $email, self::normalise_phone($phone));
+                self::mark_unverified((int)$user->id);
                 $new = true;
             }
             $enrolled = self::enrol($user, $course);
@@ -602,6 +615,178 @@ class manager {
             self::queue_after_signup($logid, (int)$user->id, (int)$course->id, $ip, false, $capi);
         }
         return ['status' => $status, 'eventid' => $eventid];
+    }
+
+    /**
+     * Sign a just-created account in. The user_loggedin observer must not take this
+     * login for a proof of the mailbox, hence the flag around it.
+     *
+     * @param int $userid
+     */
+    public static function autologin(int $userid): void {
+        $user = get_complete_user_data('id', $userid, null, true);
+        self::$autologin = true;
+        try {
+            complete_user_login($user);
+        } finally {
+            self::$autologin = false;
+        }
+        \core\session\manager::apply_concurrent_login_limit($user->id, session_id());
+    }
+
+    /**
+     * Mark an account created here as "mailbox not proven yet".
+     *
+     * @param int $userid
+     */
+    public static function mark_unverified(int $userid): void {
+        set_user_preference(self::PREF_UNVERIFIED, 1, $userid);
+    }
+
+    /**
+     * Has the owner of the account proven the mailbox? False only for accounts created by this
+     * plugin that have never been logged in other than by its own autologin.
+     *
+     * @param int $userid
+     * @return bool
+     */
+    public static function email_proven(int $userid): bool {
+        return $userid > 0 && !get_user_preferences(self::PREF_UNVERIFIED, 0, $userid);
+    }
+
+    /**
+     * A storefront product a newcomer may get an account for (§5.1 of the landing spec):
+     * local_kabshop present, the product visible, not an external link, sold right now, with
+     * no signup condition (part 2 is for students of part 1 — they have accounts).
+     *
+     * @param int $productid
+     * @param string $currency cur= of the product page ('' — the main price)
+     * @return \stdClass|null the product (in the chosen currency) or null
+     */
+    public static function shop_product(int $productid, string $currency = ''): ?\stdClass {
+        if ($productid <= 0 || !class_exists('\local_kabshop\catalog')) {
+            return null;
+        }
+        $record = \local_kabshop\catalog::get_product($productid, IGNORE_MISSING);
+        if (!$record || empty($record->visible) || $record->kind === 'external') {
+            return null;
+        }
+        $product = \local_kabshop\catalog::variant($record, $currency) ?: $record;
+        if (\local_kabshop\catalog::sale_state($product) !== 'open'
+                || \local_kabshop\catalog::required_courses($product)) {
+            return null;
+        }
+        return $product;
+    }
+
+    /**
+     * The "get an account, then pay" page for a storefront product, with the ad parameters of
+     * the current request (a paid landing may point at the product page).
+     *
+     * @param \stdClass $product
+     * @param string $campaign camp= slug ('shop' from the storefront)
+     * @return \moodle_url
+     */
+    public static function buy_url(\stdClass $product, string $campaign = 'shop'): \moodle_url {
+        $params = ['product' => (int)$product->id];
+        if (!empty($product->isalt) || (class_exists('\local_kabshop\catalog')
+                && count(\local_kabshop\catalog::variants($product)) > 1)) {
+            $params['cur'] = $product->currency;
+        }
+        if ($campaign !== '') {
+            $params['camp'] = $campaign;
+        }
+        return new \moodle_url('/local/kabsignup/buy.php', $params + attribution::from_request());
+    }
+
+    /**
+     * Handle the form of buy.php: a free address gets an account (no enrolment — the purchase
+     * or the free enrolment happens on the product page right after), a taken one — the
+     * standard login link that brings the person back to the product page.
+     *
+     * The rule of 09.11.2026 "an account only together with an enrolment" grew on 18.11 to
+     * "…with an enrolment or a purchase" (decision 6 of the landing spec).
+     *
+     * @param \stdClass $product from shop_product()
+     * @param string $firstname
+     * @param string $lastname
+     * @param string $email as typed
+     * @param string $phone as typed, may be empty
+     * @param string $campaign
+     * @param string $ip
+     * @param array $attr ad parameters
+     * @return array ['status' => created|exists|throttled, 'user' => \stdClass|null]
+     */
+    public static function account_for_purchase(\stdClass $product, string $firstname, string $lastname,
+            string $email, string $phone, string $campaign, string $ip, array $attr = []): array {
+        $config = self::config();
+        $ip = \core_text::substr($ip, 0, 45);
+        $emailhash = self::email_hash($email);
+        $courseid = (int)($product->courseid ?? 0);
+        $extra = ['attribution' => $attr, 'flags' => emailcheck::flags($email), 'productid' => (int)$product->id];
+        $producturl = \local_kabshop\catalog::product_url($product)->out(false);
+
+        if (self::throttled($emailhash, $ip, $config)) {
+            return ['status' => 'throttled', 'user' => null];
+        }
+
+        $user = self::find_user($email);
+        if ($user !== null) {
+            // Never signed in here: the address is not proven. The login link (its own rate limit,
+            // its own eligibility rules) brings the owner back to the product page.
+            if (class_exists('\auth_kabmagic\manager') && is_enabled_auth('kabmagic')) {
+                \auth_kabmagic\manager::request($email, $producturl, $ip);
+            }
+            self::log($courseid, (int)$user->id, $emailhash, 0, $campaign, 'exists', $ip, $extra);
+            return ['status' => 'exists', 'user' => null];
+        }
+
+        [$user, $password] = self::create_user($firstname, $lastname, $email, self::normalise_phone($phone));
+        self::mark_unverified((int)$user->id);
+        self::send_account($user, $product, $producturl, $campaign, $password);
+        $logid = self::log($courseid, (int)$user->id, $emailhash, 1, $campaign, 'account', $ip, $extra);
+        self::queue_after_signup($logid, (int)$user->id, $courseid, $ip, true, null);
+        return ['status' => 'created', 'user' => $user];
+    }
+
+    /**
+     * "Your account" e-mail for buy.php: login, password and the way back to the product.
+     *
+     * @param \stdClass $user
+     * @param \stdClass $product
+     * @param string $producturl
+     * @param string $campaign
+     * @param string $password plain password of the just-created account
+     * @return bool
+     */
+    public static function send_account(\stdClass $user, \stdClass $product, string $producturl, string $campaign,
+            string $password): bool {
+        global $SITE;
+        $syscontext = \context_system::instance();
+        $a = new \stdClass();
+        $a->firstname = $user->firstname;
+        $a->sitename = format_string($SITE->fullname, true, ['context' => $syscontext, 'escape' => false]);
+        $a->productname = format_string($product->name, true, ['context' => $syscontext, 'escape' => false]);
+        $a->producturl = $producturl;
+        $a->username = $user->username;
+        $a->password = $password;
+        $a->loginurl = (new \moodle_url('/login/index.php'))->out(false);
+        $ahtml = new \stdClass();
+        foreach ((array)$a as $key => $value) {
+            $ahtml->$key = s((string)$value);
+        }
+        $lang = !empty($user->lang) ? $user->lang : current_language();
+        $sm = get_string_manager();
+        $subject = $sm->get_string('emailaccountsubject', 'local_kabsignup', $a, $lang);
+        $text = $sm->get_string('emailaccounttext', 'local_kabsignup', $a, $lang);
+        $html = $sm->get_string('emailaccounthtml', 'local_kabsignup', $ahtml, $lang);
+        $categories = [self::SMTPAPI_CATEGORY, 'shop-account', 'product-' . (int)$product->id];
+        if ($campaign !== '') {
+            $categories[] = 'camp-' . $campaign;
+        }
+        $from = \core_user::get_noreply_user();
+        $from->customheaders = ['X-SMTPAPI: ' . json_encode(['category' => $categories])];
+        return (bool)email_to_user($user, $from, $subject, $text, $html);
     }
 
     /**

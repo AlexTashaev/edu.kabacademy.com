@@ -174,6 +174,25 @@ class api {
     }
 
     /**
+     * Почта, по которой человеку можно показать гостевые заказы WP (без привязки к аккаунту).
+     *
+     * Аккаунт, созданный формой записи local_kabsignup, до первого настоящего входа (пароль или
+     * ссылка из письма) помечен «почта не подтверждена»: заполнивший форму мог указать чужой адрес,
+     * и показывать ему чужие оплаты нельзя (аудит 23.11.2026). Тогда — пустая строка: видны только
+     * заказы, привязанные к аккаунту.
+     *
+     * @param \stdClass $user запись пользователя (id, email)
+     * @return string
+     */
+    public static function guest_email(\stdClass $user): string {
+        $userid = (int) ($user->id ?? 0);
+        if ($userid <= 0 || get_user_preferences('local_kabsignup_unverified', 0, $userid)) {
+            return '';
+        }
+        return (string) ($user->email ?? '');
+    }
+
+    /**
      * Есть ли у человека прежние оплаты (по userid или гостевые с его почты).
      *
      * \param int $userid user.id

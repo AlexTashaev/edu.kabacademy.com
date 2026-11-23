@@ -222,6 +222,7 @@ $string['legal_pay_ru'] = 'Оплата в рублях. Продавец:';
 $string['legalsettings'] = 'Витрина: продавцы и контакты';
 $string['loginandbuy'] = 'Войти и купить';
 $string['loginanddonate'] = 'Войти и поддержать';
+$string['guestdonate'] = 'Поддержать';
 $string['loginandenrol'] = 'Войти и записаться';
 $string['mail_course'] = 'Вы записаны на курс «{$a->course}»:';
 $string['mail_course_extended'] = 'Доступ к курсу «{$a->course}» продлён:';
