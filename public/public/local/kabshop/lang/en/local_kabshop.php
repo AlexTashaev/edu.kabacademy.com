@@ -436,3 +436,7 @@ $string['setting_teachers_list'] = 'Teachers';
 $string['setting_teachers_list_desc'] = 'One paragraph per person, paragraphs separated by an empty line. First line: "Name | photo | link" (photo and link are optional), then the text about the person. Photo — a file name from the field below or an address (https://… or /path on this site). The first person is shown large on the left, with "Read in full" for the link. Empty — no block.';
 $string['setting_teachers_title'] = 'Title';
 $string['youareenrolled'] = 'You are enrolled in this course';
+$string['accesssettings'] = 'Storefront: access for external services';
+$string['setting_accessproducts'] = 'Products that grant access';
+$string['setting_accessproducts_desc'] = 'Comma-separated storefront product IDs. The web service function local_kabshop_check_access (service kabshop_access) tells the AI assistant whether an email has paid access: an active subscription, a cancelled one until the paid period ends, or a manual grant.';
+$string['kabshop:checkaccess'] = 'Check paid access by email (for external services)';

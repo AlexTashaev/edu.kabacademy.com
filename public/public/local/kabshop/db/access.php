@@ -33,4 +33,12 @@ $capabilities = [
             'manager' => CAP_ALLOW,
         ],
     ],
+    // WS local_kabshop_check_access: «оплачен ли доступ у email». Ни одной роли по умолчанию —
+    // право даётся только роли пользователя-бота внешнего сервиса.
+    'local/kabshop:checkaccess' => [
+        'riskbitmask' => RISK_PERSONAL,
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [],
+    ],
 ];

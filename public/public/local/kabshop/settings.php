@@ -153,4 +153,15 @@ if ($hassiteconfig) {
         PARAM_TEXT
     ));
     $ADMIN->add('localplugins', $page);
+
+    // Доступ внешних сервисов (ИИ-ассистент) по оплате на витрине: WS local_kabshop_check_access.
+    $page = new admin_settingpage('local_kabshop_access', get_string('accesssettings', 'local_kabshop'));
+    $page->add(new admin_setting_configtext(
+        'local_kabshop/accessproducts',
+        get_string('setting_accessproducts', 'local_kabshop'),
+        get_string('setting_accessproducts_desc', 'local_kabshop'),
+        '19,20', // Прод edu: «Премиум доступ к AI MAK» и «Подписка на ассистента».
+        PARAM_SEQUENCE
+    ));
+    $ADMIN->add('localplugins', $page);
 }
