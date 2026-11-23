@@ -594,6 +594,31 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     text-transform: uppercase;
 }
 
+/* Поток на обложке: «Осень 2026» — в левом верхнем углу, как ленточка раздела на странице курса. */
+.kabshop-badge-stream {
+    position: absolute;
+    left: 0;
+    top: .8rem;
+    z-index: 2;
+    padding: .45rem 1.6rem .45rem .9rem;
+    background: #fff;
+    color: var(--kabshop-purple);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    line-height: 1.4;
+    text-transform: uppercase;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 50%, 100% 100%, 0 100%);
+}
+
+.kabshop-hero-media .kabshop-badge-stream {
+    top: 1.2rem;
+    padding: .6rem 2rem .6rem 1.1rem;
+    font-size: 11px;
+    letter-spacing: .26em;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 50%, 100% 100%, 0 100%);
+}
+
 /* Строка под названием: «Начало — 1 октября · 15 недель». */
 .kabshop-card-meta {
     margin: 0;

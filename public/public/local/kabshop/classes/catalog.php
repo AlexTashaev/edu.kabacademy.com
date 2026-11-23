@@ -985,6 +985,9 @@ class catalog {
         return [
             'meta' => $meta ? implode(' · ', $meta) : null,
             'salebadge' => $sale['title'] ?? null,
+            // Поток («Осень 2026») — плашка в левом верхнем углу обложки.
+            'stream' => trim((string) ($product->stream ?? '')) !== ''
+                ? format_string($product->stream, true, ['context' => $context]) : null,
             'id' => $product->id,
             'name' => format_string($product->name, true, ['context' => $context]),
             'summary' => format_text($summary, FORMAT_PLAIN, ['context' => $context, 'para' => false]),

@@ -70,6 +70,10 @@ class product_form extends \moodleform {
         $mform->setType('duration', PARAM_TEXT);
         $mform->addHelpButton('duration', 'duration', $p);
 
+        $mform->addElement('text', 'stream', get_string('stream', $p), ['size' => 30, 'maxlength' => 100]);
+        $mform->setType('stream', PARAM_TEXT);
+        $mform->addHelpButton('stream', 'stream', $p);
+
         $mform->addElement('textarea', 'program', get_string('program', $p), ['rows' => 10, 'cols' => 60]);
         $mform->setType('program', PARAM_TEXT);
         $mform->addHelpButton('program', 'program', $p);

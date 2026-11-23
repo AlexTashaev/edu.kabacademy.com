@@ -76,6 +76,7 @@ if ($form->is_cancelled()) {
         $data->startdate = 0;
     }
     $data->duration = trim((string) ($data->duration ?? '')) ?: null;
+    $data->stream = trim((string) ($data->stream ?? '')) ?: null;
     $data->program = implode(PHP_EOL, \local_kabshop\catalog::lines($data->program ?? '', true)) ?: null;
     $data->about = implode(PHP_EOL, \local_kabshop\catalog::lines($data->about ?? '')) ?: null;
     $data->salestate = in_array($data->salestate ?? '', ['soon', 'closed'], true) ? $data->salestate : 'auto';

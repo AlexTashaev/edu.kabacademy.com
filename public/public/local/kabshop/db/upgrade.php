@@ -266,5 +266,15 @@ function xmldb_local_kabshop_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026112200, 'local', 'kabshop');
     }
 
+    if ($oldversion < 2026112301) {
+        // Название потока («Осень 2026») — плашка на обложке в каталоге.
+        $table = new xmldb_table('local_kabshop_product');
+        $field = new xmldb_field('stream', XMLDB_TYPE_CHAR, '100', null, null, null, null, 'duration');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2026112301, 'local', 'kabshop');
+    }
+
     return true;
 }
