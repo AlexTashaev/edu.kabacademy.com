@@ -290,5 +290,17 @@ function xmldb_local_kabshop_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026112304, 'local', 'kabshop');
     }
 
+    if ($oldversion < 2026112402) {
+        // Индекс по платежу: выдача ищет «покупка по этому платежу уже есть» на каждый колбэк
+        // шлюза (одна оплата — одна выдача, аудит 24.11.2026). Не уникальный: у бесплатных,
+        // ручных и 100%-купонных выдач paymentid = 0, а прежние повторы колбэков могли оставить дубли.
+        $table = new xmldb_table('local_kabshop_purchase');
+        $index = new xmldb_index('paymentid', XMLDB_INDEX_NOTUNIQUE, ['paymentid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+        upgrade_plugin_savepoint(true, 2026112402, 'local', 'kabshop');
+    }
+
     return true;
 }

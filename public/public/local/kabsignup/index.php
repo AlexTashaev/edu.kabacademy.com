@@ -215,9 +215,7 @@ if ($data) {
         // A brand-new account may be entered right away: there is nothing in it
         // to take over, and the login link still reaches the mailbox. Existing
         // accounts are never signed in here — address ownership is unproven.
-        $newuser = get_complete_user_data('id', $result['user']->id, null, true);
-        complete_user_login($newuser);
-        \core\session\manager::apply_concurrent_login_limit($newuser->id, session_id());
+        manager::autologin((int)$result['user']->id);
     }
     redirect(manager::thankyou_url($course, $campaign, $attr, $result['eventid'], $result['status'] === 'already',
         $campaignrec, $persona));

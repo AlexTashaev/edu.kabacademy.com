@@ -92,6 +92,7 @@
       <INDEXES>
         <INDEX NAME="productid" UNIQUE="false" FIELDS="productid"/>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
+        <INDEX NAME="paymentid" UNIQUE="false" FIELDS="paymentid"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="local_kabshop_intent" COMMENT="Выбранная покупателем сумма до оплаты (сумма на выбор)">

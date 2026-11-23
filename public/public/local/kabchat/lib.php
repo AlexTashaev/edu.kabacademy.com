@@ -21,7 +21,11 @@ function local_kabchat_before_footer() {
     // В chatwoot:ready: HMAC-идентификация (только залогиненный, не гость) + атрибуты «откуда пишет» (всегда).
     $ready = '';
     $hmac = get_config('local_kabchat', 'hmac_token');
-    if (isloggedin() && !isguestuser() && !empty($hmac) && !empty($USER->email)) {
+    // Аккаунт из формы записи (local_kabsignup) до первого настоящего входа помечен «почта не
+    // подтверждена»: заполнивший форму мог указать чужой адрес — не ручаемся за него перед чатом,
+    // иначе он попадёт в чужой контакт с прежними диалогами (аудит 23.11.2026).
+    $proven = isloggedin() && !isguestuser() && !get_user_preferences('local_kabsignup_unverified', 0);
+    if ($proven && !empty($hmac) && !empty($USER->email)) {
         $email = $USER->email;
         $hash  = hash_hmac('sha256', $email, $hmac);
         $name  = fullname($USER);

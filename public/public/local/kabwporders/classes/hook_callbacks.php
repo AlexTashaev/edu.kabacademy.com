@@ -50,7 +50,7 @@ class hook_callbacks {
                 $SESSION->local_kabwporders_has = [];
             }
             if (!array_key_exists($userid, $SESSION->local_kabwporders_has)) {
-                $SESSION->local_kabwporders_has[$userid] = api::has_orders($userid, (string) ($USER->email ?? ''));
+                $SESSION->local_kabwporders_has[$userid] = api::has_orders($userid, api::guest_email($USER));
             }
             if (!$SESSION->local_kabwporders_has[$userid]) {
                 return;

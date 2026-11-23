@@ -34,7 +34,21 @@ use core_privacy\local\request\writer;
 class provider implements
     \core_privacy\local\metadata\provider,
     \core_privacy\local\request\core_userlist_provider,
-    \core_privacy\local\request\plugin\provider {
+    \core_privacy\local\request\plugin\provider,
+    \core_privacy\local\request\user_preference_provider {
+
+    /**
+     * Export the "mailbox not proven yet" mark (1.4.0).
+     *
+     * @param int $userid
+     */
+    public static function export_user_preferences(int $userid) {
+        $value = get_user_preferences(\local_kabsignup\manager::PREF_UNVERIFIED, null, $userid);
+        if ($value !== null) {
+            writer::export_user_preference('local_kabsignup', \local_kabsignup\manager::PREF_UNVERIFIED,
+                transform::yesno((bool) $value), get_string('privacy:metadata:preference:unverified', 'local_kabsignup'));
+        }
+    }
 
     /**
      * Describe the stored data.
@@ -59,6 +73,8 @@ class provider implements
             'productid'   => 'privacy:metadata:log:productid',
             'timecreated' => 'privacy:metadata:log:timecreated',
         ], 'privacy:metadata:log');
+        $collection->add_user_preference(\local_kabsignup\manager::PREF_UNVERIFIED,
+            'privacy:metadata:preference:unverified');
         $collection->add_external_location_link('ipinfo', [
             'ip' => 'privacy:metadata:ipinfo:ip',
         ], 'privacy:metadata:ipinfo');

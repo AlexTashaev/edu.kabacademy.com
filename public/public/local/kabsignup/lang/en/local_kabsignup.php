@@ -276,3 +276,42 @@ $string['privacy:metadata:facebook:useragent'] = 'Browser user agent.';
 $string['privacy:metadata:facebook:fbclid'] = 'Ad click id.';
 $string['privacy:metadata:clearout'] = 'A new e-mail address is checked by the Clearout service.';
 $string['privacy:metadata:clearout:email'] = 'E-mail address.';
+
+// 1.4.0: a newcomer on the storefront, "e-mail, account, product page" (buy.php).
+$string['buytitle'] = 'Account on the learning platform';
+$string['buynotavailable'] = 'This product is not available right now.';
+$string['buyheading'] = '{$a}';
+$string['buyintro'] = 'Price: {$a}. To pay you need an account on the learning platform. Enter your name and e-mail: we will create the account and bring you right back to the payment.';
+$string['buyintrofree'] = '{$a}. To enrol you need an account on the learning platform. Enter your name and e-mail: we will create the account and bring you right back to the enrolment.';
+$string['buybuttonpay'] = 'Go to payment';
+$string['buybuttondonate'] = 'Go to the contribution';
+$string['buybuttonfree'] = 'Continue';
+$string['buycreated'] = 'Your account is ready and you are logged in. The login and the password are in your mailbox. Now you can pay.';
+$string['buycreatedfree'] = 'Your account is ready and you are logged in. The login and the password are in your mailbox. Press "Enrol" to finish.';
+$string['buyexistsheading'] = 'Check your mailbox';
+$string['buyexiststext'] = 'If {$a} is already registered on the platform, we have sent a login link to it. The link brings you back to this page to continue. No e-mail within a few minutes? Check the spam folder.';
+$string['buyback'] = 'Back to "{$a}"';
+$string['buyhaveaccount'] = 'Already a student? Log in';
+$string['emailaccountsubject'] = 'Your account on {$a->sitename}';
+$string['emailaccounttext'] = 'Hello {$a->firstname},
+
+we have created an account for you on {$a->sitename}, and you are already logged in. Back to "{$a->productname}":
+{$a->producturl}
+
+For the next logins:
+Username: {$a->username}
+Password: {$a->password}
+Login page: {$a->loginurl}
+
+Keep this e-mail. You can change the password in your profile on the site.
+
+If you did not create an account, just ignore this e-mail.';
+$string['emailaccounthtml'] = '<p>Hello {$a->firstname},</p>
+<p>we have created an account for you on {$a->sitename}, and you are already logged in. <a href="{$a->producturl}">Back to "{$a->productname}"</a>.</p>
+<p>For the next logins:<br>
+Username: <b>{$a->username}</b><br>
+Password: <b>{$a->password}</b><br>
+Login page: <a href="{$a->loginurl}">{$a->loginurl}</a></p>
+<p>Keep this e-mail. You can change the password in your profile on the site.</p>
+<p>If you did not create an account, just ignore this e-mail.</p>';
+$string['privacy:metadata:preference:unverified'] = 'Mark "mailbox not proven yet" on an account created by the signup form; the first login with the password or a link from the e-mail removes it.';
