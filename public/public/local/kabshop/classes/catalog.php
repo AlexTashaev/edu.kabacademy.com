@@ -827,7 +827,43 @@ class catalog {
      */
     public static function grant(\stdClass $product, int $userid, int $paymentid = 0, ?\stdClass $sub = null,
             array $opts = []): int {
+        if ($paymentid <= 0) {
+            return self::grant_once($product, $userid, 0, $sub, $opts);
+        }
+        // Одна оплата — одна выдача (аудит 24.11.2026). Robokassa повторяет уведомление, пока не
+        // получит OK; kbb1 возвращает браузер повторно. Раньше каждый повтор заводил новую покупку,
+        // письмо, второе погашение купона и лишний оплаченный период подписки.
+        $lock = \core\lock\lock_config::get_lock_factory('local_kabshop')->get_lock('grant_payment_' . $paymentid, 30);
+        if (!$lock) {
+            throw new \moodle_exception('locktimeout');
+        }
+        try {
+            return self::grant_once($product, $userid, $paymentid, $sub, $opts);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Выдача под блокировкой платежа: если покупка по этому платежу уже есть — вернуть её.
+     * Покупка, купон, подписка и запись на курс — одной транзакцией; письмо — после неё.
+     *
+     * @param \stdClass $product
+     * @param int $userid
+     * @param int $paymentid
+     * @param \stdClass|null $sub
+     * @param array $opts
+     * @return int номер покупки
+     */
+    protected static function grant_once(\stdClass $product, int $userid, int $paymentid, ?\stdClass $sub,
+            array $opts): int {
         global $DB;
+        if ($paymentid > 0) {
+            $done = $DB->get_records('local_kabshop_purchase', ['paymentid' => $paymentid], 'id', 'id', 0, 1);
+            if ($done) {
+                return (int) reset($done)->id;
+            }
+        }
         $amount = 0;
         $currency = $product->currency;
         $payment = $paymentid ? $DB->get_record('payments', ['id' => $paymentid]) : null;
@@ -841,6 +877,48 @@ class catalog {
             'type' => ($opts['taxtype'] ?? null) ?: ($sub->taxtype ?? null),
             'id' => ($opts['taxid'] ?? null) ?: ($sub->taxid ?? null),
         ];
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            [$purchaseid, $sub] = self::grant_records($product, $userid, $paymentid, $payment, $sub, $opts,
+                $amount, $currency, $couponid, $amountoff, $tax);
+            $transaction->allow_commit();
+        } catch (\Throwable $e) {
+            $transaction->rollback($e);
+        }
+
+        // Письмо — после фиксации: сбой почты не должен откатывать выдачу или ронять колбэк шлюза
+        // (на повтор колбэка выдача уже найдётся по paymentid, и письма второй раз не будет).
+        try {
+            if ($payment) {
+                mailer::paid($product, $userid, $purchaseid, $payment, $sub);
+            } else if (!empty($opts['mail'])) {
+                mailer::granted($product, $userid, $purchaseid);
+            }
+        } catch (\Throwable $e) {
+            debugging('local_kabshop: mail after grant ' . $purchaseid . ' failed: ' . $e->getMessage(), DEBUG_NORMAL);
+        }
+        return $purchaseid;
+    }
+
+    /**
+     * Записи выдачи: покупка, использование купона, подписка, запись на курс.
+     *
+     * @param \stdClass $product
+     * @param int $userid
+     * @param int $paymentid
+     * @param \stdClass|null $payment
+     * @param \stdClass|null $sub
+     * @param array $opts
+     * @param float $amount
+     * @param string $currency
+     * @param int $couponid
+     * @param float $amountoff
+     * @param array $tax
+     * @return array [номер покупки, подписка|null]
+     */
+    protected static function grant_records(\stdClass $product, int $userid, int $paymentid, $payment, ?\stdClass $sub,
+            array $opts, $amount, string $currency, int $couponid, float $amountoff, array $tax): array {
+        global $DB;
         $purchaseid = $DB->insert_record('local_kabshop_purchase', (object)[
             'productid' => $product->id,
             'userid' => $userid,
@@ -874,12 +952,7 @@ class catalog {
             $timeend = $sub ? $sub->nextcharge + subscriptions::GRACE : (int) ($opts['timeend'] ?? 0);
             self::enrol($product, $userid, $timeend);
         }
-        if ($payment) {
-            mailer::paid($product, $userid, $purchaseid, $payment, $sub);
-        } else if (!empty($opts['mail'])) {
-            mailer::granted($product, $userid, $purchaseid);
-        }
-        return $purchaseid;
+        return [$purchaseid, $sub];
     }
 
     /**

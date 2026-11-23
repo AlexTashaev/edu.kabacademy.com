@@ -26,6 +26,8 @@ use local_kabshop\catalog;
  *       'custom'     — itemid = id выбранной суммы (local_kabshop_intent), сумма на выбор покупателя;
  *       'renewal'    — itemid = id подписки (local_kabshop_sub), автосписание.
  * Товар отдаётся в валюте платежа (catalog::variant): цена, валюта и счёт — этой валюты.
+ * С 24.11.2026 (аудит) зоны привязаны к покупателю: intent и подписку платит только их владелец,
+ * 'renewal' — только автосписание, снятый с продажи товар и уже купленный курс не оплачиваются.
  *
  * @package    local_kabshop
  * @copyright  2026 Kabacademy
@@ -63,6 +65,46 @@ class service_provider implements \core_payment\local\callback\service_provider 
     }
 
     /**
+     * Живой покупатель: человек в браузере начинает оплату сам.
+     *
+     * Не живой — CLI и cron (свои автосписания и рекуррент Robokassa идут из cron, где $USER —
+     * админ), управляющий кассой и колбэки шлюзов без входа: их проверки ниже не касаются.
+     *
+     * @return bool
+     */
+    protected static function live_buyer(): bool {
+        return !CLI_SCRIPT && isloggedin() && !isguestuser()
+            && !has_capability('local/kabshop:manage', \context_system::instance());
+    }
+
+    /**
+     * Оплачен ли уже intent: есть покупка по платежу зоны 'custom' с этим itemid.
+     *
+     * @param int $intentid
+     * @return bool
+     */
+    protected static function intent_paid(int $intentid): bool {
+        global $DB;
+        return $DB->record_exists_sql(
+            "SELECT 1
+               FROM {local_kabshop_purchase} p
+               JOIN {payments} pm ON pm.id = p.paymentid
+              WHERE pm.component = 'local_kabshop' AND pm.paymentarea = 'custom' AND pm.itemid = :itemid",
+            ['itemid' => $intentid]);
+    }
+
+    /**
+     * Запись в журнал для ручного разбора: выдача по оплате не прошла проверку.
+     *
+     * @param string $message
+     */
+    protected static function log_refused(string $message): void {
+        // KAB: в error.log PHP (его смотрит аудит), без ПДн — только номера.
+        error_log('local_kabshop deliver_order refused: ' . $message);
+        debugging('local_kabshop: ' . $message, DEBUG_NORMAL);
+    }
+
+    /**
      * Цена, валюта и платёжный счёт.
      *
      * @param string $paymentarea
@@ -70,16 +112,54 @@ class service_provider implements \core_payment\local\callback\service_provider 
      * @return \core_payment\local\entities\payable
      */
     public static function get_payable(string $paymentarea, int $itemid): \core_payment\local\entities\payable {
-        global $USER;
+        global $USER, $DB;
         [$product, $amount] = self::resolve($paymentarea, $itemid);
-        // Начать оплату товара с условием записи может только прошедший его — так часть 2 не купить
-        // в обход страницы товара. Проверяется только живой покупатель: автосписания (свои и
-        // рекуррент Robokassa из cron, где $USER — админ) и колбэки шлюзов без входа не трогаем.
-        // Так же — закрытая запись («ещё не открыта», «завершена»): начать оплату нельзя, а уже
-        // начатая до закрытия доходит до выдачи — deliver_order состояние записи не смотрит.
-        if ($paymentarea !== 'renewal' && !CLI_SCRIPT && isloggedin() && !isguestuser()
-                && !has_capability('local/kabshop:manage', \context_system::instance())) {
-            if (!catalog::prerequisite_ok($product, (int) $USER->id)) {
+        // Проверяется только живой покупатель (см. live_buyer): автосписания из cron и колбэки
+        // шлюзов без входа не трогаем. Аудит 24.11.2026: раньше зоны не были привязаны к покупателю —
+        // по подставленному itemid в окне шлюза оплачивался чужой intent (с чужим купоном и чужими
+        // данными жертвователя), чужая подписка (зона 'renewal' обходила и условие записи) и
+        // снятый с продажи товар.
+        if (self::live_buyer()) {
+            $userid = (int) $USER->id;
+            if ($paymentarea === 'renewal') {
+                // Автосписание платит только cron кассы (charge_one) или рекуррент шлюза.
+                throw new \moodle_exception('payforbidden', 'local_kabshop');
+            }
+            if (empty($product->visible)) {
+                throw new \moodle_exception('payforbidden', 'local_kabshop');
+            }
+            if ($paymentarea === 'custom') {
+                $intent = catalog::get_intent($itemid);
+                if ((int) $intent->userid !== $userid) {
+                    throw new \moodle_exception('payforbidden', 'local_kabshop');
+                }
+                if (self::intent_paid($itemid)) {
+                    // Повторная оплата той же суммы (вторая вкладка, «назад» в браузере). Через
+                    // повтор intent купон с лимитом и «один на человека» шёл бы по кругу.
+                    throw new \moodle_exception('intentpaid', 'local_kabshop');
+                }
+                if (!empty($intent->couponid)) {
+                    // Купон перепроверяется при оплате: включён, срок, лимит, «один на человека».
+                    $coupon = $DB->get_record('local_kabshop_coupon', ['id' => $intent->couponid]);
+                    $err = $coupon ? \local_kabshop\coupons::check($coupon, $product, $userid) : 'coupon_expired';
+                    if ($err) {
+                        throw new \moodle_exception($err, 'local_kabshop');
+                    }
+                }
+            } else if (!empty($product->customamount) || catalog::needs_taxid($product)) {
+                // Сумма на выбор и пожертвование с данными жертвователя — только через intent ('custom'),
+                // иначе платится минимум товара и квитанция уходит без номера жертвователя.
+                throw new \moodle_exception('payforbidden', 'local_kabshop');
+            }
+            if ($product->courseid && catalog::is_owned($product, $userid)) {
+                // Курс уже есть (в том числе по действующей подписке) — вторая оплата не нужна.
+                throw new \moodle_exception('alreadyowned', 'local_kabshop');
+            }
+            // Начать оплату товара с условием записи может только прошедший его — так часть 2 не
+            // купить в обход страницы товара. Закрытая запись («ещё не открыта», «завершена»):
+            // начать оплату нельзя, а уже начатая до закрытия доходит до выдачи — deliver_order
+            // состояние записи не смотрит.
+            if (!catalog::prerequisite_ok($product, $userid)) {
                 throw new \moodle_exception('noprereq', 'local_kabshop', '', catalog::prerequisite_names($product));
             }
             if (catalog::sale_state($product) !== 'open') {
@@ -114,11 +194,28 @@ class service_provider implements \core_payment\local\callback\service_provider 
      * @return bool
      */
     public static function deliver_order(string $paymentarea, int $itemid, int $paymentid, int $userid): bool {
+        global $DB;
         [$product, , $sub] = self::resolve($paymentarea, $itemid);
         $opts = [];
+        // Платит владелец намерения: intent и подписка — того, кому выдаём. Несовпадение — не
+        // выдаём (иначе чужая скидка, чужой номер жертвователя, запись по чужой подписке), а
+        // оставляем след для ручного разбора: деньги к этому моменту уже списаны.
+        if ($sub && (int) $sub->userid !== $userid) {
+            self::log_refused("payment $paymentid: renewal of sub {$sub->id} (user {$sub->userid}) paid by user $userid");
+            return false;
+        }
         if ($paymentarea === 'custom') {
             // Цена со скидкой по купону тоже идёт через зону 'custom' — учесть купон в заказе.
             $intent = catalog::get_intent($itemid);
+            if ((int) $intent->userid !== $userid) {
+                self::log_refused("payment $paymentid: intent $itemid (user {$intent->userid}) paid by user $userid");
+                return false;
+            }
+            if (!$DB->record_exists('local_kabshop_purchase', ['paymentid' => $paymentid]) && self::intent_paid($itemid)) {
+                // Та же сумма оплачена второй раз (две вкладки до проверки в get_payable). Деньги
+                // взяты — заказ заводим, чтобы его было видно, а возврат решает человек.
+                error_log("local_kabshop: intent $itemid paid twice, payment $paymentid (delivered, check refund)");
+            }
             if (!empty($intent->couponid)) {
                 $opts = ['couponid' => (int) $intent->couponid, 'amountoff' => (float) $intent->amountoff];
             }
