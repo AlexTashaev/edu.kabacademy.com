@@ -27,8 +27,11 @@ use moodle_url;
  */
 class navbar {
 
-    /** Адрес кнопки по умолчанию — нынешняя ссылка «Сделай вклад» из меню сайта. */
-    const DONATE_URL = 'https://kabacademy.com/donation/step/lp-donationsubscr-new/';
+    /**
+     * Адрес кнопки по умолчанию — товар витрины «Взнос в фонд МАК» (№ 22). До 23.11.2026 —
+     * «Сделай вклад» на WordPress kabacademy.com, который уходит; товар «Пожертвование» (№ 21) скрыт.
+     */
+    const DONATE_URL = '/local/kabshop/product.php?id=22';
 
     /**
      * Кнопка «Поддержать академию» для output.navbar_plugin_output. Только на страницах этой темы:

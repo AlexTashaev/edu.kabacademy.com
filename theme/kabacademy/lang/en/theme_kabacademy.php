@@ -27,7 +27,7 @@ defined('MOODLE_INTERNAL') || die();
 $string['choosereadme'] = 'Kabacademy is a child theme of Boost with visual progress bar in My Courses.';
 $string['donate'] = 'Support the academy';
 $string['donateurl'] = '"Support the academy" button: address';
-$string['donateurl_desc'] = 'Where the purple header button leads. An address on this site, e.g. /local/kabshop/product.php?id=21 (a storefront donation), or an external one, which opens in a new tab. Empty — no button.';
+$string['donateurl_desc'] = 'Where the purple header button leads. An address on this site, e.g. /local/kabshop/product.php?id=22 (the storefront “MAK fund contribution”, the default), or an external one, which opens in a new tab. Empty — no button.';
 $string['pluginname'] = 'Kabacademy';
 $string['progresspercent'] = '{$a}% complete';
 $string['signin'] = 'Log in';
