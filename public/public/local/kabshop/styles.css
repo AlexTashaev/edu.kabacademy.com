@@ -602,7 +602,8 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     top: .8rem;
     z-index: 2;
     padding: .45rem 1.6rem .45rem .9rem;
-    background: var(--kabshop-navy);
+    /* Цвет задан жёстко: обложка одна в обеих темах, а --kabshop-navy в тёмной теме светлеет. */
+    background: #3c5d90;
     color: #fff;
     font-size: 10px;
     font-weight: 700;
