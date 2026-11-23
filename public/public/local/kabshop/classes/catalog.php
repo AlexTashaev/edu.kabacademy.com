@@ -668,11 +668,35 @@ class catalog {
             $url->param('rev', substr($f->get_contenthash(), 0, 8));
             return $url->out(false);
         }
-        global $DB;
-        if ($product->courseid && ($course = $DB->get_record('course', ['id' => $product->courseid]))) {
-            $url = \core_course\external\course_summary_exporter::get_course_image($course);
-            if ($url) {
-                return $url;
+        // Обложку курса отдаёт pluginfile витрины (область courseimage, itemid = товар), а не ядро:
+        // при forcelogin=1 ядро редиректит course/overviewfiles на вход, и гость видел битые картинки.
+        if ($f = self::course_image_file($product)) {
+            $url = moodle_url::make_pluginfile_url(context_system::instance()->id, 'local_kabshop', 'courseimage',
+                $product->id, '/', $f->get_filename());
+            $url->param('rev', substr($f->get_contenthash(), 0, 8));
+            return $url->out(false);
+        }
+        return null;
+    }
+
+    /**
+     * Обложка курса товара — первая картинка в «Изображении курса» (как берёт ядро).
+     *
+     * @param \stdClass $product
+     * @return \stored_file|null
+     */
+    public static function course_image_file(\stdClass $product): ?\stored_file {
+        if (empty($product->courseid)) {
+            return null;
+        }
+        $context = \context_course::instance((int) $product->courseid, IGNORE_MISSING);
+        if (!$context) {
+            return null;
+        }
+        $files = get_file_storage()->get_area_files($context->id, 'course', 'overviewfiles', 0, 'filename', false);
+        foreach ($files as $file) {
+            if ($file->is_valid_image()) {
+                return $file;
             }
         }
         return null;
