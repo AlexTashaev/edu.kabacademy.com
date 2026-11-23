@@ -19,7 +19,9 @@ namespace local_kabdarkmode;
 /**
  * Настройки, значок в шапке и скрипты переключателя оформления.
  *
- * Выбор хранится только в браузере (localStorage, ключ kabdm-mode). Скрипт в <head> ставит
+ * Выбор хранится только в браузере — в cookie kabdm_mode на год. Не localStorage: ядро
+ * (lib/amd/src/storagewrapper.js) вызывает localStorage.clear() при каждой смене jsrev, то есть
+ * после любой очистки кэшей, и выбор студентов сбрасывался бы. Скрипт в <head> ставит
  * data-bs-theme и data-kabdm-mode на <html> до отрисовки, скрипт в подвале обслуживает меню
  * и пересчитывает режим «Авто» по часам устройства.
  *
@@ -31,8 +33,8 @@ class ui {
     /** @var string[] Режимы в порядке пунктов меню. */
     public const MODES = ['light', 'dark', 'auto'];
 
-    /** @var string Ключ localStorage. */
-    public const STORAGE_KEY = 'kabdm-mode';
+    /** @var string Имя cookie с выбором. */
+    public const COOKIE = 'kabdm_mode';
 
     /** @var string[] Значки (24×24, цвет — currentColor). */
     private const ICONS = [
@@ -135,8 +137,8 @@ class ui {
      */
     public static function head_html(): string {
         $cfg = self::config();
-        $js = '(function(r,c){var m,t,n,h;try{m=localStorage.getItem("' . self::STORAGE_KEY . '")}catch(e){}'
-            . 'if(m!=="light"&&m!=="dark"&&m!=="auto")m=c.def;t=m;'
+        $js = '(function(r,c){var m=(document.cookie.match(/(?:^|; )' . self::COOKIE . '=(light|dark|auto)(?:;|$)/)||[])[1],t,n,h;'
+            . 'if(!m)m=c.def;t=m;'
             . 'if(m==="auto"){n=new Date();h=n.getHours()+n.getMinutes()/60;'
             . 't=c.from!==c.to&&(c.from<c.to?h>=c.from&&h<c.to:h>=c.from||h<c.to)?"dark":"light"}'
             . 'r.setAttribute("data-bs-theme",t);r.setAttribute("data-kabdm-mode",m)})'
@@ -191,7 +193,7 @@ class ui {
      */
     public static function footer_html(): string {
         $cfg = self::config();
-        $cfg['key'] = self::STORAGE_KEY;
+        $cfg['cookie'] = self::COOKIE;
         $cfg['labels'] = [];
         foreach (self::MODES as $mode) {
             $cfg['labels'][$mode] = get_string('toggle_label', 'local_kabdarkmode',
@@ -201,18 +203,19 @@ class ui {
 (function (cfg) {
     var MODES = ['light', 'dark', 'auto'];
     var root = document.documentElement;
-    var chosen = null; // Выбор на случай, если localStorage недоступен.
+    var chosen = null; // Выбор на случай, если cookie отключены.
     var meta = document.querySelector('meta[name="theme-color"]');
     var metaLight = meta ? meta.getAttribute('content') : null;
     var switchTimer = null;
 
     function stored() {
-        try {
-            var value = window.localStorage.getItem(cfg.key);
-            return MODES.indexOf(value) >= 0 ? value : null;
-        } catch (e) {
-            return null;
-        }
+        var match = document.cookie.match(new RegExp('(?:^|; )' + cfg.cookie + '=(light|dark|auto)(?:;|$)'));
+        return match ? match[1] : null;
+    }
+
+    function store(mode) {
+        document.cookie = cfg.cookie + '=' + mode + '; path=/; max-age=31536000; SameSite=Lax'
+            + (window.location.protocol === 'https:' ? '; Secure' : '');
     }
 
     function current() {
@@ -271,11 +274,7 @@ class ui {
             return;
         }
         chosen = mode;
-        try {
-            window.localStorage.setItem(cfg.key, mode);
-        } catch (e) {
-            // Приватный режим: выбор живёт до перезагрузки страницы.
-        }
+        store(mode);
         apply(true);
     }
 
@@ -288,7 +287,8 @@ class ui {
         choose(item.getAttribute('data-kabdm-set'));
     });
 
-    // «Авто»: раз в минуту и при возвращении на вкладку (телефон проснулся утром).
+    // «Авто» — раз в минуту и при возвращении на вкладку (телефон проснулся утром). Заодно
+    // подхватывается выбор, сделанный в соседней вкладке: cookie у них общая.
     setInterval(function () {
         apply(true);
     }, 60000);
@@ -297,14 +297,11 @@ class ui {
             apply(true);
         }
     });
+    window.addEventListener('focus', function () {
+        apply(true);
+    });
     window.addEventListener('pageshow', function () {
         apply(false);
-    });
-    // Выбор в соседней вкладке.
-    window.addEventListener('storage', function (e) {
-        if (e.key === cfg.key) {
-            apply(true);
-        }
     });
 
     apply(false);
