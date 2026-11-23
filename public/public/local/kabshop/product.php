@@ -208,7 +208,8 @@ if ($product->kind === 'external') {
         'post' => (new moodle_url('/local/kabshop/enrol.php'))->out(false),
         'id' => $id,
         'sesskey' => sesskey(),
-        'label' => get_string('enrolfree', 'local_kabshop'),
+        // Своя подпись вместо «Бесплатно» — и в кнопке без слова «бесплатно».
+        'label' => get_string(empty($product->pricelabel) ? 'enrolfree' : 'enrol', 'local_kabshop'),
         'donation' => null,
     ];
     // Окно «Безвозмездная помощь» перед записью, как в корзине WordPress: взнос или без взноса.

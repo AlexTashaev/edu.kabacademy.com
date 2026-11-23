@@ -266,7 +266,9 @@ class catalog {
             return '';
         }
         if (self::is_free($product)) {
-            return get_string('free', 'local_kabshop');
+            // Подпись к цене у бесплатного товара — вместо «Бесплатно» («Вход свободный»).
+            return !empty($product->pricelabel) ? format_string($product->pricelabel)
+                : get_string('free', 'local_kabshop');
         }
         $s = \core_payment\helper::get_cost_as_string((float)$product->price, $product->currency);
         if (!empty($product->customamount)) {
