@@ -805,6 +805,54 @@ html[data-bs-theme="dark"] :is(#page, .modal) :is(
     background-color: var(--kabdm-tint) !important;
 }
 
+/* ===== Календарь =====
+   Шапку окна события и карточки события в дневном и предстоящем обзоре ядро красит цветом
+   типа события (.calendar_event_course и др.: #ffd3bd, брендинг из БД перекрашивает в #d6f8cd) —
+   светлая плашка, на которой светлый заголовок и белый крестик тёмного режима не видны.
+   В тёмном — тёмные оттенки тех же цветов. Кружки-метки в сетке месяца не трогаем. */
+
+html[data-bs-theme="dark"] :is(.modal-header, .card-header)[class*="calendar_event_"] {
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] :is(.modal-header, .card-header):is(.calendar_event_course, .calendar_event_site) {
+    background-color: #1e3624;
+}
+
+html[data-bs-theme="dark"] :is(.modal-header, .card-header).calendar_event_category {
+    background-color: #36273a;
+}
+
+html[data-bs-theme="dark"] :is(.modal-header, .card-header).calendar_event_group {
+    background-color: #3a3120;
+}
+
+html[data-bs-theme="dark"] :is(.modal-header, .card-header).calendar_event_user {
+    background-color: #22323b;
+}
+
+html[data-bs-theme="dark"] :is(.modal-header, .card-header).calendar_event_other {
+    background-color: #2b323a;
+}
+
+html[data-bs-theme="dark"] [class*="calendar_event_"] .commands a {
+    color: var(--kabdm-link);
+}
+
+/* Значок активности в карточке события — тёмная монохромная картинка без подложки. */
+html[data-bs-theme="dark"] .card-header[class*="calendar_event_"] img.activityicon {
+    filter: brightness(0) invert(.88);
+}
+
+html[data-bs-theme="dark"] .maincalendar .calendarmonth .clickable:hover {
+    background-color: var(--kabdm-surface-2);
+}
+
+html[data-bs-theme="dark"] [data-blockregion]:not([data-blockregion="content"]) .block.block_calendar_month .maincalendar
+    .calendartable.calendarmonth td.clickable:not(.today):hover .day-number-circle {
+    background-color: var(--kabdm-surface-3);
+}
+
 /* ===== Витрина кассы (local_kabshop: главная, ru.php, страница курса, документы) =====
    Цвета витрины — переменные --kabshop-* на её обёртках: переопределяем их, а то, что
    записано в её styles.css числом (#000 у заголовков, #fff у карточек), — правилами ниже.
