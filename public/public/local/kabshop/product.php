@@ -346,7 +346,10 @@ if ($saleopen && !$owned && !$activesub && $product->kind !== 'external'
 }
 
 $data = catalog::card($product);
-$data['priceother'] = $otherprices ? get_string('priceor', 'local_kabshop', implode(' · ', $otherprices)) : null;
+// Вторая цена рядом с основной — только когда переключателя валют нет (куплено, подписка,
+// запись закрыта): при переключателе обе валюты уже видны в нём, «или 90,00 ₽» — дубль.
+$data['priceother'] = ($otherprices && !$currencies)
+    ? get_string('priceor', 'local_kabshop', implode(' · ', $otherprices)) : null;
 $data['facts'] = $facts;
 $data['hasfacts'] = !empty($facts);
 $data['program'] = $program;
