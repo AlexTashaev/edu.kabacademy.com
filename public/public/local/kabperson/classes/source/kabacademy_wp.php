@@ -23,7 +23,7 @@ namespace local_kabperson\source;
  * с версии 0.3) с параметром blocks=payments — без живых вызовов Moodle на стороне WP.
  * Токен — свой (KAB_PERSON_CARD_TOKEN_EDU в wp-config площадки), в настройках плагина.
  * Таймаут 4 с: не ответил — источник «error», остальная карточка показывается (§6).
- * После закрытия WP этот источник переключается на архив заказов (этап 6).
+ * После закрытия WP — режим archive (source\kabacademy_archive, реестр local_kabwporders).
  *
  * @package    local_kabperson
  * @copyright  2026 Kabacademy
@@ -43,9 +43,7 @@ class kabacademy_wp {
      * @return bool
      */
     public static function enabled(): bool {
-        // Не записанную настройку читаем как «включено» (как enablekabshop).
-        $enabled = get_config('local_kabperson', 'enablewp');
-        if ($enabled !== false && empty($enabled)) {
+        if (\local_kabperson\api::wp_mode() !== 'live') {
             return false;
         }
         return trim((string) get_config('local_kabperson', 'wpbase')) !== ''
