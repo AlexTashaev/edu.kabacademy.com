@@ -1,0 +1,555 @@
+/*
+ * local_kabdarkmode — тёмное оформление и переключатель «Светлое / Тёмное / Авто».
+ *
+ * Moodle подключает этот файл в CSS любой темы, ПЕРЕД скомпилированным SCSS темы. Поэтому:
+ * - каждое тёмное правило начинается с html[data-bs-theme="dark"] — в светлом режиме файл
+ *   ничего не меняет, а префикс поднимает специфичность над правилами темы;
+ * - против !important из брендинга (theme_boost/scss в БД, kab.scss) — тоже !important.
+ *
+ * Палитра: основа Bootstrap 5.3 dark, подкрашенная в синеву бренда.
+ */
+
+/* ===== Переключатель в шапке (во всех режимах) ===== */
+
+.kabdm-toggle {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 .5rem;
+    background: none;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+}
+
+.kabdm-toggle .kabdm-i {
+    display: none;
+    width: 20px;
+    height: 20px;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+}
+
+html:not([data-kabdm-mode]) .kabdm-toggle .kabdm-i-light,
+html[data-kabdm-mode="light"] .kabdm-toggle .kabdm-i-light,
+html[data-kabdm-mode="dark"] .kabdm-toggle .kabdm-i-dark,
+html[data-kabdm-mode="auto"] .kabdm-toggle .kabdm-i-auto {
+    display: block;
+}
+
+.kabdm-menu {
+    min-width: 15rem;
+}
+
+.kabdm-menu .kabdm-menu-header {
+    font-size: .8rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.kabdm-menu .kabdm-item {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding-top: .5rem;
+    padding-bottom: .5rem;
+}
+
+.kabdm-item-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    opacity: .85;
+}
+
+.kabdm-item-text {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.kabdm-item-hint {
+    color: var(--bs-secondary-color);
+    font-size: .75rem;
+}
+
+.kabdm-item-check {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    visibility: hidden;
+    color: var(--bs-primary);
+}
+
+html:not([data-kabdm-mode]) .kabdm-item[data-kabdm-set="light"] .kabdm-item-check,
+html[data-kabdm-mode="light"] .kabdm-item[data-kabdm-set="light"] .kabdm-item-check,
+html[data-kabdm-mode="dark"] .kabdm-item[data-kabdm-set="dark"] .kabdm-item-check,
+html[data-kabdm-mode="auto"] .kabdm-item[data-kabdm-set="auto"] .kabdm-item-check {
+    visibility: visible;
+}
+
+html:not([data-kabdm-mode]) .kabdm-item[data-kabdm-set="light"],
+html[data-kabdm-mode="light"] .kabdm-item[data-kabdm-set="light"],
+html[data-kabdm-mode="dark"] .kabdm-item[data-kabdm-set="dark"],
+html[data-kabdm-mode="auto"] .kabdm-item[data-kabdm-set="auto"] {
+    font-weight: 600;
+}
+
+/* Плавная смена цветов — только на 0,4 с переключения (класс ставит скрипт). */
+html.kabdm-switching,
+html.kabdm-switching *,
+html.kabdm-switching *::before,
+html.kabdm-switching *::after {
+    transition: background-color .3s ease, color .3s ease, border-color .3s ease, fill .3s ease !important;
+}
+
+/* ===== Палитра тёмного режима ===== */
+
+html[data-bs-theme="dark"] {
+    --kabdm-bg: #11171d;
+    --kabdm-drawer: #151c23;
+    --kabdm-surface: #19222b;
+    --kabdm-surface-2: #202a34;
+    --kabdm-surface-3: #293541;
+    --kabdm-border: #303d4a;
+    --kabdm-text: #dfe6ed;
+    --kabdm-muted: #9fb0c0;
+    --kabdm-link: #6cc0ea;
+    --kabdm-link-hover: #9bd5f3;
+    --kabdm-navy: #9ec0ea;
+    --kabdm-purple: #d993e6;
+    --kabdm-tint: #1c2832;
+
+    /* Bootstrap: карточки, меню, модалки, формы и таблицы берут цвета отсюда. */
+    --bs-body-bg: #19222b;
+    --bs-body-bg-rgb: 25, 34, 43;
+    --bs-body-color: #dfe6ed;
+    --bs-body-color-rgb: 223, 230, 237;
+    --bs-emphasis-color: #fff;
+    --bs-emphasis-color-rgb: 255, 255, 255;
+    --bs-secondary-color: rgba(223, 230, 237, .72);
+    --bs-secondary-color-rgb: 223, 230, 237;
+    --bs-secondary-bg: #293541;
+    --bs-secondary-bg-rgb: 41, 53, 65;
+    --bs-tertiary-color: rgba(223, 230, 237, .5);
+    --bs-tertiary-color-rgb: 223, 230, 237;
+    --bs-tertiary-bg: #202a34;
+    --bs-tertiary-bg-rgb: 32, 42, 52;
+    --bs-border-color: #303d4a;
+    --bs-border-color-translucent: rgba(255, 255, 255, .12);
+    --bs-heading-color: inherit;
+    --bs-link-color: #6cc0ea;
+    --bs-link-color-rgb: 108, 192, 234;
+    --bs-link-hover-color: #9bd5f3;
+    --bs-link-hover-color-rgb: 155, 213, 243;
+    --bs-light-rgb: 41, 53, 65;
+    --bs-primary-text-emphasis: #9ec0ea;
+}
+
+/* ===== Каркас страницы ===== */
+
+html[data-bs-theme="dark"] body,
+html[data-bs-theme="dark"] #page-wrapper #page,
+html[data-bs-theme="dark"] #page,
+html[data-bs-theme="dark"] .pagelayout-login #page {
+    background-color: var(--kabdm-bg);
+    background-image: none;
+}
+
+html[data-bs-theme="dark"] #page.drawers .main-inner,
+html[data-bs-theme="dark"] .login-container {
+    background-color: var(--kabdm-surface);
+}
+
+html[data-bs-theme="dark"] #region-main,
+html[data-bs-theme="dark"] .secondary-navigation .navigation,
+html[data-bs-theme="dark"] .moremenu .nav-tabs,
+html[data-bs-theme="dark"] #page-wrapper #page #page-header .breadcrumb {
+    background-color: transparent;
+}
+
+html[data-bs-theme="dark"] .bg-white {
+    background-color: var(--kabdm-surface) !important;
+}
+
+html[data-bs-theme="dark"] .bg-light,
+html[data-bs-theme="dark"] .text-bg-light {
+    background-color: var(--kabdm-surface-2) !important;
+}
+
+html[data-bs-theme="dark"] .text-bg-light,
+html[data-bs-theme="dark"] .text-dark:not([class*="bg-"]):not(.badge) {
+    color: var(--kabdm-text) !important;
+}
+
+/* Ссылки в тексте. Брендинг из БД красит все <a> в #196cb3 — на тёмном не читается.
+   Ссылки с классами (кнопки, меню, вкладки) не трогаем. */
+html[data-bs-theme="dark"] a:not([class]),
+html[data-bs-theme="dark"] a.aalink,
+html[data-bs-theme="dark"] a.autolink,
+html[data-bs-theme="dark"] .block .minicalendar td a {
+    color: var(--kabdm-link);
+}
+
+html[data-bs-theme="dark"] a:not([class]):hover,
+html[data-bs-theme="dark"] a.aalink:hover {
+    color: var(--kabdm-link-hover);
+}
+
+html[data-bs-theme="dark"] blockquote,
+html[data-bs-theme="dark"] .activity-item .activity-dates,
+html[data-bs-theme="dark"] .activity-item .activity-completion .completion-dialog {
+    color: var(--kabdm-muted);
+}
+
+html[data-bs-theme="dark"] .course-section .sectionname > a,
+html[data-bs-theme="dark"] .dropdown-item a,
+html[data-bs-theme="dark"] .block .block-cards span.categoryname,
+html[data-bs-theme="dark"] .block .block-cards .btn-link,
+html[data-bs-theme="dark"] .block .block-controls .dropdown-toggle,
+html[data-bs-theme="dark"] .block_recentlyaccesseditems a.card small,
+html[data-bs-theme="dark"] .form-autocomplete-suggestions li,
+html[data-bs-theme="dark"] .form-autocomplete-downarrow {
+    color: var(--kabdm-text);
+}
+
+/* ===== Шапка ===== */
+
+html[data-bs-theme="dark"] .navbar.fixed-top,
+html[data-bs-theme="dark"] #page-wrapper .navbar,
+html[data-bs-theme="dark"] #page-wrapper .navbar.kab-navbar {
+    background-color: var(--kabdm-surface) !important;
+    background-image: none !important;
+    border-bottom-color: var(--kabdm-border) !important;
+}
+
+html[data-bs-theme="dark"] .navbar.fixed-top .divider {
+    background-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .navbar .kab-logo,
+html[data-bs-theme="dark"] .navbar .logo img {
+    filter: brightness(1.35);
+}
+
+html[data-bs-theme="dark"] .navbar .primary-navigation .moremenu .nav-link,
+html[data-bs-theme="dark"] .navbar .primary-navigation .navigation .nav-link {
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] .moremenu .nav-link:hover,
+html[data-bs-theme="dark"] .moremenu .nav-link:focus,
+html[data-bs-theme="dark"] .navbar .primary-navigation .moremenu .nav-link:hover,
+html[data-bs-theme="dark"] .navbar .primary-navigation .moremenu .nav-link:focus {
+    background-color: var(--kabdm-surface-3);
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] .moremenu .nav-link.active,
+html[data-bs-theme="dark"] .navbar .primary-navigation .moremenu .nav-link.active,
+html[data-bs-theme="dark"] .navbar .primary-navigation .navigation .nav-link.active {
+    background-color: var(--kabdm-surface-3);
+    color: var(--kabdm-navy);
+}
+
+html[data-bs-theme="dark"] .kab-login-link {
+    color: var(--kabdm-navy);
+}
+
+html[data-bs-theme="dark"] #page-wrapper .navbar .btn.nav-link.float-sm-left {
+    background: transparent !important;
+}
+
+html[data-bs-theme="dark"] .userinitials {
+    background-color: var(--kabdm-surface-3);
+    color: var(--kabdm-text);
+}
+
+/* ===== Панели (индекс курса, блоки, сообщения) ===== */
+
+html[data-bs-theme="dark"] .drawer,
+html[data-bs-theme="dark"] .drawer-md,
+html[data-bs-theme="dark"] .drawer-sm,
+html[data-bs-theme="dark"] [data-region="drawer"],
+html[data-bs-theme="dark"] .message-app {
+    background-color: var(--kabdm-drawer);
+}
+
+html[data-bs-theme="dark"] .drawer-toggles .drawer-toggler .btn {
+    background-color: var(--kabdm-surface-3);
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] .courseindex .courseindex-item.active {
+    background-color: var(--kabdm-surface-3);
+    border-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .courseindex .courseindex-item.pageitem {
+    background-color: #24425a;
+    color: #fff;
+}
+
+html[data-bs-theme="dark"] .message-app .message.send {
+    background-color: #24425a;
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] .message-app .message.received {
+    background-color: var(--kabdm-surface-3);
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] .message-app .message .time,
+html[data-bs-theme="dark"] .message-app .day {
+    color: var(--kabdm-muted);
+}
+
+html[data-bs-theme="dark"] .popover-region-container {
+    background-color: var(--kabdm-surface);
+    border-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .content-item-container.unread,
+html[data-bs-theme="dark"] .forumpost.unread .header,
+html[data-bs-theme="dark"] .path-course-view .unread,
+html[data-bs-theme="dark"] span.unread {
+    background-color: var(--kabdm-surface-2);
+}
+
+/* ===== Навигация, вкладки, формы ===== */
+
+html[data-bs-theme="dark"] .nav-tabs:not(.more-nav),
+html[data-bs-theme="dark"] .nav-pills {
+    background-color: var(--kabdm-surface-2);
+}
+
+html[data-bs-theme="dark"] .form-control,
+html[data-bs-theme="dark"] .form-select,
+html[data-bs-theme="dark"] .custom-select {
+    background-color: var(--kabdm-bg);
+    border-color: var(--kabdm-border);
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] .form-control:disabled,
+html[data-bs-theme="dark"] .form-control[readonly] {
+    background-color: var(--kabdm-surface-2);
+}
+
+html[data-bs-theme="dark"] .form-autocomplete-suggestions {
+    background-color: var(--kabdm-surface);
+}
+
+html[data-bs-theme="dark"] .btn-outline-secondary {
+    --bs-btn-color: var(--kabdm-text);
+    --bs-btn-border-color: #4a5867;
+    --bs-btn-hover-bg: var(--kabdm-surface-3);
+    --bs-btn-hover-border-color: #5b6a7a;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: var(--kabdm-surface-3);
+    --bs-btn-active-color: #fff;
+}
+
+html[data-bs-theme="dark"] .btn-link {
+    --bs-btn-color: var(--kabdm-link);
+    --bs-btn-hover-color: var(--kabdm-link-hover);
+}
+
+html[data-bs-theme="dark"] .badge-light {
+    background-color: var(--kabdm-surface-3);
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] .alert a:not(.btn) {
+    color: var(--bs-alert-link-color, inherit);
+}
+
+/* ===== Страница курса и активности ===== */
+
+html[data-bs-theme="dark"] .activity-item.hiddenactivity,
+html[data-bs-theme="dark"] .path-mod .activity-header:not(:empty) {
+    background-color: var(--kabdm-surface-2);
+}
+
+html[data-bs-theme="dark"] .course-content .divider .divider-content {
+    background: linear-gradient(transparent 40%, var(--kabdm-surface) 40%, var(--kabdm-surface) 60%, transparent 60%);
+}
+
+html[data-bs-theme="dark"] .path-mod-book .btn-previous,
+html[data-bs-theme="dark"] .path-mod-book .btn-next {
+    background-color: var(--kabdm-surface-2);
+    color: var(--kabdm-text);
+}
+
+/* Вопросы теста. */
+html[data-bs-theme="dark"] .que .info {
+    background-color: var(--kabdm-surface-2);
+    border-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .que .formulation {
+    background-color: #0f2c36;
+    border-color: #1d4a58;
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] .que .outcome,
+html[data-bs-theme="dark"] .que .comment {
+    background-color: #2e2710;
+    border-color: #5a4a14;
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] .que .outcome a,
+html[data-bs-theme="dark"] .que .comment a {
+    color: var(--kabdm-link);
+}
+
+html[data-bs-theme="dark"] .path-mod-quiz #mod_quiz_navblock span.qnbutton {
+    color: var(--kabdm-text);
+}
+
+/* ===== Брендинг сайта из БД (theme_boost/scss) ===== */
+
+html[data-bs-theme="dark"] #page-wrapper #page #page-header .breadcrumb .breadcrumb-item a,
+html[data-bs-theme="dark"] #page-wrapper #page #page-header .page-header-headings,
+html[data-bs-theme="dark"] #page-wrapper #page #page-content .topics .section .activity .instancename,
+html[data-bs-theme="dark"] #page-wrapper #page #page-content .topics .section .activity .availabilityinfo a,
+html[data-bs-theme="dark"] #page-wrapper #page #page-content .userprofile ul li a,
+html[data-bs-theme="dark"] #page-wrapper #page #block-region-side-pre a,
+html[data-bs-theme="dark"] .card .card-text a {
+    color: var(--kabdm-navy);
+}
+
+html[data-bs-theme="dark"] #page-wrapper #page #page-content .topics .section .sectionname a {
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] #page-wrapper #page #page-content .topics .section:first-child,
+html[data-bs-theme="dark"] #page-wrapper #page #page-content .userprofile .node_category,
+html[data-bs-theme="dark"] .card-deck.dashboard-card-deck .dashboard-card .course-info-container,
+html[data-bs-theme="dark"] .card-deck.dashboard-card-deck .dashboard-card .card-footer {
+    background-color: var(--kabdm-tint);
+}
+
+html[data-bs-theme="dark"] .card-deck.dashboard-card-deck .dashboard-card .card-footer .progress {
+    background-color: #2a4a63 !important;
+}
+
+html[data-bs-theme="dark"] .card-title,
+html[data-bs-theme="dark"] #page-wrapper #page #page-content .userprofile ul li dt {
+    color: var(--kabdm-purple);
+}
+
+/* ===== Дизайн-система курсов (.kab-*, theme/kabacademy/scss/kab.scss) ===== */
+
+html[data-bs-theme="dark"] .kab-page,
+html[data-bs-theme="dark"] .kab-text {
+    color: var(--kabdm-text);
+}
+
+html[data-bs-theme="dark"] .kab-page b,
+html[data-bs-theme="dark"] .kab-page strong,
+html[data-bs-theme="dark"] .kab-text b,
+html[data-bs-theme="dark"] .kab-text strong,
+html[data-bs-theme="dark"] .kab-h,
+html[data-bs-theme="dark"] .kab-num,
+html[data-bs-theme="dark"] .kab-step .kab-step-title,
+html[data-bs-theme="dark"] .kab-details summary,
+html[data-bs-theme="dark"] table.kab-table tr > td:first-child,
+html[data-bs-theme="dark"] a.kab-btn.kab-btn--outline,
+html[data-bs-theme="dark"] a.kab-btn.kab-btn--outline:hover {
+    color: var(--kabdm-navy);
+}
+
+html[data-bs-theme="dark"] .kab-kicker {
+    color: var(--kabdm-purple);
+}
+
+html[data-bs-theme="dark"] .kab-note {
+    color: var(--kabdm-muted);
+}
+
+html[data-bs-theme="dark"] a.kab-link {
+    color: var(--kabdm-link);
+    border-bottom-color: rgba(108, 192, 234, .4);
+}
+
+html[data-bs-theme="dark"] .kab-quote {
+    background: var(--kabdm-tint);
+}
+
+html[data-bs-theme="dark"] .kab-card,
+html[data-bs-theme="dark"] .kab-details,
+html[data-bs-theme="dark"] a.kab-btn.kab-btn--outline {
+    background: var(--kabdm-surface-2);
+    border-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] a.kab-btn.kab-btn--outline:hover {
+    background: var(--kabdm-surface-3);
+}
+
+html[data-bs-theme="dark"] .kab-row,
+html[data-bs-theme="dark"] table.kab-table tr > td {
+    border-bottom-color: var(--kabdm-border);
+}
+
+html[data-bs-theme="dark"] .kab-divider {
+    border-top-color: var(--kabdm-border);
+}
+
+/* ===== Старый контент уроков с инлайн-цветами =====
+   Тёмно-серый и тёмно-синий текст из редактора пропал бы на тёмном фоне, белые подложки
+   светились бы пятнами. [style*=…] ловит и background-color — светлый текст на тёмной
+   подложке тоже читается. */
+
+html[data-bs-theme="dark"] :is(#page, .modal) :is(
+    [style*="color: rgb(51, 51, 51)"], [style*="color:rgb(51,51,51)"],
+    [style*="color: rgb(0, 0, 0)"], [style*="color:rgb(0,0,0)"],
+    [style*="color: rgb(34, 34, 34)"], [style*="color: rgb(33, 37, 41)"], [style*="color: rgb(29, 33, 37)"],
+    [style*="color: #333" i], [style*="color:#333" i], [style*="color: #000" i], [style*="color:#000" i],
+    [style*="color: #222" i], [style*="color:#222" i], [style*="color: #212529" i], [style*="color: #1d2125" i],
+    [style*="color: black" i], [style*="color:black" i]
+) {
+    color: var(--kabdm-text) !important;
+}
+
+html[data-bs-theme="dark"] :is(#page, .modal) :is(
+    [style*="color: #3C5D90" i], [style*="color:#3C5D90" i], [style*="color: rgb(60, 93, 144)"],
+    [style*="color: #014E7A" i], [style*="color: rgb(1, 78, 122)"]
+) {
+    color: var(--kabdm-navy) !important;
+}
+
+html[data-bs-theme="dark"] :is(#page, .modal) :is(
+    [style*="color: #00789F" i], [style*="color: rgb(0, 120, 159)"], [style*="color: #196cb3" i]
+) {
+    color: var(--kabdm-link) !important;
+}
+
+html[data-bs-theme="dark"] :is(#page, .modal) :is(
+    [style*="color: #A42BB9" i], [style*="color: rgb(164, 43, 185)"]
+) {
+    color: var(--kabdm-purple) !important;
+}
+
+html[data-bs-theme="dark"] :is(#page, .modal) :is(
+    [style*="background-color: rgb(255, 255, 255)"], [style*="background-color:rgb(255,255,255)"],
+    [style*="background-color: #fff" i], [style*="background-color:#fff" i],
+    [style*="background: #fff" i], [style*="background:#fff" i],
+    [style*="background-color: white" i], [style*="background: white" i]
+) {
+    background-color: transparent !important;
+}
+
+html[data-bs-theme="dark"] :is(#page, .modal) :is(
+    [style*="background-color: #F4F9FD" i], [style*="background: #F4F9FD" i], [style*="background-color: rgb(244, 249, 253)"],
+    [style*="background-color: #EFF7FA" i], [style*="background: #EFF7FA" i], [style*="background-color: rgb(239, 247, 250)"],
+    [style*="background-color: #F5FCFF" i], [style*="background: #F5FCFF" i], [style*="background-color: rgb(245, 252, 255)"]
+) {
+    background-color: var(--kabdm-tint) !important;
+}
