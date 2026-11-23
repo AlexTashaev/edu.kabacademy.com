@@ -594,15 +594,16 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     text-transform: uppercase;
 }
 
-/* Поток на обложке: «Осень 2026» — в левом верхнем углу, как ленточка раздела на странице курса. */
+/* Поток на обложке: «Осень 2026» — в левом верхнем углу, ленточкой с вырезом. Тёмно-синяя: белая
+   терялась на светлых обложках (небо у «Классической каббалы»), фиолетовая — у «Запись завершена». */
 .kabshop-badge-stream {
     position: absolute;
     left: 0;
     top: .8rem;
     z-index: 2;
     padding: .45rem 1.6rem .45rem .9rem;
-    background: #fff;
-    color: var(--kabshop-purple);
+    background: var(--kabshop-navy);
+    color: #fff;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: .2em;
