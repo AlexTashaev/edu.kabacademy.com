@@ -217,14 +217,36 @@ class coupons {
      * @param int $purchaseid
      * @param float $amountoff
      * @param string $currency
+     * @return bool false — купон погашен сверх лимита или повторно «один на человека» (выдача всё
+     *     равно идёт: деньги уже взяты; случай записан в журнал для разбора)
      */
-    public static function redeem(int $couponid, int $userid, int $purchaseid, float $amountoff, string $currency): void {
+    public static function redeem(int $couponid, int $userid, int $purchaseid, float $amountoff, string $currency): bool {
         global $DB;
+        $ok = true;
+        $c = $DB->get_record('local_kabshop_coupon', ['id' => $couponid], 'id, maxuses, peruser, uses');
+        if ($c && $c->peruser && $DB->record_exists('local_kabshop_coupon_use', ['couponid' => $couponid, 'userid' => $userid])) {
+            $ok = false;
+        }
         $DB->insert_record('local_kabshop_coupon_use', (object) [
             'couponid' => $couponid, 'userid' => $userid, 'purchaseid' => $purchaseid,
             'amountoff' => $amountoff, 'currency' => $currency, 'timecreated' => time(),
         ]);
-        $DB->execute('UPDATE {local_kabshop_coupon} SET uses = uses + 1 WHERE id = ?', [$couponid]);
+        // Лимит проверяется в самом UPDATE (аудит 24.11.2026): две оплаты, начатые до первой
+        // выдачи, не проскочат его молча. Сколько строк задето, API Moodle не отдаёт — сверяем
+        // счётчик до и после внутри транзакции выдачи.
+        $before = $c ? (int) $c->uses : 0;
+        $DB->execute('UPDATE {local_kabshop_coupon} SET uses = uses + 1 WHERE id = ? AND (maxuses = 0 OR uses < maxuses)',
+            [$couponid]);
+        $after = (int) $DB->get_field('local_kabshop_coupon', 'uses', ['id' => $couponid]);
+        if ($c && $after === $before) {
+            // Лимит исчерпан, но оплата уже прошла: учитываем использование как было и оставляем след.
+            $DB->execute('UPDATE {local_kabshop_coupon} SET uses = uses + 1 WHERE id = ?', [$couponid]);
+            $ok = false;
+        }
+        if (!$ok) {
+            error_log("local_kabshop: coupon $couponid over limit on purchase $purchaseid (user $userid), delivered anyway");
+        }
+        return $ok;
     }
 
     /**

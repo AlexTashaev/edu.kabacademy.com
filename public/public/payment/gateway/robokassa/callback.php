@@ -38,6 +38,10 @@ $signature = required_param('SignatureValue', PARAM_ALPHANUMEXT);
 if (!$robokassatx = $DB->get_record('paygw_robokassa', ['paymentid' => $invid])) {
     throw new \moodle_exception('FAIL. Not a valid transaction id');
 }
+// KAB patch (аудит 24.11.2026): уже подтверждённый счёт (1 — боевой, 3 — тестовый) не выдаём
+// второй раз. Robokassa повторяет уведомление, пока не получит OK{InvId}.
+$alreadypaid = in_array((int) $robokassatx->success, [1, 3], true);
+$nextpay = null;
 
 if (!$payment = $DB->get_record('payments', ['id' => $robokassatx->paymentid])) {
     throw new \moodle_exception('FAIL. Not a valid payment.');
@@ -74,9 +78,41 @@ if (isset($config->crypto)) {
 }
 
 // Check crc.
+// KAB patch: сравнение без утечки по времени и без зависимости от регистра подписи.
 $crc = strtoupper(hash($crypto, "$outsumm:$invid:$mrhpass2"));
-if ($signature !== $crc) {
+if (!hash_equals($crc, strtoupper($signature))) {
     throw new \moodle_exception('FAIL. Signature does not match.');
+}
+
+// KAB patch: повтор уведомления по уже подтверждённому счёту — сразу OK, без второй выдачи и письма.
+if ($alreadypaid) {
+    die('OK' . $invid);
+}
+
+// KAB patch: два уведомления одновременно — второе ждёт первое и видит, что счёт уже подтверждён.
+$cblock = \core\lock\lock_config::get_lock_factory('paygw_robokassa')->get_lock('callback_' . $invid, 30);
+if (!$cblock) {
+    throw new \moodle_exception('FAIL. Locked.');
+}
+\core_shutdown_manager::register_function(function() use ($cblock) {
+    $cblock->release();
+});
+$robokassatx = $DB->get_record('paygw_robokassa', ['id' => $robokassatx->id], '*', MUST_EXIST);
+if (in_array((int) $robokassatx->success, [1, 3], true)) {
+    die('OK' . $invid);
+}
+$robokassatx->success = $config->istestmode ? 3 : 1;
+
+// KAB patch: сумма из уведомления должна совпасть с выставленной (mdl_payments.amount записан в pay.php).
+// Подпись Password2 сама сумму не защищает от чужого счёта с тем же InvId (общий магазин dev/прод).
+// Для счёта не в рублях Robokassa присылает сумму в рублях — сверить её не с чем, только пишем в журнал.
+if ($payment->currency === 'RUB') {
+    if (abs((float) $outsumm - (float) $payment->amount) > 0.01) {
+        error_log("paygw_robokassa: InvId $invid amount mismatch: OutSum $outsumm, expected {$payment->amount} RUB — not delivered");
+        throw new \moodle_exception('FAIL. Amount mismatch.');
+    }
+} else {
+    error_log("paygw_robokassa: InvId $invid paid OutSum $outsumm RUB for {$payment->amount} {$payment->currency}, amount not checked");
 }
 
 // Check invoice.
