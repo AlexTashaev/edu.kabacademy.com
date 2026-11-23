@@ -27,7 +27,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_kabperson';
-$plugin->version   = 2026110501;
+$plugin->version   = 2026112300;
 $plugin->requires  = 2025041400; // Moodle 5.0+.
 $plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = '0.2.1';
+$plugin->release   = '0.3.0';

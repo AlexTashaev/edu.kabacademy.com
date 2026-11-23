@@ -48,8 +48,12 @@ if ($hassiteconfig) {
 
     $settings->add(new admin_setting_heading($p . '/wpheading',
         get_string('settings_wp', $p), get_string('settings_wp_desc', $p)));
-    $settings->add(new admin_setting_configcheckbox($p . '/enablewp',
-        get_string('enablewp', $p), get_string('enablewp_desc', $p), 1));
+    $settings->add(new admin_setting_configselect($p . '/wpmode',
+        get_string('wpmode', $p), get_string('wpmode_desc', $p), 'live', [
+            'live'    => get_string('wpmode_live', $p),
+            'archive' => get_string('wpmode_archive', $p),
+            'off'     => get_string('wpmode_off', $p),
+        ]));
     $settings->add(new admin_setting_configtext($p . '/wpbase',
         get_string('wpbase', $p), get_string('wpbase_desc', $p), '', PARAM_URL));
     $settings->add(new admin_setting_configpasswordunmask($p . '/wptoken',
