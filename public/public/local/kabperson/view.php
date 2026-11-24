@@ -18,10 +18,13 @@
  * Страница оператора: карточка человека по email.
  *
  * БЕЗ require_login — страницу открывает Dashboard App Chatwoot в iframe, у браузера
- * оператора нет сессии Moodle (§8 спеки). Вместо логина — PII-гейт как у WP-карточки:
- * email должен быть контактом чата с диалогом + rate-limit 30 запросов / 5 мин по IP,
- * fail-closed. Залогиненный с правом local/kabperson:view проходит без гейта
- * (админ, учебный отдел). ?format=json — карточка контрактом §9, ?refresh=1 — мимо кэша.
+ * оператора нет сессии Moodle (§8 спеки). Вместо логина — ключ Dashboard App (?k=, настройка
+ * viewkey, 0.3.1) и за ним PII-гейт как у WP-карточки: email должен быть контактом чата
+ * с диалогом + rate-limit 30 запросов / 5 мин по IP, fail-closed. Без верного ключа — 404:
+ * гейт проверяет того, о ком спрашивают, а не того, кто спрашивает, и до 0.3.1 по одному
+ * e-mail карточку получал любой (аудит 23.11.2026). Залогиненный с правом
+ * local/kabperson:view проходит без ключа и гейта (админ, учебный отдел).
+ * ?format=json — карточка контрактом §9, ?refresh=1 — мимо кэша.
  *
  * Dashboard App (этап 2): Chatwoot открывает страницу без email и присылает контакт через
  * postMessage (событие appContext). Страница принимает его только от origin'ов из настройки
@@ -43,6 +46,9 @@ $refresh    = optional_param('refresh', 0, PARAM_BOOL);
 $format     = optional_param('format', 'html', PARAM_ALPHA);
 $unverified = optional_param('unverified', 0, PARAM_BOOL);
 $noemail    = optional_param('noemail', 0, PARAM_BOOL); // Dashboard App: у контакта нет email.
+$key        = optional_param('k', '', PARAM_ALPHANUM);  // Ключ Dashboard App (0.3.1).
+// Ключ едет дальше во всех ссылках на себя: слушатель Dashboard App, форма, JSON.
+$keyparams  = $key !== '' ? ['k' => $key] : [];
 
 // Кто может встроить страницу в iframe. Пусто — только сам Moodle ('self'): в 0.1 без
 // настройки заголовка не было вовсе, и страницу мог встроить любой сайт.
@@ -52,6 +58,9 @@ if ($fa !== '' && function_exists('header_remove')) {
     // CSP frame-ancestors главнее, но старый X-Frame-Options от прокси не должен мешать.
     header_remove('X-Frame-Options');
 }
+// Ключ в адресе не должен уходить в Referer, а ПДн — оседать в кэшах.
+@header('Referrer-Policy: no-referrer');
+@header('Cache-Control: no-store, private');
 // Origin'ы, от которых принимаем контакт через postMessage: точные https?://host[:port]
 // из той же настройки (маски и 'self' сюда не годятся).
 $msgorigins = [];
@@ -72,6 +81,7 @@ foreach (preg_split('/\s+/', $fa, -1, PREG_SPLIT_NO_EMPTY) as $src) {
  * @return string <script> или '' (встраивание не настроено)
  */
 function local_kabperson_listener(array $origins, string $email, int $contactid): string {
+    global $keyparams;
     if (!$origins) {
         return '';
     }
@@ -79,7 +89,7 @@ function local_kabperson_listener(array $origins, string $email, int $contactid)
         'origins' => array_values($origins),
         'email'   => core_text::strtolower(trim($email)),
         'contact' => $contactid,
-        'self'    => (new moodle_url('/local/kabperson/view.php'))->out(false),
+        'self'    => (new moodle_url('/local/kabperson/view.php', (array) $keyparams))->out(false),
         'noemail' => get_string('nocontactemail', 'local_kabperson'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
     return <<<HTML
@@ -164,6 +174,17 @@ function local_kabperson_fail(int $status, string $code, string $format): void {
 
 $syscontext = context_system::instance();
 $bypass = isloggedin() && !isguestuser() && has_capability('local/kabperson:view', $syscontext);
+
+// Без права — только с ключом Dashboard App. Ключ знают агенты Chatwoot (он в адресе
+// Dashboard App); пустая настройка — анонимам закрыто совсем. 404 без подробностей, чтобы
+// не подсказывать, что за адресом что-то есть.
+$viewkey = trim((string) get_config('local_kabperson', 'viewkey'));
+if (!$bypass && ($viewkey === '' || !hash_equals($viewkey, $key))) {
+    http_response_code(404);
+    @header('Content-Type: text/plain; charset=utf-8');
+    echo 'Not found';
+    exit;
+}
 
 // Без email анонимная HTML-страница — пустая оболочка: форма и ожидание контакта из
 // Chatwoot, без данных и без обращения к гейту. JSON без email — ошибка, как раньше.
@@ -284,7 +305,7 @@ $jsonparams = ['email' => $email, 'format' => 'json'];
 if ($contactid) {
     $jsonparams['contact_id'] = $contactid;
 }
-$jsonurl = new moodle_url('/local/kabperson/view.php', $jsonparams);
+$jsonurl = new moodle_url('/local/kabperson/view.php', $jsonparams + $keyparams);
 
 echo '<!doctype html><html lang="ru"><head><meta charset="utf-8">';
 echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
@@ -326,6 +347,9 @@ if ($contactid) {
 }
 if ($unverified) {
     echo '<input type="hidden" name="unverified" value="1">';
+}
+if ($key !== '') {
+    echo '<input type="hidden" name="k" value="' . s($key) . '">';
 }
 echo '<button type="submit">' . $str('show') . '</button>';
 echo '<button type="submit" name="refresh" value="1">' . $str('refresh') . '</button>';

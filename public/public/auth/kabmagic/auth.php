@@ -137,6 +137,23 @@ class auth_plugin_kabmagic extends auth_plugin_base {
     }
 
     /**
+     * Runs at the top of login/index.php (for every enabled auth plugin),
+     * before the page decides where to go after the login.
+     *
+     * Drops a remembered return address that is a picture, a style sheet or a
+     * script (see \auth_kabmagic\manager::is_subresource_url()); login/index.php
+     * then remembers the page the user came from (the referer) or sends them
+     * home. Covers every way of signing in on this page, the password form
+     * included, not only the link by e-mail.
+     */
+    public function loginpage_hook() {
+        global $SESSION;
+        if (!empty($SESSION->wantsurl) && \auth_kabmagic\manager::is_subresource_url((string)$SESSION->wantsurl)) {
+            unset($SESSION->wantsurl);
+        }
+    }
+
+    /**
      * The button on the login page.
      *
      * @param string $wantsurl where to go after the login

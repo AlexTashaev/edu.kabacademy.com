@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/kabsignup/db" VERSION="20261118" COMMENT="XMLDB file for Moodle local/kabsignup"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="local_kabsignup_log" COMMENT="Signup attempts: rate limiting plus per-campaign statistics. The address itself is never stored">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Course the link pointed at"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Account that was created or matched"/>
+        <FIELD NAME="emailhash" TYPE="char" LENGTH="64" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="SHA-256 of the lower-cased address that was entered, for rate limiting"/>
+        <FIELD NAME="newuser" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 when this signup created the account"/>
+        <FIELD NAME="campaign" TYPE="char" LENGTH="64" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="camp= slug from the signup link"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="created / enrolled / already / loggedin / exists / throttled / noprereq / badmail"/>
+        <FIELD NAME="flags" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Markers: geo, dup:signals, co:ok|co:skip, capi|capi:err"/>
+        <FIELD NAME="ip" TYPE="char" LENGTH="45" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="IP address of the request"/>
+        <FIELD NAME="attribution" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON of the ad and quiz parameters the link carried (utm_*, pres, click ids, quiz_score, qa)"/>
+        <FIELD NAME="quizscore" TYPE="int" LENGTH="5" NOTNULL="false" SEQUENCE="false" COMMENT="Quiz score from the link, when there was one"/>
+        <FIELD NAME="persona" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Persona slug (pres) when it is on the allowed list"/>
+        <FIELD NAME="eventid" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Random id shared by the browser and the server registration events"/>
+        <FIELD NAME="productid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Storefront product for purchase signups"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="emailhash-timecreated" UNIQUE="false" FIELDS="emailhash, timecreated"/>
+        <INDEX NAME="ip-timecreated" UNIQUE="false" FIELDS="ip, timecreated"/>
+        <INDEX NAME="courseid" UNIQUE="false" FIELDS="courseid"/>
+        <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
+        <INDEX NAME="timecreated" UNIQUE="false" FIELDS="timecreated"/>
+        <INDEX NAME="campaign" UNIQUE="false" FIELDS="campaign"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_kabsignup_campaign" COMMENT="Ad campaigns: the look of the signup page and where to go after it">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="slug" TYPE="char" LENGTH="64" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="camp= value of the links"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Name for the admin list"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Course used when the link has no id"/>
+        <FIELD NAME="visible" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="0: links with this slug behave as if there were no campaign"/>
+        <FIELD NAME="capi" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Send the server-side registration event to Facebook"/>
+        <FIELD NAME="thankyouurl" TYPE="char" LENGTH="500" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Thank-you page; {pres} is replaced by the persona"/>
+        <FIELD NAME="thankyoufallback" TYPE="char" LENGTH="500" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Thank-you page when {pres} cannot be filled"/>
+        <FIELD NAME="title" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" SEQUENCE="false"/>
+        <FIELD NAME="intro" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="cardtitle" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" SEQUENCE="false"/>
+        <FIELD NAME="cardnote" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" SEQUENCE="false"/>
+        <FIELD NAME="cardimage" TYPE="char" LENGTH="500" NOTNULL="true" DEFAULT="" SEQUENCE="false"/>
+        <FIELD NAME="pricelabel" TYPE="char" LENGTH="64" NOTNULL="true" DEFAULT="" SEQUENCE="false"/>
+        <FIELD NAME="buttonlabel" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT="" SEQUENCE="false"/>
+        <FIELD NAME="belowbutton" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" SEQUENCE="false"/>
+        <FIELD NAME="theme" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON: colours, fonts, logo"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="slug" UNIQUE="true" FIELDS="slug"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

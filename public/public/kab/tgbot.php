@@ -17,11 +17,23 @@
  * в git не хранится), публичный — в настройках плагина на kabacademy.com (опция
  * kab_te_bridge_pubkey). Нет ключа или человек не залогинен — уходим на тот же редиректор
  * без подписи: он попробует WP-сессию, а в крайнем случае просто откроет бота.
+ *
+ * `?to=channel` — та же схема для ссылки «Канал потока в Telegram»: WP засчитывает переход
+ * человеку (kab_te_channel_go) и уводит в канал из настроек плагина. Без параметра — бот.
  */
 
 require_once(__DIR__ . '/../../config.php');
 
-$endpoint = 'https://kabacademy.com/wp-admin/admin-ajax.php?action=kab_te_bot_go';
+$targets = [
+    'bot'     => 'kab_te_bot_go',
+    'channel' => 'kab_te_channel_go',
+];
+$to = optional_param('to', 'bot', PARAM_ALPHA);
+if (!isset($targets[$to])) {
+    $to = 'bot';
+}
+
+$endpoint = 'https://kabacademy.com/wp-admin/admin-ajax.php?action=' . $targets[$to];
 
 $keyfile = __DIR__ . '/../../kab-bridge-secret.php';
 $key = is_readable($keyfile) ? trim((string) require($keyfile)) : '';

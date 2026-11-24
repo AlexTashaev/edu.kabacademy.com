@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<libraries>
+  <library>
+    <location>thirdparty/intl-tel-input</location>
+    <name>International Telephone Input</name>
+    <description>Phone field with a country flag and dial code on the signup form.</description>
+    <version>18.2.1</version>
+    <license>MIT</license>
+    <licenseversion></licenseversion>
+    <repository>https://github.com/jackocnr/intl-tel-input</repository>
+    <copyrights>
+      <copyright>2014-2016 Jack O'Connor</copyright>
+    </copyrights>
+  </library>
+</libraries>

@@ -25,5 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['choosereadme'] = 'Kabacademy — дочерняя тема Boost с визуальной полосой прогресса на странице Мои курсы.';
+$string['donate'] = 'Поддержать академию';
+$string['donateurl'] = 'Кнопка «Поддержать академию»: адрес';
+$string['donateurl_desc'] = 'Куда ведёт фиолетовая кнопка в шапке. Можно адрес на этом сайте, например /local/kabshop/product.php?id=22 («Взнос в фонд МАК» на витрине, по умолчанию), или внешний — он откроется в новой вкладке. Пусто — кнопки нет.';
 $string['pluginname'] = 'Kabacademy';
 $string['progresspercent'] = '{$a}% выполнено';
+$string['signin'] = 'Войти';

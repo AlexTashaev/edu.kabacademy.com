@@ -46,6 +46,16 @@ class manager {
     const DEFAULT_AUTHS = 'manual,email';
 
     /**
+     * @var string[] Extensions of files a page loads by itself (img, video,
+     * audio, track, font, style, script). Documents are deliberately absent.
+     */
+    const SUBRESOURCE_EXTENSIONS = [
+        'jpg', 'jpeg', 'jpe', 'png', 'gif', 'webp', 'avif', 'svg', 'svgz', 'ico', 'bmp', 'tif', 'tiff', 'heic',
+        'mp4', 'm4v', 'webm', 'ogv', 'mov', 'mp3', 'm4a', 'oga', 'ogg', 'wav', 'aac', 'flac', 'vtt',
+        'woff', 'woff2', 'ttf', 'otf', 'eot', 'css', 'js', 'mjs', 'map',
+    ];
+
+    /**
      * Plugin settings with defaults applied.
      *
      * @return \stdClass lifetime (min), ratelimit, ratewindow (min), allowedauths (array)
@@ -131,7 +141,57 @@ class manager {
         if ($out !== $CFG->wwwroot && strpos($out, $CFG->wwwroot . '/') !== 0) {
             return '';
         }
+        if (self::is_subresource_url($out)) {
+            return '';
+        }
         return \core_text::substr($out, 0, 2000);
+    }
+
+    /**
+     * True when the URL is a file that a page pulls in by itself (a picture,
+     * a video, a font, a style sheet, a script), not a page a person opens.
+     *
+     * require_login() remembers in $SESSION->wantsurl the URL of any request
+     * that hits it, an <img> request included. When a guest's page embeds a
+     * picture that needs a login (course covers in the storefront while
+     * forcelogin was on, 22-23.11.2026), the picture becomes the place to
+     * return to after signing in, and the user lands on a bare JPEG.
+     *
+     * Documents (pdf, docx, zip...) do not match: a link to one in a letter is
+     * opened on purpose, and after the login the user should get the file.
+     *
+     * @param string $url absolute or wwwroot-relative URL
+     * @return bool
+     */
+    public static function is_subresource_url(string $url): bool {
+        global $CFG;
+        $path = parse_url($url, PHP_URL_PATH);
+        if (!is_string($path) || $path === '') {
+            return false;
+        }
+        $rootpath = rtrim((string)parse_url($CFG->wwwroot, PHP_URL_PATH), '/');
+        if ($rootpath !== '' && strpos($path, $rootpath . '/') === 0) {
+            $path = substr($path, strlen($rootpath));
+        }
+        // Moodle's own asset scripts: whatever they serve is never a page.
+        if (preg_match('~^/(theme/(image|styles|styles_debug|font|yui_combo|javascript|jquery)|lib/(javascript|requirejs))\.php(/|$)~',
+                $path)) {
+            return true;
+        }
+        // File serving scripts: decide by the extension of the served file.
+        if (preg_match('~^/(pluginfile|tokenpluginfile|draftfile|webservice/pluginfile)\.php(/|$)~', $path)) {
+            $name = $path;
+            $query = parse_url($url, PHP_URL_QUERY);
+            if (is_string($query) && $query !== '') {
+                parse_str($query, $params);
+                if (!empty($params['file']) && is_string($params['file'])) {
+                    $name = $params['file']; // Slash arguments off: pluginfile.php?file=/ctx/comp/area/name.
+                }
+            }
+            $ext = \core_text::strtolower(pathinfo(rawurldecode($name), PATHINFO_EXTENSION));
+            return in_array($ext, self::SUBRESOURCE_EXTENSIONS, true);
+        }
+        return false;
     }
 
     /**
@@ -257,6 +317,37 @@ class manager {
 
         $url = new \moodle_url('/auth/kabmagic/login.php', ['t' => self::encode($token)]);
         return self::send_link($user, $url->out(false), $config);
+    }
+
+    /**
+     * Issue a login link on behalf of another KAB plugin (e.g. the course
+     * signup welcome e-mail), without sending anything itself.
+     *
+     * The account must pass the same eligibility rules as on the request form;
+     * the row counts towards the address's rate limit like any issued link.
+     *
+     * @param \stdClass $user target user (id and email are used)
+     * @param string $wantsurl page to open after the login
+     * @param string $ip requester's IP, for the log
+     * @return string|null the full login URL, or null when the plugin is
+     *                     disabled or the account may not be signed in by a link
+     */
+    public static function issue_link(\stdClass $user, string $wantsurl = '', string $ip = ''): ?string {
+        global $DB;
+        if (!is_enabled_auth('kabmagic') || self::eligible_user((int)$user->id) === null) {
+            return null;
+        }
+        $token = random_bytes(self::TOKEN_BYTES);
+        $record = new \stdClass();
+        $record->userid = (int)$user->id;
+        $record->emailhash = self::email_hash((string)$user->email);
+        $record->tokenhash = hash('sha256', $token);
+        $record->wantsurl = self::clean_wantsurl($wantsurl);
+        $record->timecreated = time();
+        $record->timeused = 0;
+        $record->ip = \core_text::substr($ip, 0, 45);
+        $DB->insert_record('auth_kabmagic_tokens', $record);
+        return (new \moodle_url('/auth/kabmagic/login.php', ['t' => self::encode($token)]))->out(false);
     }
 
     /**

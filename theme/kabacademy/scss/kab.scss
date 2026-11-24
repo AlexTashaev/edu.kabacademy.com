@@ -379,3 +379,289 @@ span[data-flexitour="container"].orphan {
 .footer-popover .btn-footer-popover {
   right: 6rem;
 }
+
+// ============================================================================
+// Шапка сайта — вариант «Б» (19.11.2026). Разметка: templates/theme_boost/navbar.mustache,
+// гость — templates/core/user_menu.mustache, кнопка — templates/donate_button.mustache.
+// Перекрывает голубую полосу из theme_boost/scss в БД (фон, высота 65px, белые иконки).
+// ============================================================================
+$kab-sky: #3BA9DC;
+$kab-ink: #1D2A36;
+$kab-nav-active: #EEF6FB;
+$kab-navbar-line: #E6EEF4;
+
+#page-wrapper .navbar.kab-navbar,
+.navbar.kab-navbar {
+  height: $navbar-height + 1px;
+  max-height: none;
+  background: #fff !important;
+  background-image: none !important;
+  border-bottom: 1px solid $kab-navbar-line;
+  font-family: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  > .container-fluid {
+    align-items: center;
+    padding-left: max(1rem, calc((100% - 1240px) / 2));
+    padding-right: max(1rem, calc((100% - 1240px) / 2));
+  }
+
+  // Логотип академии целиком: дерево и «МЕЖДУНАРОДНАЯ АКАДЕМИЯ КАББАЛЫ».
+  .kab-brand {
+    flex: none;
+    margin-right: 2.5rem !important;
+  }
+
+  .kab-logo {
+    display: block;
+    width: 168px;
+    height: 35px;
+    background: url("[[pix:theme_kabacademy|logo]]") left center / contain no-repeat;
+  }
+
+  // Меню: обычные буквы, текущий пункт — светло-голубая плашка.
+  .primary-navigation {
+    margin-right: 1rem;
+
+    // Занимает всё место между логотипом и правой частью: иначе во флекс-строке сжимается до самого
+    // длинного пункта, и core/moremenu уносит в «Ещё» все пункты.
+    @include media-breakpoint-up(md) {
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    // Высота фиксированная: по ней core/moremenu понимает, что пункты не влезли, и уносит их в «Ещё».
+    .moremenu,
+    .navigation {
+      height: $navbar-height;
+      display: flex;
+      align-items: center;
+      flex: 1 1 auto;
+      min-width: 0;
+
+      > .more-nav {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+    }
+
+    .moremenu .nav-link,
+    .navigation .nav-link {
+      height: 40px;
+      padding: 0 12px;
+      border: 0 !important;
+      border-radius: 8px;
+      color: $kab-ink;
+      font-size: 14px;
+      font-weight: 500;
+      background: transparent;
+      transition: background-color .15s ease, color .15s ease;
+
+      &:hover,
+      &:focus {
+        background: $kab-tint;
+        color: $kab-navy;
+      }
+
+      &.active,
+      &.active:hover,
+      &.active:focus {
+        background: $kab-nav-active;
+        color: $kab-navy;
+        font-weight: 600;
+      }
+    }
+  }
+
+  #usernavigation {
+    align-items: center;
+
+    // Кнопка «Поддержать академию» — первой справа, перед иконками.
+    .kab-donate-wrap {
+      order: -1;
+      margin-right: 14px;
+    }
+  }
+
+  // Переключатель «Режим редактирования»: надпись съедала ~170px меню (у админа всё уходило
+  // в «Дополнительно») — оставляем её экранным дикторам, как Boost делает на телефоне.
+  .editmode-switch-form label {
+    @include visually-hidden();
+  }
+
+  // Иконки уведомлений и сообщений: из БД они белые (под голубую полосу).
+  .nav-item .icon,
+  .popover-region-toggle .icon {
+    color: $kab-sky !important;
+  }
+
+  .usermenu {
+    margin-left: 8px !important;
+  }
+
+  @include media-breakpoint-down(md) {
+    .kab-brand {
+      margin-right: auto !important;
+    }
+
+    .kab-logo {
+      width: 150px;
+      height: 31px;
+    }
+
+    #usernavigation {
+      margin-left: 0 !important;
+
+      .kab-donate-wrap {
+        margin-right: 0;
+      }
+    }
+
+    .usermenu {
+      margin-left: 0 !important;
+    }
+  }
+
+  @media (max-width: 359.98px) {
+    .kab-logo {
+      width: 128px;
+      height: 27px;
+    }
+  }
+}
+
+.kab-donate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 22px;
+  border-radius: 8px;
+  background: $kab-purple;
+  color: #fff !important;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none !important;
+  transition: background-color .15s ease;
+
+  &:hover,
+  &:focus-visible {
+    background: #8B2199;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $kab-sky;
+    outline-offset: 2px;
+  }
+}
+
+.kab-donate-icon {
+  display: none;
+}
+
+// Гость: «Войти» с ключом kabacademy.com.
+.navbar.kab-navbar .kab-login {
+  padding-left: 0 !important;
+}
+
+.kab-login-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 4px;
+  color: $kab-navy;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none !important;
+
+  &:hover,
+  &:focus-visible {
+    color: $kab-purple;
+  }
+}
+
+.kab-login-icon {
+  flex: none;
+  color: $kab-sky;
+}
+
+// Гамбургер из трёх голубых полос, как на kabacademy.com; на компьютере скрыт (d-md-none).
+.navbar.kab-navbar .kab-toggler {
+  order: 10;
+  width: 44px;
+  height: 44px;
+  margin-left: 4px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  box-shadow: none;
+}
+
+.kab-toggler-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  span {
+    display: block;
+    width: 26px;
+    height: 3px;
+    background: $kab-sky;
+  }
+}
+
+@include media-breakpoint-down(md) {
+  // На телефоне кнопка — сердце, «Войти» — ключ; подписи остаются для экранных дикторов.
+  .kab-donate {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    background: transparent;
+    color: $kab-purple !important;
+
+    &:hover,
+    &:focus-visible {
+      background: $kab-tint;
+    }
+  }
+
+  .kab-donate-icon {
+    display: block;
+  }
+
+  .kab-donate-text,
+  .kab-login-text {
+    @include visually-hidden();
+  }
+
+  .kab-login-link {
+    width: 44px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  // Вошедшему на телефоне места мало (колокольчик, сообщения, аватар): сердце убираем,
+  // пожертвование остаётся в каталоге.
+  .navbar.kab-navbar:has(#user-menu-toggle) .kab-donate-wrap {
+    display: none !important;
+  }
+}
+
+// Главная (витрина): заголовок страницы повторяет логотип в шапке — прячем визуально, для дикторов остаётся.
+#page-site-index #page-header .page-header-headings h1 {
+  @include visually-hidden();
+}
+
+
+// Ящик меню на телефоне: «В начало» повторяет пункт «Курсы» (главная = витрина). В шапке его прячет
+// SCSS Boost из БД ([data-key="home"]), в ящике у пункта нет data-key — первый пункт со ссылкой на главную.
+.drawer-primary .drawercontent > .list-group > a.list-group-item:first-child[href$="/"] {
+  display: none;
+}
