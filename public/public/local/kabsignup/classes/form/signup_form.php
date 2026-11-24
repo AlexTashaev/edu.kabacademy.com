@@ -31,7 +31,7 @@ use local_kabsignup\manager;
  * Also carries an invisible honeypot field (not a moodleform element, so bots
  * that fill every input give themselves away); index.php checks it.
  *
- * Custom data: phonerequired, termsurl, buttonlabel, belowbutton, country,
+ * Custom data: phonerequired, termsurl, privacyurl, buttonlabel, belowbutton, country,
  * courseid, campaign (slug, for the log of rejected addresses).
  *
  * @package    local_kabsignup
@@ -89,10 +89,20 @@ class signup_form extends \moodleform {
         }
 
         if (!empty($custom['termsurl'])) {
-            $link = \html_writer::link($custom['termsurl'], get_string('consentlink', 'local_kabsignup'),
-                ['target' => '_blank', 'rel' => 'noopener']);
-            $mform->addElement('checkbox', 'consent', '', get_string('consenttext', 'local_kabsignup', $link),
-                ['class' => 'ks-consent']);
+            $attrs = ['target' => '_blank', 'rel' => 'noopener'];
+            if (!empty($custom['privacyurl'])) {
+                // Документы кассы: оферта и явное согласие на обработку персональных данных по её политике.
+                $a = (object) [
+                    'offer' => \html_writer::link($custom['termsurl'], get_string('consentoffer', 'local_kabsignup'), $attrs),
+                    'privacy' => \html_writer::link($custom['privacyurl'], get_string('consentprivacy', 'local_kabsignup'),
+                        $attrs),
+                ];
+                $label = get_string('consenttextprivacy', 'local_kabsignup', $a);
+            } else {
+                $link = \html_writer::link($custom['termsurl'], get_string('consentlink', 'local_kabsignup'), $attrs);
+                $label = get_string('consenttext', 'local_kabsignup', $link);
+            }
+            $mform->addElement('checkbox', 'consent', '', $label, ['class' => 'ks-consent']);
             $mform->addRule('consent', get_string('consentrequired', 'local_kabsignup'), 'required', null, 'client');
         }
 
