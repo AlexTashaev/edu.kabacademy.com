@@ -66,7 +66,9 @@ class recurring {
         require_once($CFG->libdir . '/filelib.php');
 
         if (rtrim((string) $CFG->wwwroot, '/') !== self::LIVE_WWWROOT) {
-            return ['error' => 'Robokassa recurring: only on ' . self::LIVE_WWWROOT, 'nomail' => true];
+            // Не неудача покупателя: касса пропускает подписку, не трогая счётчик (переехал адрес
+            // сайта — поменять LIVE_WWWROOT).
+            return ['error' => 'Robokassa recurring: only on ' . self::LIVE_WWWROOT, 'skip' => true];
         }
         if ($sub->currency !== 'RUB') {
             return ['error' => 'Robokassa recurring: only RUB subscriptions', 'stop' => true, 'nomail' => true];
@@ -206,6 +208,14 @@ class recurring {
         $state = (string) ($response['OperationStateResponse']['#']['State'][0]['#']['Code'][0]['#'] ?? '');
         if ($state === '100') {
             return 'paid';
+        }
+        if ($state === '5') {
+            // Счёт создан, денег нет. Повторный платёж проходит за секунды — двое суток в этом
+            // состоянии значит отказ банка, который Robokassa так и не закрыла.
+            $created = (int) $DB->get_field('payments', 'timecreated', ['id' => $paymentid]);
+            if ($created && time() - $created > 2 * DAYSECS) {
+                return 'failed';
+            }
         }
         if (in_array($state, ['5', '50', '80'], true)) {
             return 'wait'; // Создан, деньги получены и зачисляются, приостановлен.

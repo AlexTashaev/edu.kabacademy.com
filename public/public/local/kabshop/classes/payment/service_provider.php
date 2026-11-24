@@ -229,6 +229,7 @@ class service_provider implements \core_payment\local\callback\service_provider 
             return false;
         }
         $sublock = null;
+        $transaction = null;
         if ($paymentarea === 'renewal' && $sub) {
             // Продление, подтверждённое колбэком шлюза или сверкой (Robokassa списывает асинхронно —
             // \paygw_robokassa\recurring): сдвинуть дату следующего списания до выдачи, как
@@ -239,6 +240,9 @@ class service_provider implements \core_payment\local\callback\service_provider 
             if (!$sublock) {
                 throw new \moodle_exception('locktimeout');
             }
+            // Продление и выдача — одной транзакцией: упала выдача — дата не сдвинута, метка ожидания
+            // на месте, и следующая сверка повторит выдачу.
+            $transaction = $DB->start_delegated_transaction();
             $sub = \local_kabshop\subscriptions::get((int) $sub->id);
             if ((int) $sub->lastpaymentid !== $paymentid
                     && !$DB->record_exists('local_kabshop_purchase', ['paymentid' => $paymentid])) {
@@ -253,7 +257,16 @@ class service_provider implements \core_payment\local\callback\service_provider 
             }
         }
         try {
-            return self::deliver($paymentarea, $itemid, $paymentid, $userid, $product, $sub);
+            $ok = self::deliver($paymentarea, $itemid, $paymentid, $userid, $product, $sub);
+            if ($transaction) {
+                $transaction->allow_commit();
+            }
+            return $ok;
+        } catch (\Throwable $e) {
+            if ($transaction) {
+                $transaction->rollback($e);
+            }
+            throw $e;
         } finally {
             if ($sublock) {
                 $sublock->release();

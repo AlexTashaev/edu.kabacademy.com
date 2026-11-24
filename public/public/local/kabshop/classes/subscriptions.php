@@ -233,7 +233,34 @@ class subscriptions {
      * @return bool
      */
     public static function charge_one(\stdClass $sub): bool {
+        // Одна подписка — одно списание одновременно: cron и «Списать сейчас», две вкладки. Не ждём:
+        // если списание уже идёт, этот вызов ничего не делает. Отдельный ключ, не 'sub_<id>': на том
+        // ждёт колбэк шлюза, который приходит во время нашего запроса, а ветка сверки сама вызывает
+        // deliver_order, которому нужен 'sub_<id>' (блокировки Moodle не реентерабельны).
+        $lock = \core\lock\lock_config::get_lock_factory('local_kabshop')->get_lock('charge_' . $sub->id, 0);
+        if (!$lock) {
+            return false;
+        }
+        try {
+            return self::charge_one_locked($sub);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Одно списание по подписке под блокировкой charge_<id>.
+     *
+     * @param \stdClass $sub
+     * @return bool
+     */
+    protected static function charge_one_locked(\stdClass $sub): bool {
         global $DB;
+        // Подписку могли отменить или продлить, пока шёл цикл charge_due (в нём HTTP-запросы).
+        $sub = $DB->get_record('local_kabshop_sub', ['id' => $sub->id]);
+        if (!$sub || $sub->status !== 'active') {
+            return false;
+        }
         $class = self::charger($sub->gateway);
         $product = catalog::get_product($sub->productid, IGNORE_MISSING);
         $user = \core_user::get_user($sub->userid);
@@ -249,9 +276,19 @@ class subscriptions {
         $pendingid = self::pending_paymentid($sub);
         if ($pendingid) {
             $state = method_exists($class, 'pending_state') ? $class::pending_state($sub, $pendingid) : 'failed';
-            if ($state === 'unknown') {
-                // Шлюз не ответил: ждём, но не бесконечно — через трое суток считаем неудачей.
-                $state = (time() - (int) $sub->lastattempt > 3 * DAYSECS) ? 'failed' : 'wait';
+            // Возраст — от создания ожидающего платежа, а не от lastattempt (его сбрасывает админ).
+            $created = (int) $DB->get_field('payments', 'timecreated', ['id' => $pendingid]);
+            $age = $created ? time() - $created : PHP_INT_MAX;
+            if ($state === 'unknown' && $age > 3 * DAYSECS) {
+                // Шлюз так и не ответил за трое суток — считаем неудачей.
+                $state = 'failed';
+            } else if ($state === 'unknown') {
+                $state = 'wait';
+            }
+            if ($state === 'wait' && $age > 7 * DAYSECS) {
+                // Неделя «в работе» у шлюза — дольше ждать нельзя: доступ давно кончился.
+                error_log("local_kabshop: sub {$sub->id}: payment $pendingid still pending after 7 days, counted as failure");
+                $state = 'failed';
             }
             if ($state === 'paid') {
                 // Деньги списаны, а подтверждение до нас не дошло — выдаём сами, как сделал бы колбэк.
@@ -305,6 +342,12 @@ class subscriptions {
             return true;
         }
 
+        if (!empty($res['skip'])) {
+            // Не неудача покупателя (например, не тот сайт): счётчик не трогаем, пишем в журнал.
+            error_log('local_kabshop: sub ' . $sub->id . ' skipped: ' . (string) ($res['error'] ?? ''));
+            return false;
+        }
+
         self::record_failure($sub, $product, $user, (string) ($res['error'] ?? 'unknown error'),
             empty($res['nomail']), !empty($res['stop']));
         return false;
@@ -340,7 +383,8 @@ class subscriptions {
             bool $mail = true, bool $stop = false): ?\stdClass {
         global $DB;
         $fresh = $DB->get_record('local_kabshop_sub', ['id' => $sub->id]);
-        if (!$fresh || (int) $fresh->lastpaymentid !== (int) $sub->lastpaymentid) {
+        if (!$fresh || (int) $fresh->lastpaymentid !== (int) $sub->lastpaymentid || $fresh->status !== 'active') {
+            // Продлена колбэком или отменена/остановлена за время запроса — неудачи и письма нет.
             return $fresh ?: null;
         }
         $failcount = (int) $fresh->failcount + 1;
