@@ -290,6 +290,8 @@ $kabrecurring = $component === 'local_kabshop' && $currency == 'RUB' && !$config
     && \local_kabshop\payment\service_provider::is_recurring($paymentarea, $itemid);
 if ($kabrecurring) {
     $request .= "&Recurring=true";
+    // Метка «первая оплата подписки кассы»: по ней \paygw_robokassa\recurring разрешает повторы.
+    $paygwdata->recurrent = \paygw_robokassa\recurring::KAB_PARENT;
 } else if ($config->recurrent == 1 && $currency == 'RUB' && !$config->istestmode && $component !== 'local_kabshop') {
     // Check recurrent.
     $request .= "&Recurring=true";

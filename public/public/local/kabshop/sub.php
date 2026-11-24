@@ -46,8 +46,12 @@ if ($do === 'chargenow' && data_submitted() && confirm_sesskey() && optional_par
     }
     $ok = subscriptions::charge_one($sub);
     $sub = subscriptions::get($id);
-    redirect($url, $ok ? get_string('chargenow_ok', $p) : get_string('chargenow_failed', $p, s((string) $sub->lasterror)),
-        null, $ok ? \core\output\notification::NOTIFY_SUCCESS : \core\output\notification::NOTIFY_ERROR);
+    // Robokassa подтверждает списание позже, колбэком: «принято» — ещё не «продлено».
+    $pending = $ok && subscriptions::pending_paymentid($sub);
+    redirect($url, $ok ? get_string($pending ? 'chargenow_pending' : 'chargenow_ok', $p)
+            : get_string('chargenow_failed', $p, s((string) $sub->lasterror)),
+        null, $ok ? ($pending ? \core\output\notification::NOTIFY_INFO : \core\output\notification::NOTIFY_SUCCESS)
+            : \core\output\notification::NOTIFY_ERROR);
 }
 
 $form = new \local_kabshop\form\sub_form($url);
@@ -58,7 +62,8 @@ if ($data = $form->get_data()) {
     if (!empty($data->resetfails)) {
         $upd->failcount = 0;
         $upd->lastattempt = 0;
-        $upd->lasterror = null;
+        // Ожидающее подтверждения списание не забываем: иначе ближайший запуск спишет ещё раз.
+        $upd->lasterror = subscriptions::pending_paymentid($sub) ? $sub->lasterror : null;
     }
     $DB->update_record('local_kabshop_sub', $upd);
     // Доступ к курсу подписки — до нового ближайшего платежа + запас.
@@ -87,8 +92,10 @@ $dl = [
     get_string('subnext', $p) => html_writer::tag('strong', userdate($sub->nextcharge, $fmt)) .
         ($sub->status === 'active' && $sub->nextcharge <= time() ? ' · ' . get_string('subdue', $p) : ''),
     get_string('col_paymethod', $p) => s($sub->gateway) . (subscriptions::charger($sub->gateway) ? '' : ' · ' . get_string('subgatewayown', $p)),
-    get_string('subfails', $p) => $sub->failcount ? $sub->failcount . ' · ' . s((string) $sub->lasterror) .
-        ($sub->lastattempt ? ' · ' . userdate($sub->lastattempt, $fmt) : '') : '—',
+    get_string('subfails', $p) => ($sub->failcount ? $sub->failcount . ' · ' . s((string) $sub->lasterror) .
+        ($sub->lastattempt ? ' · ' . userdate($sub->lastattempt, $fmt) : '') : '—')
+        . (subscriptions::pending_paymentid($sub) ? ' · ' . get_string('subpending', $p, (object) [
+            'payment' => subscriptions::pending_paymentid($sub), 'time' => userdate($sub->lastattempt, $fmt)]) : ''),
 ];
 $html = '';
 foreach ($dl as $k => $v) {

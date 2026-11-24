@@ -40,13 +40,20 @@ if (optional_param('shp_label', '', PARAM_ALPHANUMEXT) === 'official_wordpress')
     $wpcurl = new curl();
     $wpresponse = $wpcurl->post('https://kabacademy.com/?robokassa=result', http_build_query($wpparams, '', '&'), [
         'CURLOPT_RETURNTRANSFER' => true,
-        'CURLOPT_TIMEOUT' => 25,
-        'CURLOPT_CONNECTTIMEOUT' => 10,
+        'CURLOPT_TIMEOUT' => 15,
+        'CURLOPT_CONNECTTIMEOUT' => 5,
     ]);
-    if (!empty($wpcurl->errno)) {
-        error_log('paygw_robokassa: forward to WordPress failed for InvId ' . (int) ($wpparams['InvId'] ?? 0) . ': ' . $wpcurl->error);
+    $wpcode = (int) ($wpcurl->get_info()['http_code'] ?? 0);
+    @header('Content-Type: text/plain; charset=utf-8');
+    if (!empty($wpcurl->errno) || $wpcode !== 200) {
+        error_log('paygw_robokassa: forward to WordPress failed for InvId ' . (int) ($wpparams['InvId'] ?? 0)
+            . ': HTTP ' . $wpcode . ' ' . $wpcurl->error . ' ' . substr(trim(strip_tags((string) $wpresponse)), 0, 100));
         http_response_code(502);
         die('FAIL. WordPress unavailable');
+    }
+    if (strpos((string) $wpresponse, 'OK') !== 0) {
+        error_log('paygw_robokassa: WordPress refused InvId ' . (int) ($wpparams['InvId'] ?? 0) . ': '
+            . substr(trim(strip_tags((string) $wpresponse)), 0, 100));
     }
     die((string) $wpresponse);
 }
@@ -177,7 +184,8 @@ $DB->update_record('payments', $payment);
 helper::deliver_order($component, $paymentarea, $itemid, $paymentid, $userid);
 
 // Notify user.
-if ($robokassatx->recurrent) {
+// KAB patch: у первой оплаты подписки кассы recurrent = -1 (метка, не дата следующего платежа).
+if ((int) $robokassatx->recurrent > 0) {
     $reason = 'Success recurrent';
     $nextpay = userdate($robokassatx->recurrent, "%d %B %Y, %k:%M");
 } else {

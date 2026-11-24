@@ -243,16 +243,40 @@ class subscriptions {
             return false;
         }
 
-        // Прошлый запрос на списание шлюз принял, а подтверждения так и не прислал (отказ банка,
-        // нет денег) — это неудача: считаем её, как обычную, и пробуем снова.
-        if (strpos((string) $sub->lasterror, self::PENDING_PREFIX) === 0) {
-            $sub->failcount = (int) $sub->failcount + 1;
-            $sub->lasterror = 'no confirmation for payment ' . substr((string) $sub->lasterror, strlen(self::PENDING_PREFIX));
-            $sub->status = $sub->failcount >= self::MAX_FAILS ? 'failed' : 'active';
-            $sub->timemodified = time();
-            $DB->update_record('local_kabshop_sub', $sub);
-            mailer::charge_failed($product, $user, $sub);
-            if ($sub->status === 'failed') {
+        // Прошлый запрос на списание шлюз принял, а подтверждения пока нет. Прежде чем просить
+        // снова, узнать у шлюза, чем он кончился, — иначе потерянное или запоздавшее подтверждение
+        // обернётся вторым списанием за тот же период.
+        $pendingid = self::pending_paymentid($sub);
+        if ($pendingid) {
+            $state = method_exists($class, 'pending_state') ? $class::pending_state($sub, $pendingid) : 'failed';
+            if ($state === 'unknown') {
+                // Шлюз не ответил: ждём, но не бесконечно — через трое суток считаем неудачей.
+                $state = (time() - (int) $sub->lastattempt > 3 * DAYSECS) ? 'failed' : 'wait';
+            }
+            if ($state === 'paid') {
+                // Деньги списаны, а подтверждение до нас не дошло — выдаём сами, как сделал бы колбэк.
+                try {
+                    \core_payment\helper::deliver_order('local_kabshop', 'renewal', (int) $sub->id, $pendingid,
+                        (int) $sub->userid);
+                    if (method_exists($class, 'mark_paid')) {
+                        $class::mark_paid($pendingid);
+                    }
+                } catch (\Throwable $e) {
+                    debugging('local_kabshop: delivery of confirmed payment ' . $pendingid . ' failed: ' . $e->getMessage(),
+                        DEBUG_NORMAL);
+                    return false;
+                }
+                return true;
+            }
+            if ($state === 'wait') {
+                return true; // Платёж ещё в работе у шлюза — второй запрос не шлём.
+            }
+            $before = (int) $sub->lastpaymentid;
+            $sub = self::record_failure($sub, $product, $user, 'no confirmation for payment ' . $pendingid);
+            if (!$sub || (int) $sub->lastpaymentid !== $before) {
+                return true; // Пока сверяли, подписку продлило подтверждение.
+            }
+            if ($sub->status !== 'active') {
                 return false;
             }
         }
@@ -268,12 +292,10 @@ class subscriptions {
 
         if (!empty($res['pending'])) {
             // Шлюз принял запрос, результат придёт колбэком: продлит подписку deliver_order('renewal').
-            // Колбэк может успеть раньше этой строки — тогда подписка уже продлена этим платежом.
+            // Колбэк может успеть раньше — тогда подписка уже продлена этим платежом, метку не ставим.
             $pendingid = (int) $res['pending'];
-            $fresh = $DB->get_record('local_kabshop_sub', ['id' => $sub->id], 'id, lastpaymentid');
-            if ($fresh && (int) $fresh->lastpaymentid !== $pendingid) {
-                $DB->set_field('local_kabshop_sub', 'lasterror', self::PENDING_PREFIX . $pendingid, ['id' => $sub->id]);
-            }
+            $DB->execute('UPDATE {local_kabshop_sub} SET lasterror = ? WHERE id = ? AND lastpaymentid <> ?',
+                [self::PENDING_PREFIX . $pendingid, $sub->id, $pendingid]);
             return true;
         }
 
@@ -283,12 +305,56 @@ class subscriptions {
             return true;
         }
 
-        $sub->failcount = (int) $sub->failcount + 1;
-        $sub->lasterror = \core_text::substr((string) ($res['error'] ?? 'unknown error'), 0, 250);
-        $sub->status = $sub->failcount >= self::MAX_FAILS ? 'failed' : 'active';
-        $sub->timemodified = time();
-        $DB->update_record('local_kabshop_sub', $sub);
-        mailer::charge_failed($product, $user, $sub);
+        self::record_failure($sub, $product, $user, (string) ($res['error'] ?? 'unknown error'),
+            empty($res['nomail']), !empty($res['stop']));
         return false;
+    }
+
+    /**
+     * Номер платежа, подтверждения которого ждём (метка PENDING_PREFIX в lasterror), или 0.
+     *
+     * @param \stdClass $sub
+     * @return int
+     */
+    public static function pending_paymentid(\stdClass $sub): int {
+        $error = (string) ($sub->lasterror ?? '');
+        return strpos($error, self::PENDING_PREFIX) === 0 ? (int) substr($error, strlen(self::PENDING_PREFIX)) : 0;
+    }
+
+    /**
+     * Записать неудачу списания, не затирая то, что успел сделать колбэк шлюза.
+     *
+     * Подписка перечитывается и обновляется условием «последний платёж тот же»: если за время
+     * запроса её продлил колбэк (lastpaymentid сменился), неудачи нет. Не активная подписка
+     * (отменённая, остановленная) статус не меняет.
+     *
+     * @param \stdClass $sub подписка, какой её видел вызывающий
+     * @param \stdClass $product
+     * @param \stdClass $user
+     * @param string $error
+     * @param bool $mail письмо покупателю (по правилам mailer::charge_failed)
+     * @param bool $stop остановить подписку сразу (повторять бессмысленно)
+     * @return \stdClass|null подписка после записи
+     */
+    protected static function record_failure(\stdClass $sub, \stdClass $product, \stdClass $user, string $error,
+            bool $mail = true, bool $stop = false): ?\stdClass {
+        global $DB;
+        $fresh = $DB->get_record('local_kabshop_sub', ['id' => $sub->id]);
+        if (!$fresh || (int) $fresh->lastpaymentid !== (int) $sub->lastpaymentid) {
+            return $fresh ?: null;
+        }
+        $failcount = (int) $fresh->failcount + 1;
+        $status = (string) $fresh->status;
+        if ($status === 'active' && ($stop || $failcount >= self::MAX_FAILS)) {
+            $status = 'failed';
+        }
+        $DB->execute('UPDATE {local_kabshop_sub} SET failcount = ?, lasterror = ?, status = ?, timemodified = ?
+                       WHERE id = ? AND lastpaymentid = ?',
+            [$failcount, \core_text::substr($error, 0, 250), $status, time(), $sub->id, (int) $sub->lastpaymentid]);
+        $after = $DB->get_record('local_kabshop_sub', ['id' => $sub->id]);
+        if ($after && (int) $after->lastpaymentid === (int) $sub->lastpaymentid && $mail) {
+            mailer::charge_failed($product, $user, $after);
+        }
+        return $after ?: null;
     }
 }
