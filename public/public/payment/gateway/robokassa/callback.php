@@ -45,16 +45,18 @@ if (optional_param('shp_label', '', PARAM_ALPHANUMEXT) === 'official_wordpress')
     ]);
     $wpcode = (int) ($wpcurl->get_info()['http_code'] ?? 0);
     @header('Content-Type: text/plain; charset=utf-8');
-    if (!empty($wpcurl->errno) || $wpcode !== 200) {
+    if (!empty($wpcurl->errno) || $wpcode === 0) {
         error_log('paygw_robokassa: forward to WordPress failed for InvId ' . (int) ($wpparams['InvId'] ?? 0)
-            . ': HTTP ' . $wpcode . ' ' . $wpcurl->error . ' ' . substr(trim(strip_tags((string) $wpresponse)), 0, 100));
+            . ': ' . $wpcurl->error);
         http_response_code(502);
         die('FAIL. WordPress unavailable');
     }
-    if (strpos((string) $wpresponse, 'OK') !== 0) {
-        error_log('paygw_robokassa: WordPress refused InvId ' . (int) ($wpparams['InvId'] ?? 0) . ': '
-            . substr(trim(strip_tags((string) $wpresponse)), 0, 100));
+    // Ответ WP — как есть, с его кодом: «OK<InvId>» (200) или отказ (например, 400 «BAD SIGN»).
+    if ($wpcode !== 200 || strpos((string) $wpresponse, 'OK') !== 0) {
+        error_log('paygw_robokassa: WordPress refused InvId ' . (int) ($wpparams['InvId'] ?? 0) . ': HTTP ' . $wpcode
+            . ' ' . substr(trim(strip_tags((string) $wpresponse)), 0, 100));
     }
+    http_response_code($wpcode);
     die((string) $wpresponse);
 }
 
