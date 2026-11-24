@@ -99,6 +99,7 @@ if (data_submitted() && optional_param('kab_website', '', PARAM_RAW) !== '') {
 $form = new \local_kabsignup\form\signup_form($pageurl, [
     'phonerequired' => $config->phonerequired,
     'termsurl' => $config->termsurl,
+    'privacyurl' => $config->privacyurl,
     'buttonlabel' => $campaignrec && (string)$campaignrec->buttonlabel !== '' ? (string)$campaignrec->buttonlabel : $button,
     'belowbutton' => $campaignrec ? (string)$campaignrec->belowbutton : '',
     'country' => skin::country(),

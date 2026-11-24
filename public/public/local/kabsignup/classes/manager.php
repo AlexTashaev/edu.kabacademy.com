@@ -82,6 +82,9 @@ class manager {
         $out->personafield = isset($raw->personafield) ? clean_param(trim((string)$raw->personafield), PARAM_ALPHANUMEXT)
             : 'kab_persona';
         $out->termsurl = self::terms_url(isset($raw->termsurl) ? (string)$raw->termsurl : '');
+        // Правила — оферта кассы (настройка пуста): во флажке рядом с ней политика конфиденциальности кассы.
+        $out->privacyurl = (trim((string)($raw->termsurl ?? '')) === '' && class_exists('\local_kabshop\legal'))
+            ? (new \moodle_url('/local/kabshop/legal.php', ['doc' => 'privacy']))->out(false) : '';
         $out->capipixel = preg_replace('/\D/', '', (string)($raw->capipixel ?? ''));
         $out->capitoken = trim((string)($raw->capitoken ?? ''));
         $version = trim((string)($raw->capiversion ?? ''));
