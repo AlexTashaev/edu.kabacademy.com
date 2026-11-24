@@ -221,7 +221,12 @@ class subscriptions {
             if (!self::charger($sub->gateway)) {
                 continue; // Шлюз не умеет автосписание — подписку ведёт кто-то другой.
             }
-            self::charge_one($sub) ? $ok++ : $failed++;
+            $res = self::charge_one($sub);
+            if ($res === true) {
+                $ok++;
+            } else if ($res === false) {
+                $failed++;
+            }
         }
         return [$ok, $failed];
     }
@@ -229,20 +234,21 @@ class subscriptions {
     /**
      * Одно списание по подписке.
      *
-     * @param \stdClass $sub
-     * @return bool
+     * @param \stdClass $sub подписка, какой её видел вызывающий (выборка cron или страница админа)
+     * @param bool $force «Списать сейчас» админа: не ждать срока; без него — только подошедший срок
+     * @return bool|null null — списание этой подписки уже идёт (или она изменилась), ничего не делали
      */
-    public static function charge_one(\stdClass $sub): bool {
+    public static function charge_one(\stdClass $sub, bool $force = false): ?bool {
         // Одна подписка — одно списание одновременно: cron и «Списать сейчас», две вкладки. Не ждём:
         // если списание уже идёт, этот вызов ничего не делает. Отдельный ключ, не 'sub_<id>': на том
         // ждёт колбэк шлюза, который приходит во время нашего запроса, а ветка сверки сама вызывает
         // deliver_order, которому нужен 'sub_<id>' (блокировки Moodle не реентерабельны).
         $lock = \core\lock\lock_config::get_lock_factory('local_kabshop')->get_lock('charge_' . $sub->id, 0);
         if (!$lock) {
-            return false;
+            return null;
         }
         try {
-            return self::charge_one_locked($sub);
+            return self::charge_one_locked($sub, $force);
         } finally {
             $lock->release();
         }
@@ -251,15 +257,26 @@ class subscriptions {
     /**
      * Одно списание по подписке под блокировкой charge_<id>.
      *
-     * @param \stdClass $sub
-     * @return bool
+     * @param \stdClass $seen подписка, какой её видел вызывающий
+     * @param bool $force не ждать срока (админ)
+     * @return bool|null
      */
-    protected static function charge_one_locked(\stdClass $sub): bool {
+    protected static function charge_one_locked(\stdClass $seen, bool $force): ?bool {
         global $DB;
-        // Подписку могли отменить или продлить, пока шёл цикл charge_due (в нём HTTP-запросы).
-        $sub = $DB->get_record('local_kabshop_sub', ['id' => $sub->id]);
+        // Подписку могли отменить или продлить, пока шёл цикл charge_due (в нём HTTP-запросы) или
+        // пока админ смотрел страницу: поздний колбэк снял метку ожидания и сдвинул дату. Тогда
+        // ничего не делаем — иначе это второе списание за тот же период.
+        $sub = $DB->get_record('local_kabshop_sub', ['id' => $seen->id]);
         if (!$sub || $sub->status !== 'active') {
             return false;
+        }
+        if ((int) $sub->lastpaymentid !== (int) $seen->lastpaymentid
+                || (string) $sub->lasterror !== (string) $seen->lasterror) {
+            return null;
+        }
+        $now = time();
+        if (!$force && ((int) $sub->nextcharge > $now || (int) $sub->lastattempt > $now - self::RETRY_AFTER)) {
+            return null;
         }
         $class = self::charger($sub->gateway);
         $product = catalog::get_product($sub->productid, IGNORE_MISSING);
@@ -286,9 +303,13 @@ class subscriptions {
                 $state = 'wait';
             }
             if ($state === 'wait' && $age > 7 * DAYSECS) {
-                // Неделя «в работе» у шлюза — дольше ждать нельзя: доступ давно кончился.
-                error_log("local_kabshop: sub {$sub->id}: payment $pendingid still pending after 7 days, counted as failure");
-                $state = 'failed';
+                // Неделя «в работе» у шлюза (деньги зачисляются, операция приостановлена): новое
+                // списание может обернуться двойным — останавливаем подписку и оставляем разбор
+                // администратору (кабинет Robokassa), покупателю не пишем.
+                error_log("local_kabshop: sub {$sub->id}: payment $pendingid still pending after 7 days, subscription stopped");
+                self::record_failure($sub, $product, $user, 'payment ' . $pendingid . ' pending over 7 days: check it in Robokassa',
+                    false, true);
+                return false;
             }
             if ($state === 'paid') {
                 // Деньги списаны, а подтверждение до нас не дошло — выдаём сами, как сделал бы колбэк.
@@ -299,8 +320,9 @@ class subscriptions {
                         $class::mark_paid($pendingid);
                     }
                 } catch (\Throwable $e) {
-                    debugging('local_kabshop: delivery of confirmed payment ' . $pendingid . ' failed: ' . $e->getMessage(),
-                        DEBUG_NORMAL);
+                    // Повтор — в следующий запуск; в журнал, чтобы постоянный сбой (удалён курс) увидели.
+                    error_log('local_kabshop: sub ' . $sub->id . ': delivery of confirmed payment ' . $pendingid
+                        . ' failed: ' . $e->getMessage());
                     return false;
                 }
                 return true;

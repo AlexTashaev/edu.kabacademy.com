@@ -44,7 +44,11 @@ if ($do === 'chargenow' && data_submitted() && confirm_sesskey() && optional_par
     if ($sub->status !== 'active' || !subscriptions::charger($sub->gateway)) {
         redirect($url, get_string('chargenow_unavailable', $p), null, \core\output\notification::NOTIFY_WARNING);
     }
-    $ok = subscriptions::charge_one($sub);
+    $ok = subscriptions::charge_one($sub, true);
+    if ($ok === null) {
+        // Списание этой подписки уже идёт (cron, другая вкладка) или она только что изменилась.
+        redirect($url, get_string('chargenow_busy', $p), null, \core\output\notification::NOTIFY_INFO);
+    }
     $sub = subscriptions::get($id);
     // Robokassa подтверждает списание позже, колбэком: «принято» — ещё не «продлено».
     $pending = $ok && subscriptions::pending_paymentid($sub);

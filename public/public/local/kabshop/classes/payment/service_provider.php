@@ -230,33 +230,33 @@ class service_provider implements \core_payment\local\callback\service_provider 
         }
         $sublock = null;
         $transaction = null;
-        if ($paymentarea === 'renewal' && $sub) {
-            // Продление, подтверждённое колбэком шлюза или сверкой (Robokassa списывает асинхронно —
-            // \paygw_robokassa\recurring): сдвинуть дату следующего списания до выдачи, как
-            // subscriptions::charge_one() делает для kbb1. Под блокировкой подписки: два подтверждения
-            // разных платежей не прочитают одну и ту же дату. Повтор по тому же платежу найдёт
-            // покупку и второй раз не продлит.
-            $sublock = \core\lock\lock_config::get_lock_factory('local_kabshop')->get_lock('sub_' . $sub->id, 30);
-            if (!$sublock) {
-                throw new \moodle_exception('locktimeout');
-            }
-            // Продление и выдача — одной транзакцией: упала выдача — дата не сдвинута, метка ожидания
-            // на месте, и следующая сверка повторит выдачу.
-            $transaction = $DB->start_delegated_transaction();
-            $sub = \local_kabshop\subscriptions::get((int) $sub->id);
-            if ((int) $sub->lastpaymentid !== $paymentid
-                    && !$DB->record_exists('local_kabshop_purchase', ['paymentid' => $paymentid])) {
-                // Не активная подписка (отменённая, остановленная после неудач, отозванная) такой и
-                // остаётся: оплаченный период человек получает, но списания не возобновляются.
-                $status = (string) $sub->status;
-                $sub = \local_kabshop\subscriptions::extend($sub, $paymentid);
-                if ($status !== 'active') {
-                    $DB->set_field('local_kabshop_sub', 'status', $status, ['id' => $sub->id]);
-                    $sub->status = $status;
+        try {
+            if ($paymentarea === 'renewal' && $sub) {
+                // Продление, подтверждённое колбэком шлюза или сверкой (Robokassa списывает асинхронно —
+                // \paygw_robokassa\recurring): сдвинуть дату следующего списания до выдачи, как
+                // subscriptions::charge_one() делает для kbb1. Под блокировкой подписки: два подтверждения
+                // разных платежей не прочитают одну и ту же дату. Повтор по тому же платежу найдёт
+                // покупку и второй раз не продлит.
+                $sublock = \core\lock\lock_config::get_lock_factory('local_kabshop')->get_lock('sub_' . $sub->id, 30);
+                if (!$sublock) {
+                    throw new \moodle_exception('locktimeout');
+                }
+                // Продление и выдача — одной транзакцией: упала выдача — дата не сдвинута, метка ожидания
+                // на месте, и следующая сверка повторит выдачу.
+                $transaction = $DB->start_delegated_transaction();
+                $sub = \local_kabshop\subscriptions::get((int) $sub->id);
+                if ((int) $sub->lastpaymentid !== $paymentid
+                        && !$DB->record_exists('local_kabshop_purchase', ['paymentid' => $paymentid])) {
+                    // Не активная подписка (отменённая, остановленная после неудач, отозванная) такой и
+                    // остаётся: оплаченный период человек получает, но списания не возобновляются.
+                    $status = (string) $sub->status;
+                    $sub = \local_kabshop\subscriptions::extend($sub, $paymentid);
+                    if ($status !== 'active') {
+                        $DB->set_field('local_kabshop_sub', 'status', $status, ['id' => $sub->id]);
+                        $sub->status = $status;
+                    }
                 }
             }
-        }
-        try {
             $ok = self::deliver($paymentarea, $itemid, $paymentid, $userid, $product, $sub);
             if ($transaction) {
                 $transaction->allow_commit();
