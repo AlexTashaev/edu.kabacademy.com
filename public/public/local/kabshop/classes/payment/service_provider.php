@@ -36,7 +36,27 @@ use local_kabshop\catalog;
 class service_provider implements \core_payment\local\callback\service_provider {
 
     /**
-     * Товар и сумма к оплате для зоны.
+     * Первая оплата регулярного товара (подписки)? Шлюз помечает такую оплату как повторяющуюся,
+     * чтобы касса потом списывала следующие периоды (paygw_robokassa: Recurring=true).
+     *
+     * @param string $paymentarea
+     * @param int $itemid
+     * @return bool
+     */
+    public static function is_recurring(string $paymentarea, int $itemid): bool {
+        if ($paymentarea === 'renewal') {
+            return false;
+        }
+        try {
+            [$product] = self::resolve($paymentarea, $itemid);
+        } catch (\Throwable $e) {
+            return false;
+        }
+        return !empty($product->recurmonths);
+    }
+
+    /**
+     * Товар, сумма и подписка по зоне оплаты.
      *
      * @param string $paymentarea
      * @param int $itemid
@@ -203,6 +223,20 @@ class service_provider implements \core_payment\local\callback\service_provider 
         if ($sub && (int) $sub->userid !== $userid) {
             self::log_refused("payment $paymentid: renewal of sub {$sub->id} (user {$sub->userid}) paid by user $userid");
             return false;
+        }
+        if ($paymentarea === 'renewal' && $sub && (int) $sub->lastpaymentid !== $paymentid
+                && !$DB->record_exists('local_kabshop_purchase', ['paymentid' => $paymentid])) {
+            // Продление, подтверждённое колбэком шлюза (Robokassa списывает асинхронно —
+            // \paygw_robokassa\recurring): сдвинуть дату следующего списания до выдачи, как
+            // subscriptions::charge_one() делает для kbb1. Повтор колбэка найдёт покупку по платежу
+            // и второй раз не продлит. Отменённая за это время подписка остаётся отменённой —
+            // оплаченный месяц человек получает.
+            $wascancelled = $sub->status === 'cancelled';
+            $sub = \local_kabshop\subscriptions::extend($sub, $paymentid);
+            if ($wascancelled) {
+                $DB->set_field('local_kabshop_sub', 'status', 'cancelled', ['id' => $sub->id]);
+                $sub->status = 'cancelled';
+            }
         }
         if ($paymentarea === 'custom') {
             // Цена со скидкой по купону тоже идёт через зону 'custom' — учесть купон в заказе.

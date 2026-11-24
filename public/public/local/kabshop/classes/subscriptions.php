@@ -39,6 +39,13 @@ class subscriptions {
     /** Пауза между повторами после неудачи. */
     const RETRY_AFTER = 20 * HOURSECS;
 
+    /**
+     * Метка в lasterror: шлюз принял запрос на списание, а результат пришлёт сам (Robokassa —
+     * на ResultURL). Подтверждение продлевает подписку через deliver_order('renewal') и снимает
+     * метку; не пришло до следующего запуска — попытка считается неудачной.
+     */
+    const PENDING_PREFIX = 'pending:';
+
     /** Допустимые периоды, месяцев. */
     const PERIODS = [1, 3, 12];
 
@@ -212,7 +219,7 @@ class subscriptions {
         $failed = 0;
         foreach ($due as $sub) {
             if (!self::charger($sub->gateway)) {
-                continue; // Шлюз списывает сам (Robokassa) — продление придёт через grant().
+                continue; // Шлюз не умеет автосписание — подписку ведёт кто-то другой.
             }
             self::charge_one($sub) ? $ok++ : $failed++;
         }
@@ -236,6 +243,20 @@ class subscriptions {
             return false;
         }
 
+        // Прошлый запрос на списание шлюз принял, а подтверждения так и не прислал (отказ банка,
+        // нет денег) — это неудача: считаем её, как обычную, и пробуем снова.
+        if (strpos((string) $sub->lasterror, self::PENDING_PREFIX) === 0) {
+            $sub->failcount = (int) $sub->failcount + 1;
+            $sub->lasterror = 'no confirmation for payment ' . substr((string) $sub->lasterror, strlen(self::PENDING_PREFIX));
+            $sub->status = $sub->failcount >= self::MAX_FAILS ? 'failed' : 'active';
+            $sub->timemodified = time();
+            $DB->update_record('local_kabshop_sub', $sub);
+            mailer::charge_failed($product, $user, $sub);
+            if ($sub->status === 'failed') {
+                return false;
+            }
+        }
+
         // Метка попытки до звонка в шлюз: при сбое посреди списания задача не повторит его сразу.
         $sub->lastattempt = time();
         $DB->update_record('local_kabshop_sub', (object) ['id' => $sub->id, 'lastattempt' => $sub->lastattempt]);
@@ -243,6 +264,17 @@ class subscriptions {
             $res = $class::charge($sub, $product, $user);
         } catch (\Throwable $e) {
             $res = ['error' => $e->getMessage()];
+        }
+
+        if (!empty($res['pending'])) {
+            // Шлюз принял запрос, результат придёт колбэком: продлит подписку deliver_order('renewal').
+            // Колбэк может успеть раньше этой строки — тогда подписка уже продлена этим платежом.
+            $pendingid = (int) $res['pending'];
+            $fresh = $DB->get_record('local_kabshop_sub', ['id' => $sub->id], 'id, lastpaymentid');
+            if ($fresh && (int) $fresh->lastpaymentid !== $pendingid) {
+                $DB->set_field('local_kabshop_sub', 'lasterror', self::PENDING_PREFIX . $pendingid, ['id' => $sub->id]);
+            }
+            return true;
         }
 
         if (!empty($res['paymentid'])) {

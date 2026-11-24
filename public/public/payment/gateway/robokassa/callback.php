@@ -31,6 +31,26 @@ require_once($CFG->libdir . '/filelib.php');
 
 defined('MOODLE_INTERNAL') || die();
 
+// KAB patch (24.11.2026): у магазина Robokassa один ResultURL, и с переключением его на edu сюда
+// приходят и уведомления WordPress — оплаты и продления подписок WooCommerce (плагин WP передаёт
+// метку shp_label=official_wordpress). Пока WP принимает такие оплаты, пересылаем их ему как есть
+// и отдаём Robokassa его ответ; подпись (пароль #2) проверяет сам WP. Убрать вместе с выводом WP.
+if (optional_param('shp_label', '', PARAM_ALPHANUMEXT) === 'official_wordpress') {
+    $wpparams = !empty($_POST) ? $_POST : $_GET;
+    $wpcurl = new curl();
+    $wpresponse = $wpcurl->post('https://kabacademy.com/?robokassa=result', http_build_query($wpparams, '', '&'), [
+        'CURLOPT_RETURNTRANSFER' => true,
+        'CURLOPT_TIMEOUT' => 25,
+        'CURLOPT_CONNECTTIMEOUT' => 10,
+    ]);
+    if (!empty($wpcurl->errno)) {
+        error_log('paygw_robokassa: forward to WordPress failed for InvId ' . (int) ($wpparams['InvId'] ?? 0) . ': ' . $wpcurl->error);
+        http_response_code(502);
+        die('FAIL. WordPress unavailable');
+    }
+    die((string) $wpresponse);
+}
+
 $invid     = required_param('InvId', PARAM_INT);
 $outsumm   = required_param('OutSum', PARAM_TEXT); // TEXT only!
 $signature = required_param('SignatureValue', PARAM_ALPHANUMEXT);
