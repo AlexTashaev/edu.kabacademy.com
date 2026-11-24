@@ -198,7 +198,8 @@ class manager {
      * The account, if it may be signed in by a link right now.
      *
      * Conditions: exists and not deleted, not suspended, confirmed, local
-     * (not MNet), auth method from the plugin setting and enabled.
+     * (not MNet), auth method from the plugin setting and enabled, not a
+     * site administrator.
      *
      * @param int $userid
      * @return \stdClass|null full user record as complete_user_login() expects it
@@ -217,6 +218,11 @@ class manager {
             return null;
         }
         if (!in_array($user->auth, $config->allowedauths, true) || !is_enabled_auth($user->auth)) {
+            return null;
+        }
+        if (is_siteadmin($user)) {
+            // Administrators sign in with a password and MFA. Their MFA factor is a code sent to
+            // the same mailbox, so a link plus that code would be one factor, not two.
             return null;
         }
         return $user;
