@@ -179,6 +179,10 @@ class product_form extends \moodleform {
         $mform->setType('sku', PARAM_TEXT);
         $mform->addHelpButton('sku', 'sku', $p);
 
+        $mform->addElement('text', 'notifyemails', get_string('notifyemails', $p), ['size' => 60, 'maxlength' => 255]);
+        $mform->setType('notifyemails', PARAM_RAW_TRIMMED);
+        $mform->addHelpButton('notifyemails', 'notifyemails', $p);
+
         $mform->addElement('text', 'courseid', get_string('courseid', $p), ['size' => 8]);
         $mform->setType('courseid', PARAM_INT);
         $mform->addHelpButton('courseid', 'courseid', $p);
@@ -228,6 +232,10 @@ class product_form extends \moodleform {
         }
         if ($data['price'] < 0) {
             $errors['price'] = get_string('invalidprice', 'local_kabshop');
+        }
+        $bad = \local_kabshop\mailer::bad_notify_emails((string) ($data['notifyemails'] ?? ''));
+        if ($bad) {
+            $errors['notifyemails'] = get_string('notifyemailsbad', 'local_kabshop', s(implode(', ', $bad)));
         }
         if (($data['salestate'] ?? 'auto') === 'auto' && !empty($data['saleopen']) && !empty($data['saleclose'])
                 && $data['saleclose'] <= $data['saleopen']) {

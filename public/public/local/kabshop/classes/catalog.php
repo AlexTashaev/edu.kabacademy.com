@@ -897,6 +897,12 @@ class catalog {
         } catch (\Throwable $e) {
             debugging('local_kabshop: mail after grant ' . $purchaseid . ' failed: ' . $e->getMessage(), DEBUG_NORMAL);
         }
+        // Сотрудникам, указанным в товаре, — о каждой покупке (для услуг вне Moodle: иврит).
+        try {
+            mailer::notify_staff($product, $userid, $purchaseid, $payment, $sub, !empty($opts['mail']));
+        } catch (\Throwable $e) {
+            error_log('local_kabshop: staff notification for purchase ' . $purchaseid . ' failed: ' . $e->getMessage());
+        }
         return $purchaseid;
     }
 

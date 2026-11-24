@@ -302,5 +302,16 @@ function xmldb_local_kabshop_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026112402, 'local', 'kabshop');
     }
 
+    if ($oldversion < 2026112406) {
+        // «Кого оповещать о покупке»: сотрудник, который выдаёт услугу вне Moodle (иврит), узнаёт о
+        // каждой покупке товара письмом.
+        $table = new xmldb_table('local_kabshop_product');
+        $field = new xmldb_field('notifyemails', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'sku');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2026112406, 'local', 'kabshop');
+    }
+
     return true;
 }

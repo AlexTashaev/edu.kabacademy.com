@@ -60,6 +60,7 @@ if ($form->is_cancelled()) {
     $data->enrolperiod = (int)($data->enrolperiod ?? 0);
     $data->courseid = (int)$data->courseid;
     $data->sku = trim((string) ($data->sku ?? '')) ?: null;
+    $data->notifyemails = implode(', ', \local_kabshop\mailer::notify_emails((string) ($data->notifyemails ?? ''))) ?: null;
     $data->requirecourses = implode(',', \local_kabshop\catalog::parse_courseids((string) ($data->requirecourses ?? '')))
         ?: null;
     // Взнос за курс — всегда сумма на выбор.
