@@ -26,7 +26,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'paygw_kbb1';
-$plugin->version   = 2026111700;
+$plugin->version   = 2026112400;
 $plugin->requires  = 2025041400; // Moodle 5.0+.
 $plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = '0.3.0';
+$plugin->release   = '0.3.1';

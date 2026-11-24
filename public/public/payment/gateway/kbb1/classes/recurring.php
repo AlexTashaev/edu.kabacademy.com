@@ -31,16 +31,28 @@ use core_payment\helper;
 class recurring {
 
     /**
+     * Сайт, с которого можно списывать. dev — копия БД прода: те же сохранённые токены карт и,
+     * пока у dev нет своего токена сервиса, тот же apitoken. С другого адреса автосписание не идёт.
+     */
+    const LIVE_WWWROOT = 'https://edu.kabacademy.com';
+
+    /**
      * Списать очередной платёж подписки.
      *
      * @param \stdClass $sub local_kabshop_sub
      * @param \stdClass $product local_kabshop_product
      * @param \stdClass $user
-     * @return array ['paymentid' => int] при успехе или ['error' => string]
+     * @return array ['paymentid' => int] при успехе, ['error' => string] — нет; с 'skip' — не неудача
+     *     покупателя, касса пропускает подписку, не трогая счётчик
      */
     public static function charge(\stdClass $sub, \stdClass $product, \stdClass $user): array {
         global $CFG, $DB;
         require_once($CFG->libdir . '/filelib.php');
+
+        if (rtrim((string) $CFG->wwwroot, '/') !== self::LIVE_WWWROOT) {
+            // Переехал адрес сайта — поменять LIVE_WWWROOT (и такую же константу у Robokassa).
+            return ['error' => 'kbb1 recurring: only on ' . self::LIVE_WWWROOT, 'skip' => true];
+        }
 
         $first = $DB->get_record('paygw_kbb1', ['paymentid' => $sub->firstpaymentid], '*', IGNORE_MULTIPLE);
         if (!$first || (string) $first->token === '') {
