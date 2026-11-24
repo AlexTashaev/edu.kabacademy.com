@@ -29,6 +29,17 @@ global $CFG, $USER, $DB;
 
 defined('MOODLE_INTERNAL') || die();
 
+// KAB patch (24.11.2026): SuccessURL и FailURL у магазина Robokassa одни, а WordPress свои адреса
+// возврата в запросе не передаёт. Покупателя WP (метка shp_label=official_wordpress) отправляем на
+// страницу WP с теми же параметрами, иначе он упрётся во вход Moodle. FailURL в кабинете —
+// этот же адрес с ?kabfail=1. Убрать вместе с выводом WP.
+if (optional_param('shp_label', '', PARAM_ALPHANUMEXT) === 'official_wordpress') {
+    $wpparams = array_filter(array_merge($_GET, $_POST), 'is_scalar');
+    $wpstate = !empty($wpparams['kabfail']) ? 'fail' : 'success';
+    unset($wpparams['kabfail'], $wpparams['robokassa']);
+    redirect(new moodle_url('https://kabacademy.com/', ['robokassa' => $wpstate] + $wpparams));
+}
+
 require_login();
 
 $invid = required_param('InvId', PARAM_INT);

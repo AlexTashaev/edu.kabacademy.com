@@ -24,8 +24,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026042102;
+$plugin->version   = 2026042103;
 $plugin->requires  = 2023100900;
 $plugin->component = 'paygw_robokassa';
-$plugin->release   = '2.12+kab1';
+$plugin->release   = '2.12+kab2';
 $plugin->maturity  = MATURITY_STABLE;

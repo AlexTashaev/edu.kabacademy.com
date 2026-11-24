@@ -105,7 +105,8 @@ if (!$subs) {
                 . \local_kabshop\subscriptions::period_label((int) $sub->months) . ' · ' . s($sub->gateway),
             get_string('substatus_' . $sub->status, $p),
             userdate($sub->nextcharge, $fmt),
-            $sub->failcount ? $sub->failcount . ': ' . s((string) $sub->lasterror) : '—',
+            ($sub->failcount ? $sub->failcount . ': ' . s((string) $sub->lasterror) : '—')
+                . (\local_kabshop\subscriptions::pending_paymentid($sub) ? ' · ' . get_string('subpendingshort', $p) : ''),
         ];
     }
     echo html_writer::table($table);

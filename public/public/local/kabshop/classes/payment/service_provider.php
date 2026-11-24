@@ -36,7 +36,27 @@ use local_kabshop\catalog;
 class service_provider implements \core_payment\local\callback\service_provider {
 
     /**
-     * Товар и сумма к оплате для зоны.
+     * Первая оплата регулярного товара (подписки)? Шлюз помечает такую оплату как повторяющуюся,
+     * чтобы касса потом списывала следующие периоды (paygw_robokassa: Recurring=true).
+     *
+     * @param string $paymentarea
+     * @param int $itemid
+     * @return bool
+     */
+    public static function is_recurring(string $paymentarea, int $itemid): bool {
+        if ($paymentarea === 'renewal') {
+            return false;
+        }
+        try {
+            [$product] = self::resolve($paymentarea, $itemid);
+        } catch (\Throwable $e) {
+            return false;
+        }
+        return !empty($product->recurmonths);
+    }
+
+    /**
+     * Товар, сумма и подписка по зоне оплаты.
      *
      * @param string $paymentarea
      * @param int $itemid
@@ -113,7 +133,7 @@ class service_provider implements \core_payment\local\callback\service_provider 
      */
     public static function get_payable(string $paymentarea, int $itemid): \core_payment\local\entities\payable {
         global $USER, $DB;
-        [$product, $amount] = self::resolve($paymentarea, $itemid);
+        [$product, $amount, $sub] = self::resolve($paymentarea, $itemid);
         // Проверяется только живой покупатель (см. live_buyer): автосписания из cron и колбэки
         // шлюзов без входа не трогаем. Аудит 24.11.2026: раньше зоны не были привязаны к покупателю —
         // по подставленному itemid в окне шлюза оплачивался чужой intent (с чужим купоном и чужими
@@ -166,6 +186,11 @@ class service_provider implements \core_payment\local\callback\service_provider 
                 throw new \moodle_exception('saleclosed', 'local_kabshop');
             }
         }
+        if ($sub) {
+            // Продление — валюта и счёт самой подписки: ими подписан запрос на списание, ими же колбэк
+            // шлюза проверяет подпись. Цену или счёт товара могли поменять, пока ждали подтверждения.
+            return new \core_payment\local\entities\payable((float) $sub->amount, $sub->currency, (int) $sub->accountid);
+        }
         return new \core_payment\local\entities\payable($amount, $product->currency, (int)$product->accountid);
     }
 
@@ -196,7 +221,6 @@ class service_provider implements \core_payment\local\callback\service_provider 
     public static function deliver_order(string $paymentarea, int $itemid, int $paymentid, int $userid): bool {
         global $DB;
         [$product, , $sub] = self::resolve($paymentarea, $itemid);
-        $opts = [];
         // Платит владелец намерения: intent и подписка — того, кому выдаём. Несовпадение — не
         // выдаём (иначе чужая скидка, чужой номер жертвователя, запись по чужой подписке), а
         // оставляем след для ручного разбора: деньги к этому моменту уже списаны.
@@ -204,6 +228,67 @@ class service_provider implements \core_payment\local\callback\service_provider 
             self::log_refused("payment $paymentid: renewal of sub {$sub->id} (user {$sub->userid}) paid by user $userid");
             return false;
         }
+        $sublock = null;
+        $transaction = null;
+        try {
+            if ($paymentarea === 'renewal' && $sub) {
+                // Продление, подтверждённое колбэком шлюза или сверкой (Robokassa списывает асинхронно —
+                // \paygw_robokassa\recurring): сдвинуть дату следующего списания до выдачи, как
+                // subscriptions::charge_one() делает для kbb1. Под блокировкой подписки: два подтверждения
+                // разных платежей не прочитают одну и ту же дату. Повтор по тому же платежу найдёт
+                // покупку и второй раз не продлит.
+                $sublock = \core\lock\lock_config::get_lock_factory('local_kabshop')->get_lock('sub_' . $sub->id, 30);
+                if (!$sublock) {
+                    throw new \moodle_exception('locktimeout');
+                }
+                // Продление и выдача — одной транзакцией: упала выдача — дата не сдвинута, метка ожидания
+                // на месте, и следующая сверка повторит выдачу.
+                $transaction = $DB->start_delegated_transaction();
+                $sub = \local_kabshop\subscriptions::get((int) $sub->id);
+                if ((int) $sub->lastpaymentid !== $paymentid
+                        && !$DB->record_exists('local_kabshop_purchase', ['paymentid' => $paymentid])) {
+                    // Не активная подписка (отменённая, остановленная после неудач, отозванная) такой и
+                    // остаётся: оплаченный период человек получает, но списания не возобновляются.
+                    $status = (string) $sub->status;
+                    $sub = \local_kabshop\subscriptions::extend($sub, $paymentid);
+                    if ($status !== 'active') {
+                        $DB->set_field('local_kabshop_sub', 'status', $status, ['id' => $sub->id]);
+                        $sub->status = $status;
+                    }
+                }
+            }
+            $ok = self::deliver($paymentarea, $itemid, $paymentid, $userid, $product, $sub);
+            if ($transaction) {
+                $transaction->allow_commit();
+            }
+            return $ok;
+        } catch (\Throwable $e) {
+            if ($transaction) {
+                $transaction->rollback($e);
+            }
+            throw $e;
+        } finally {
+            if ($sublock) {
+                $sublock->release();
+            }
+        }
+    }
+
+    /**
+     * Выдача после проверок deliver_order().
+     *
+     * @param string $paymentarea
+     * @param int $itemid
+     * @param int $paymentid
+     * @param int $userid
+     * @param \stdClass $product
+     * @param \stdClass|null $sub
+     * @return bool
+     */
+    protected static function deliver(string $paymentarea, int $itemid, int $paymentid, int $userid, \stdClass $product,
+            ?\stdClass $sub): bool {
+        global $DB;
+        $opts = [];
         if ($paymentarea === 'custom') {
             // Цена со скидкой по купону тоже идёт через зону 'custom' — учесть купон в заказе.
             $intent = catalog::get_intent($itemid);

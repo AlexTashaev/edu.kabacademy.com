@@ -282,8 +282,18 @@ $request = "MerchantLogin=$mrhlogin" .
     "&ExpirationDate=" . urlencode(date("Y-m-d\\TH:i:s.000P", time() + 1800)) .
     "&Receipt=" . urlencode($receipt);
 
-// Check recurrent.
-if ($config->recurrent == 1 && $currency == 'RUB' && !$config->istestmode) {
+// KAB patch (24.11.2026): первая оплата подписки витрины local_kabshop в рублях — повторяющаяся,
+// чтобы касса потом списывала следующие периоды (\paygw_robokassa\recurring). График ведёт касса,
+// поэтому собственный $paygwdata->recurrent плагина для неё не ставим.
+$kabrecurring = $component === 'local_kabshop' && $currency == 'RUB' && !$config->istestmode
+    && method_exists('\local_kabshop\payment\service_provider', 'is_recurring')
+    && \local_kabshop\payment\service_provider::is_recurring($paymentarea, $itemid);
+if ($kabrecurring) {
+    $request .= "&Recurring=true";
+    // Метка «первая оплата подписки кассы»: по ней \paygw_robokassa\recurring разрешает повторы.
+    $paygwdata->recurrent = \paygw_robokassa\recurring::KAB_PARENT;
+} else if ($config->recurrent == 1 && $currency == 'RUB' && !$config->istestmode && $component !== 'local_kabshop') {
+    // Check recurrent.
     $request .= "&Recurring=true";
     if ($config->recurrentperiod > 0) {
         $paygwdata->recurrent = time() + $config->recurrentperiod;
