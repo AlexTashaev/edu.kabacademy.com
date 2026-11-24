@@ -362,6 +362,28 @@ $string['setting_phone_ru'] = 'Russian storefront phone';
 $string['setting_seller_desc'] = 'Organisation name and registration details. Shown at the bottom of the storefront and product pages.';
 $string['setting_seller_main'] = 'Main storefront seller (card and PayPal)';
 $string['setting_seller_ru'] = 'Russian storefront seller (rubles)';
+$string['notifyemails'] = 'Notify about purchases';
+$string['notifyemails_help'] = 'Comma-separated addresses. Every purchase of this product (payment, subscription renewal, free enrolment, manual grant) sends them an email: what was bought, the amount, the buyer\'s name, email and phone, the order number. A reply goes to the buyer. Meant for services outside Moodle, e.g. Hebrew: the teacher learns about a new student. Empty means nobody is notified.';
+$string['notifyemailsbad'] = 'Not email addresses: {$a}';
+$string['mail_staff_subject'] = 'Purchase: {$a->product} — {$a->buyer}';
+$string['mail_staff_body'] = 'A new purchase on {$a->site}.
+
+Product: {$a->product}
+What happened: {$a->how}
+Amount: {$a->amount}
+When: {$a->date}
+
+Buyer: {$a->buyer}
+Email: {$a->email}
+Phone: {$a->phone}
+
+Order no. {$a->order}: {$a->orderurl}
+
+A reply to this email goes to the buyer. You get it because your address is set in the product\'s "Notify about purchases" field.';
+$string['staff_how_paid'] = 'payment';
+$string['staff_how_renewal'] = 'subscription renewal';
+$string['staff_how_free'] = 'free enrolment';
+$string['staff_how_granted'] = 'granted by an administrator or a coupon';
 $string['sku'] = 'SKU';
 $string['sku_help'] = 'Product code for Priority, sent to the payment service with card and PayPal payments. Empty means the default SKU from the "Card / PayPal" account settings. As in WordPress: courses carry their own SKU, donations theirs.';
 $string['sortorder'] = 'Order';

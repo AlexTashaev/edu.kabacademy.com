@@ -154,6 +154,90 @@ class mailer {
     }
 
     /**
+     * Адреса из поля товара «Кого оповещать о покупке»: через запятую, точку с запятой или пробел,
+     * без повторов, в нижнем регистре; негодные отброшены.
+     *
+     * @param string $raw
+     * @return string[]
+     */
+    public static function notify_emails(string $raw): array {
+        $out = [];
+        foreach (preg_split('/[\s,;]+/', \core_text::strtolower(trim($raw)), -1, PREG_SPLIT_NO_EMPTY) as $email) {
+            if (validate_email($email)) {
+                $out[$email] = $email;
+            }
+        }
+        return array_values($out);
+    }
+
+    /**
+     * Негодные адреса из того же поля — для проверки формы.
+     *
+     * @param string $raw
+     * @return string[]
+     */
+    public static function bad_notify_emails(string $raw): array {
+        return array_values(array_filter(preg_split('/[\s,;]+/', trim($raw), -1, PREG_SPLIT_NO_EMPTY),
+            function(string $email): bool {
+                return !validate_email($email);
+            }));
+    }
+
+    /**
+     * Оповестить сотрудников о покупке товара (поле товара «Кого оповещать о покупке»): что куплено,
+     * сумма, покупатель и его контакты, номер заказа. Ответ на письмо уходит покупателю.
+     *
+     * @param \stdClass $product
+     * @param int $userid
+     * @param int $purchaseid
+     * @param \stdClass|null $payment запись payments (нет — бесплатная запись или ручная выдача)
+     * @param \stdClass|null $sub подписка
+     * @param bool $granted выдача администратором или по купону на 100%
+     */
+    public static function notify_staff(\stdClass $product, int $userid, int $purchaseid, ?\stdClass $payment,
+            ?\stdClass $sub, bool $granted = false): void {
+        global $CFG, $SITE;
+        $emails = self::notify_emails((string) ($product->notifyemails ?? ''));
+        if (!$emails) {
+            return;
+        }
+        $user = \core_user::get_user($userid);
+        if (!$user || $user->deleted) {
+            return;
+        }
+        $p = 'local_kabshop';
+        if ($payment) {
+            $how = ($sub && (int) $sub->firstpaymentid !== (int) $payment->id) ? 'renewal' : 'paid';
+        } else {
+            $how = $granted ? 'granted' : 'free';
+        }
+        $phones = array_filter([trim((string) $user->phone1), trim((string) $user->phone2)]);
+        $a = (object) [
+            'product' => format_string($product->name, true, ['context' => \context_system::instance(), 'escape' => false]),
+            'buyer' => fullname($user),
+            'email' => $user->email,
+            'phone' => $phones ? implode(', ', $phones) : '—',
+            'amount' => $payment ? \core_payment\helper::get_cost_as_string((float) $payment->amount, $payment->currency) : '—',
+            'order' => $purchaseid,
+            'orderurl' => (new moodle_url('/local/kabshop/order.php', ['id' => $purchaseid]))->out(false),
+            'date' => userdate(time(), get_string('strftimedatetime', 'langconfig')),
+            'site' => format_string($SITE->fullname, true, ['context' => \context_system::instance(), 'escape' => false]),
+        ];
+        $sm = get_string_manager();
+        foreach ($emails as $email) {
+            $to = self::recipient($email);
+            $lang = !empty($to->lang) ? $to->lang : $CFG->lang;
+            $a->how = $sm->get_string('staff_how_' . $how, $p, null, $lang);
+            $text = $sm->get_string('mail_staff_body', $p, $a, $lang);
+            $html = nl2br(preg_replace('#(https?://[^\s<]+)#', '<a href="$1">$1</a>', s($text)));
+            $subject = $sm->get_string('mail_staff_subject', $p, $a, $lang);
+            $from = \core_user::get_noreply_user();
+            $from->customheaders = ['X-SMTPAPI: ' . json_encode(['category' => ['moodle-shop-staff', 'product-' . $product->id]])];
+            email_to_user($to, $from, $subject, $text, $html, '', '', true, $user->email, fullname($user));
+        }
+    }
+
+    /**
      * Получатель письма по адресу: аккаунт Moodle с этим e-mail или подставной пользователь
      * (как в формах поддержки ядра) — письмо уходит и тем, у кого аккаунта ещё нет.
      *

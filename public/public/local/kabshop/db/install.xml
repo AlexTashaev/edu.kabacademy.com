@@ -52,6 +52,7 @@
         <FIELD NAME="altdefaultamount" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="2" COMMENT="Сумма, выбранная заранее, во второй валюте"/>
         <FIELD NAME="altaccountid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="payment_accounts.id второй валюты"/>
         <FIELD NAME="sku" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Код для Priority; пусто = SKU по умолчанию счёта"/>
+        <FIELD NAME="notifyemails" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Кого оповещать о покупке: адреса через запятую"/>
         <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Курс, куда записывает"/>
         <FIELD NAME="requirecourses" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Только для записанных на один из курсов: ID через запятую"/>
         <FIELD NAME="enrolperiod" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Срок доступа, сек; 0 = бессрочно"/>
