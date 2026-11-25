@@ -11,7 +11,9 @@ Generators are patched and html/ regenerated (L5–L8 in this branch, L4 in clau
 Guarded UPDATEs: a page changes only if it still equals what the generator produced before (md5 of the file at the pinned
 commit). The new book chapter is inserted only if book 970 still has exactly two chapters. lessonN.sql must NOT be re-run.
 
-Usage: L4_ROOT=C:/t/edu-l4 python -I fix_20261125b.py  -> fix_20261125b.sql
+Usage: L4_ROOT=C:/t/edu-l4 python -I fix_20261125b.py  -> fix_20261125b.sql (all) and fix_20261125b_0.sql (backups) +
+fix_20261125b_L4…L8.sql (one transaction per lesson): the helper on the server takes the SQL as one argv string, and a single
+argument is limited to 128 KB (MAX_ARG_STRLEN), so the 265 KB script is applied in parts, backups first.
 """
 import binascii
 import hashlib
@@ -51,6 +53,7 @@ EXTRA_IDS = {6: {'ch4': 17978}}
 
 NOW = int(time.time())
 upd, checks, bk = [], [], []
+parts = {}
 for n, keys in CHANGED.items():
     root, commit = OLD[n]
     ids, lesson = gen_ids(n)
@@ -66,6 +69,7 @@ for n, keys in CHANGED.items():
         checks.append("SELECT 'L%d %s' t, id, title, MD5(contents)='%s' ok, (LENGTH(contents)-LENGTH(REPLACE(contents,'<video','')))/6 videos FROM mdl_lesson_pages WHERE id=%d;"
                       % (n, key, md5(new), pid))
     upd.append('UPDATE mdl_lesson SET timemodified=%d WHERE id=%d;' % (NOW, lesson))
+    parts[n] = (len(upd), len(checks))
 
 # lesson 4 book: new chapter 3 with clip 11
 src4 = open(os.path.join(L4_ROOT, '.claude/course236/lesson4/build_l4.py'), encoding='utf-8').read()
@@ -85,3 +89,26 @@ sql = ['SET NAMES utf8mb4;',
 out = os.path.join(HERE, 'fix_20261125b.sql')
 open(out, 'w', encoding='utf-8', newline='\n').write('\n'.join(sql) + '\n')
 print('pages', bk, 'statements', len(sql), 'bytes', os.path.getsize(out))
+
+# the same statements split for the 128 KB argv limit of the server helper
+NL = chr(10)
+
+
+def write(name, lines):
+    f = os.path.join(HERE, name)
+    open(f, 'w', encoding='utf-8', newline=NL).write(NL.join(lines) + NL)
+    assert os.path.getsize(f) < 120000, f
+    print(name, os.path.getsize(f))
+
+
+write('fix_20261125b_0.sql', sql[:3])          # SET NAMES + both backup tables
+prev_u, prev_c = 0, 0
+for n in sorted(parts):
+    u, c = parts[n]
+    body, chk = upd[prev_u:u], checks[prev_c:c]
+    if n == 4:                                 # the book INSERT and revision bump are the last two statements of upd
+        body, chk = body + upd[-2:], chk + checks[-1:]
+    if n == max(parts):
+        body = body + ['UPDATE mdl_course SET cacherev=cacherev+1 WHERE id=236;']
+    write('fix_20261125b_L%d.sql' % n, ['SET NAMES utf8mb4;', 'START TRANSACTION;'] + body + ['COMMIT;'] + chk)
+    prev_u, prev_c = u, c
