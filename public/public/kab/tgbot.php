@@ -20,6 +20,11 @@
  *
  * `?to=channel` — та же схема для ссылки «Канал потока в Telegram»: WP засчитывает переход
  * человеку (kab_te_channel_go) и уводит в канал из настроек плагина. Без параметра — бот.
+ *
+ * KAB patch (25.11.2026, local_kabtelegram): WordPress выключается. Как только в Moodle стоит
+ * local_kabtelegram и в нём задан бот, весь переход идёт внутри Moodle — `go.php` узнаёт
+ * человека по сессии, сам выдаёт токен и сам принимает вебхук SendPulse. До того — прежний
+ * путь в WP ниже, без изменений.
  */
 
 require_once(__DIR__ . '/../../config.php');
@@ -31,6 +36,14 @@ $targets = [
 $to = optional_param('to', 'bot', PARAM_ALPHA);
 if (!isset($targets[$to])) {
     $to = 'bot';
+}
+
+if (core_component::get_component_directory('local_kabtelegram') !== null
+        && trim((string) get_config('local_kabtelegram', 'botusername')) !== '') {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Location: ' . (new moodle_url('/local/kabtelegram/go.php', ['to' => $to, 'src' => 'tgbot']))->out(false), true, 302);
+    exit;
 }
 
 $endpoint = 'https://kabacademy.com/wp-admin/admin-ajax.php?action=' . $targets[$to];
