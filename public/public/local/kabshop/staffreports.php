@@ -47,13 +47,19 @@ if ($download >= 0 && isset($reports[$download])) {
 
 if ($action === 'send' && confirm_sesskey()) {
     [$sent, $withrows] = staffreports::send();
-    redirect($url, get_string('staffreports_done', $p, (object) ['sent' => $sent, 'reports' => $withrows]), null,
-        \core\output\notification::NOTIFY_SUCCESS);
+    // Итог — параметрами адреса: запись файла (core\dataformat::write_data) закрывает сессию,
+    // и сообщение через redirect() в сессию уже не попало бы.
+    redirect(new moodle_url($url, ['sent' => $sent, 'reports' => $withrows]));
 }
+$sent = optional_param('sent', -1, PARAM_INT);
 
 $PAGE->set_title(get_string('staffreports', $p));
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('staffreports', $p));
+if ($sent >= 0) {
+    echo $OUTPUT->notification(get_string('staffreports_done', $p,
+        (object) ['sent' => $sent, 'reports' => optional_param('reports', 0, PARAM_INT)]), 'success');
+}
 echo html_writer::tag('p', get_string('staffreports_help', $p), ['class' => 'text-muted']);
 
 $settingsurl = new moodle_url('/admin/settings.php', ['section' => 'local_kabshop_staffreportsettings']);
