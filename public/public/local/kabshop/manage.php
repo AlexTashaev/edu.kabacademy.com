@@ -112,6 +112,7 @@ foreach ($sections as $si => $s) {
         get_string('courseid', $p), get_string('conditions_short', $p), get_string('paymentaccount', 'payment'),
         get_string('visible'), ''];
     $table->attributes['class'] = 'generaltable';
+    $table->colclasses = [8 => 'text-nowrap'];
     $n = count($s->products);
     foreach (array_values($s->products) as $i => $pr) {
         $row = new html_table_row([

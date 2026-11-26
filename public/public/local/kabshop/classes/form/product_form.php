@@ -214,6 +214,14 @@ class product_form extends \moodleform {
     }
 
     /**
+     * Раскрыть «Кто видит», если условия заданы.
+     */
+    public function definition_after_data() {
+        parent::definition_after_data();
+        conditions::expand_if_set($this->_form);
+    }
+
+    /**
      * Проверка полей.
      *
      * @param array $data

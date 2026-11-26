@@ -69,6 +69,21 @@ class conditions {
     }
 
     /**
+     * Раскрыть «Кто видит», если условия уже заданы: свёрнутый блок их прятал бы.
+     *
+     * @param \MoodleQuickForm $mform
+     * @param string[] $more ещё поля блока (у раздела — текст заглушки)
+     */
+    public static function expand_if_set(\MoodleQuickForm $mform, array $more = []): void {
+        foreach (array_merge(['requirecourses', 'requirecohorts', 'requireemails'], $more) as $name) {
+            if ($mform->elementExists($name) && array_filter((array) $mform->getElementValue($name))) {
+                $mform->setExpanded('hdrconditions', true);
+                return;
+            }
+        }
+    }
+
+    /**
      * Запись из базы → значения формы (группы — массивом для autocomplete).
      *
      * @param \stdClass $record

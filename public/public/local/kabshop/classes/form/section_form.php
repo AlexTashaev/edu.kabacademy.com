@@ -80,6 +80,14 @@ class section_form extends \moodleform {
     }
 
     /**
+     * Раскрыть «Кто видит», если условия или текст заглушки заданы.
+     */
+    public function definition_after_data() {
+        parent::definition_after_data();
+        conditions::expand_if_set($this->_form, ['emptytext']);
+    }
+
+    /**
      * Проверка полей.
      *
      * @param array $data
