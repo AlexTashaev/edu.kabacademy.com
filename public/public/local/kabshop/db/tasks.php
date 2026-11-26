@@ -34,4 +34,14 @@ $tasks = [
         'month' => '*',
         'dayofweek' => '*',
     ],
+    [
+        // Отчёты секретарю — утром, как выгрузки заказов WordPress (05:00–06:10).
+        'classname' => 'local_kabshop\task\send_staff_reports',
+        'blocking' => 0,
+        'minute' => '5',
+        'hour' => '6',
+        'day' => '*',
+        'month' => '*',
+        'dayofweek' => '*',
+    ],
 ];
