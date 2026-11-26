@@ -105,9 +105,14 @@ per-user availability, скрытые активности попадают в �
   `wp-content/kab-router.php` (спека `spec_wp_shutdown_2026-11.md` в приватном kabacademy.com). Главная —
   статичная визитка, ленды `/lp/` и страницы `/site/` — файлы; адреса WP → касса/кабинет edu или главная;
   API и POST → 410. Ключи WooCommerce и Edwiser отозваны, финальный импорт `local_kabwporders` — после
-  выключения (19 310 заказов). **Moodle всё ещё ссылается на `kabacademy.com/wp-content/uploads`**
-  (на 26.11: 8 страниц уроков, 12 страниц, 1 пояснение, 15 ресурсов-ссылок, 760 постов форумов) — файлы
-  отдаёт nginx, без WordPress; пока ссылки не перенесены в Moodle, каталог `uploads` не удалять.
+  выключения (19 310 заказов). **Файлы WP, на которые ссылался Moodle, перенесены 26.11.2026** в статику
+  edu `/kab/wp-uploads/<тот же путь>` (321 файл, 69 МБ, вне git, md5 сверены; 13 файлов не было и в WP —
+  их ссылки битые давно): `https://kabacademy.com/wp-content/uploads/` и `http://…` →
+  `https://edu.kabacademy.com/kab/wp-uploads/` в `forum_posts` (760), `url` (15), `page` (12),
+  `lesson_pages` (8), `label` (1), `tiny_autosave` (159) и фон в `theme_boost/scss`; бэкап исходных строк —
+  таблицы `_kab_bk20261126_up_*`, сброшены `cacherev` 28 курсов и кэши тем и MUC. Ссылок Moodle на
+  `kabacademy.com/wp-content/uploads` больше нет. Картинки к объявлениям (до 26.11 их грузили в WP) —
+  только в редактор Moodle.
 - **Подписки, перенесённые из WooCommerce (25.11.2026, слово владельца):** 4 подписки с токеном карты
   (bb_emv) заведены в кассе как обычные `local_kabshop_sub` (№ 2–5: иврит-подписка 56, два AI MAK 19,
   ежемесячный взнос 23 с данными жертвователя) с той же суммой и датой списания; первой оплаты в Moodle у них
