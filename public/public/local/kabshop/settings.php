@@ -43,6 +43,12 @@ if ($hassiteconfig || has_capability('local/kabshop:manage', context_system::ins
         new moodle_url('/local/kabshop/coupons.php'),
         'local/kabshop:manage'
     ));
+    $ADMIN->add('courses', new admin_externalpage(
+        'local_kabshop_staffreports',
+        get_string('staffreports', 'local_kabshop'),
+        new moodle_url('/local/kabshop/staffreports.php'),
+        'local/kabshop:manage'
+    ));
 }
 
 if ($hassiteconfig) {
@@ -162,6 +168,27 @@ if ($hassiteconfig) {
         get_string('setting_accessproducts_desc', 'local_kabshop'),
         '19,20', // Прод edu: «Премиум доступ к AI MAK» и «Подписка на ассистента».
         PARAM_SEQUENCE
+    ));
+    $ADMIN->add('localplugins', $page);
+
+    // Ежедневные отчёты секретарю (как выгрузки заказов WordPress): \local_kabshop\staffreports.
+    $page = new admin_settingpage('local_kabshop_staffreportsettings', get_string('staffreportsettings', 'local_kabshop'));
+    $page->add(new admin_setting_configtext(
+        'local_kabshop/staffreportemails',
+        get_string('setting_staffreportemails', 'local_kabshop'),
+        get_string('setting_staffreportemails_desc', 'local_kabshop'),
+        '',
+        PARAM_RAW_TRIMMED,
+        60
+    ));
+    $page->add(new admin_setting_configtextarea(
+        'local_kabshop/staffreports',
+        get_string('setting_staffreports', 'local_kabshop'),
+        get_string('setting_staffreports_desc', 'local_kabshop'),
+        \local_kabshop\staffreports::DEFAULTS,
+        PARAM_RAW,
+        60,
+        6
     ));
     $ADMIN->add('localplugins', $page);
 }
