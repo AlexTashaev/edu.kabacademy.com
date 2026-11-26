@@ -180,7 +180,9 @@ class service_provider implements \core_payment\local\callback\service_provider 
             // начать оплату нельзя, а уже начатая до закрытия доходит до выдачи — deliver_order
             // состояние записи не смотрит.
             if (!catalog::prerequisite_ok($product, $userid)) {
-                throw new \moodle_exception('noprereq', 'local_kabshop', '', catalog::prerequisite_names($product));
+                $names = catalog::prerequisite_course_failed($product, $userid) ? catalog::prerequisite_names($product) : '';
+                throw $names !== '' ? new \moodle_exception('noprereq', 'local_kabshop', '', $names)
+                    : new \moodle_exception('restrictedproduct', 'local_kabshop');
             }
             if (catalog::sale_state($product) !== 'open') {
                 throw new \moodle_exception('saleclosed', 'local_kabshop');

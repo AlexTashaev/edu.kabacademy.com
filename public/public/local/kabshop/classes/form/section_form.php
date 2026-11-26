@@ -63,10 +63,30 @@ class section_form extends \moodleform {
         $mform->addElement('text', 'sortorder', get_string('sortorder', $p), ['size' => 4]);
         $mform->setType('sortorder', PARAM_INT);
         $mform->setDefault('sortorder', 0);
+        $mform->addHelpButton('sortorder', 'sortorder', $p);
 
         $mform->addElement('advcheckbox', 'visible', get_string('visible'));
         $mform->setDefault('visible', 1);
 
+        // Кто видит раздел в каталоге; что показать, если доступных товаров в нём нет.
+        conditions::add($mform, false);
+
+        $mform->addElement('text', 'emptytext', get_string('emptytext', $p), ['size' => 60, 'maxlength' => 255,
+            'placeholder' => get_string('emptytext_default', $p)]);
+        $mform->setType('emptytext', PARAM_TEXT);
+        $mform->addHelpButton('emptytext', 'emptytext', $p);
+
         $this->add_action_buttons();
+    }
+
+    /**
+     * Проверка полей.
+     *
+     * @param array $data
+     * @param array $files
+     * @return array
+     */
+    public function validation($data, $files) {
+        return parent::validation($data, $files) + conditions::validate($data);
     }
 }

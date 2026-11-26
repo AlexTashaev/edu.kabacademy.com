@@ -73,7 +73,8 @@ class orders {
             $params['to'] = $f['to'];
         }
         if (!empty($f['paidonly'])) {
-            $where[] = 'pu.paymentid > 0';
+            // Деньги, которые остались у нас: без возвратов и отзывов.
+            $where[] = "pu.paymentid > 0 AND pu.status = 'ok'";
         }
         $q = trim((string) ($f['q'] ?? ''));
         if ($q !== '') {
@@ -132,6 +133,8 @@ class orders {
         }
         if (($r->status ?? 'ok') === 'revoked') {
             $t .= ' · ' . get_string('ordertype_revoked', $p);
+        } else if (($r->status ?? 'ok') === 'refunded') {
+            $t .= ' · ' . get_string('ordertype_refunded', $p);
         }
         return $t;
     }
@@ -153,23 +156,71 @@ class orders {
     }
 
     /**
-     * Незавершённые попытки оплаты через kbb1 (отменены, ошибка, ждут возврата).
+     * Незавершённые попытки оплаты: карта / PayPal (kbb1: отменена, ошибка, не вернулся) и
+     * Robokassa (счёт выставлен, оплата не подтверждена). Строки импорта подписок WordPress
+     * (kbb1 'imported') — не попытки, их нет. Новые сверху.
      *
      * @param int $limit
-     * @return array
+     * @return array записи: gateway, ref (номер в сервисе оплаты), status, productid, productname, …
      */
     public static function attempts(int $limit = 200): array {
         global $DB;
-        if (!self::has_kbb1()) {
-            return [];
-        }
         $names = \core_user\fields::for_name()->get_sql('u');
-        return $DB->get_records_sql(
-            "SELECT k.id, k.component, k.paymentarea, k.itemid, k.userid, k.method, k.status, k.amount, k.currency,
-                    k.timecreated, k.timemodified, u.email {$names->selects}
-               FROM {paygw_kbb1} k
-               JOIN {user} u ON u.id = k.userid
-              WHERE k.status <> 'paid'
-           ORDER BY k.id DESC", [], 0, $limit);
+        $list = [];
+        if (self::has_kbb1()) {
+            foreach ($DB->get_records_sql(
+                    "SELECT k.id, k.paymentarea, k.itemid, k.userid, k.method, k.status, k.amount, k.currency,
+                            k.timecreated, u.email {$names->selects}
+                       FROM {paygw_kbb1} k
+                       JOIN {user} u ON u.id = k.userid
+                      WHERE k.component = 'local_kabshop' AND k.status NOT IN ('paid', 'imported')
+                   ORDER BY k.id DESC", $names->params, 0, $limit) as $r) {
+                $r->gateway = 'kbb1';
+                $r->ref = $r->id;
+                $list[] = $r;
+            }
+        }
+        if ($DB->get_manager()->table_exists('paygw_robokassa')) {
+            foreach ($DB->get_records_sql(
+                    "SELECT r.id, pm.paymentarea, pm.itemid, pm.userid, pm.amount, pm.currency,
+                            r.timecreated, u.email {$names->selects}
+                       FROM {paygw_robokassa} r
+                       JOIN {payments} pm ON pm.id = r.paymentid
+                       JOIN {user} u ON u.id = pm.userid
+                      WHERE r.success = 0 AND pm.component = 'local_kabshop'
+                   ORDER BY r.id DESC", $names->params, 0, $limit) as $r) {
+                $r->gateway = 'robokassa';
+                $r->ref = $r->id;
+                $r->method = '';
+                $r->status = 'unpaid';
+                $list[] = $r;
+            }
+        }
+        usort($list, fn($a, $b) => (int) $b->timecreated <=> (int) $a->timecreated);
+        $list = array_slice($list, 0, $limit);
+        foreach ($list as $r) {
+            $r->productid = self::attempt_productid((string) $r->paymentarea, (int) $r->itemid);
+            $r->productname = $r->productid
+                ? $DB->get_field('local_kabshop_product', 'name', ['id' => $r->productid]) : null;
+        }
+        return $list;
+    }
+
+    /**
+     * Товар попытки оплаты по зоне платежа: custom — намерение, renewal — подписка, иначе — сам товар.
+     *
+     * @param string $area
+     * @param int $itemid
+     * @return int 0 — не найден
+     */
+    public static function attempt_productid(string $area, int $itemid): int {
+        global $DB;
+        if ($area === 'custom') {
+            return (int) $DB->get_field('local_kabshop_intent', 'productid', ['id' => $itemid]);
+        }
+        if ($area === 'renewal') {
+            return (int) $DB->get_field('local_kabshop_sub', 'productid', ['id' => $itemid]);
+        }
+        return in_array($area, ['product', 'productalt'], true) ? $itemid : 0;
     }
 }

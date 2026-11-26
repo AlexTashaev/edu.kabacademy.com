@@ -76,10 +76,17 @@ $salenotice = ($owned || $activesub) ? null : catalog::sale_notice($product);
 $saleopen = $salenotice === null;
 $prereqnotice = null;
 if (!$prereqok && $saleopen) {
-    $names = catalog::prerequisite_names($product);
-    $prereqnotice = $loggedin
-        ? get_string('prereqdenied', 'local_kabshop', (object) ['required' => $names, 'email' => s($USER->email)])
-        : get_string('prereqguest', 'local_kabshop', $names);
+    // Не прошёл курсовое условие — называем курсы; иначе (группа, список адресов) — коротко.
+    $names = catalog::prerequisite_course_failed($product, $loggedin ? (int) $USER->id : 0)
+        ? catalog::prerequisite_names($product) : '';
+    if ($names !== '') {
+        $prereqnotice = $loggedin
+            ? get_string('prereqdenied', 'local_kabshop', (object) ['required' => $names, 'email' => s($USER->email)])
+            : get_string('prereqguest', 'local_kabshop', $names);
+    } else {
+        $prereqnotice = $loggedin ? get_string('restricteddenied', 'local_kabshop', s($USER->email))
+            : get_string('restrictedguest', 'local_kabshop');
+    }
 }
 
 $action = null;
@@ -111,8 +118,10 @@ if ($product->kind === 'external') {
 } else if (!$loggedin) {
     // Гость: без условия записи — «Записаться / Купить / Поддержать» на странице local_kabsignup
     // «e-mail → аккаунт → сюда же» (§5.2 спеки лендов); с условием (часть 2) и без kabsignup —
-    // вход, как раньше: учившиеся на части 1 аккаунт уже имеют.
-    $buyurl = (class_exists('\local_kabsignup\manager') && method_exists('\local_kabsignup\manager', 'buy_url')
+    // вход, как раньше: учившиеся на части 1 аккаунт уже имеют. Товар для групп или списка
+    // адресов — тоже через вход: новый аккаунт условие всё равно не пройдёт.
+    $buyurl = (!catalog::has_restrictions($product) && class_exists('\local_kabsignup\manager')
+            && method_exists('\local_kabsignup\manager', 'buy_url')
             && \local_kabsignup\manager::shop_product((int) $product->id, count($variants) > 1 ? $product->currency : ''))
         ? \local_kabsignup\manager::buy_url($product, 'shop') : null;
     if ($buyurl) {
@@ -335,8 +344,16 @@ foreach ($variants as $code => $v) {
     }
 }
 
-// Начало и продолжительность — сверху карточки покупки.
+// Поток, начало и продолжительность — сверху карточки покупки.
 $facts = [];
+if (trim((string) ($record->stream ?? '')) !== '') {
+    $facts[] = [
+        'key' => 'stream',
+        'icon' => $OUTPUT->image_url('icons/people', 'local_kabshop')->out(false),
+        'label' => get_string('fact_stream', 'local_kabshop'),
+        'value' => format_string($record->stream, true, ['context' => $context]),
+    ];
+}
 if ($start = catalog::start_string($record)) {
     $facts[] = [
         'key' => 'start',
@@ -377,12 +394,15 @@ $data['priceother'] = ($otherprices && !$currencies)
 $data['facts'] = $facts;
 $data['hasfacts'] = !empty($facts);
 $data['program'] = $program;
-$data['hasprogram'] = !empty($program);
-// «Этот курс»: с программой — полосой на всю ширину под карточкой, без неё — справа от карточки.
-// rich — у товара есть программа или этот блок: описание тогда идёт ниже на всю ширину.
+// «Этот курс» — справа от карточки, одной колонкой; программа — справа, только если этого блока
+// нет, иначе ниже на всю ширину. rich — есть программа или блок: описание тогда идёт ниже,
+// одной колонкой (колонки CSS при коротком тексте оставляли полстраницы пустой).
 $data['about'] = $about;
-$data['aboutband'] = $about && $program;
-$data['aboutside'] = $about && !$program;
+$data['abouttitle'] = trim((string) ($record->abouttitle ?? '')) !== ''
+    ? format_string($record->abouttitle, true, ['context' => $context]) : get_string('abouttitle', 'local_kabshop');
+$data['aboutside'] = !empty($about);
+$data['programside'] = $program && !$about;
+$data['programwide'] = $program && $about;
 $data['rich'] = $about || $program;
 $data['sale'] = $salenotice;
 $data['saleuntil'] = $saleuntil;

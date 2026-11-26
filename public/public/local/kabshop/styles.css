@@ -1281,21 +1281,15 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
 }
 
 /* Блок «Этот курс»: подложка и полоса-градиент слева, заголовок — как «ЭТОТ КУРС:» на сайте.
-   Полосой на всю ширину абзацы встают колонками, справа от карточки — друг под другом. */
+   Стоит справа от карточки, абзацы друг под другом (колонки на всю ширину выходили неровными). */
 .kabshop-aboutcourse {
     position: relative;
     padding: 30px 36px 16px 40px;
     background: var(--kabshop-tint);
 }
 
-.kabshop-aboutcourse-band {
+.kabshop-program-wide {
     margin-bottom: 48px;
-}
-
-.kabshop-aboutcourse-band .kabshop-aboutcourse-text {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 0 40px;
 }
 
 
@@ -1854,30 +1848,10 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     margin-bottom: 0;
 }
 
-/* Описание на всю ширину — в две колонки; заголовки и линии идут через обе, так что каждый
-   раздел («Особенности обучения» и т. п.) делится на колонки сам по себе. */
+/* Описание под карточкой — одной колонкой: колонками короткий текст или один абзац занимал
+   полстраницы, а вторая половина пустовала. Ширина строки ограничена для чтения. */
 .kabshop-product-description-wide {
-    max-width: none;
-    columns: 2 340px;
-    column-gap: 56px;
-}
-
-.kabshop-product-description-wide > h2,
-.kabshop-product-description-wide > h3,
-.kabshop-product-description-wide > h4,
-.kabshop-product-description-wide > hr {
-    column-span: all;
-}
-
-.kabshop-product-description-wide li,
-.kabshop-product-description-wide p {
-    break-inside: avoid;
-    page-break-inside: avoid;
-}
-
-/* Нумерованный список внутри колонки описания — в одну колонку. */
-.kabshop-product-description-wide ol {
-    columns: auto;
+    max-width: 60rem;
 }
 
 .kabshop-product-description-wide ul,
@@ -2158,7 +2132,7 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
         padding: 22px 18px 8px 22px;
     }
 
-    .kabshop-aboutcourse-band {
+    .kabshop-program-wide {
         margin-bottom: 32px;
     }
 
@@ -2202,4 +2176,14 @@ body.limitedwidth #page.drawers .main-inner:has(.kabshop-product) {
     .kabshop-product-description ul > li {
         padding-left: 48px;
     }
+}
+
+/* Раздел каталога, где для человека нет доступных товаров (текст заглушки из настроек раздела). */
+.kabshop-section-empty {
+    margin: 0;
+    padding: 1.25rem 0;
+    font-family: var(--kabshop-body);
+    font-size: 15px;
+    font-weight: 300;
+    color: var(--kabshop-copy);
 }

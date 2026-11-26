@@ -96,7 +96,8 @@ $dl = [
     get_string('subnext', $p) => html_writer::tag('strong', userdate($sub->nextcharge, $fmt)) .
         ($sub->status === 'active' && $sub->nextcharge <= time() ? ' · ' . get_string('subdue', $p) : ''),
     get_string('col_paymethod', $p) => s($sub->gateway) . (subscriptions::charger($sub->gateway) ? '' : ' · ' . get_string('subgatewayown', $p)),
-    get_string('subfails', $p) => ($sub->failcount ? $sub->failcount . ' · ' . s((string) $sub->lasterror) .
+    get_string('subfails', $p) . ' ' . $OUTPUT->help_icon('subfails', $p) =>
+        ($sub->failcount ? $sub->failcount . ' · ' . s((string) $sub->lasterror) .
         ($sub->lastattempt ? ' · ' . userdate($sub->lastattempt, $fmt) : '') : '—')
         . (subscriptions::pending_paymentid($sub) ? ' · ' . get_string('subpending', $p, (object) [
             'payment' => subscriptions::pending_paymentid($sub), 'time' => userdate($sub->lastattempt, $fmt)]) : ''),

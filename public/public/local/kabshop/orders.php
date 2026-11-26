@@ -31,6 +31,7 @@ $tab       = optional_param('tab', 'orders', PARAM_ALPHA);
 $q         = optional_param('q', '', PARAM_RAW_TRIMMED);
 $productid = optional_param('productid', 0, PARAM_INT);
 $couponid  = optional_param('couponid', 0, PARAM_INT);
+$userid    = optional_param('userid', 0, PARAM_INT);
 $fromstr   = optional_param('from', '', PARAM_RAW_TRIMMED);
 $tostr     = optional_param('to', '', PARAM_RAW_TRIMMED);
 $page      = optional_param('page', 0, PARAM_INT);
@@ -44,10 +45,13 @@ $todate = function (string $s, bool $endofday) {
     $t = $s !== '' ? strtotime($s . ' 00:00:00') : 0;
     return $t ? ($endofday ? $t + DAYSECS : $t) : 0;
 };
-$filters = ['q' => $q, 'productid' => $productid, 'couponid' => $couponid,
+$filters = ['q' => $q, 'productid' => $productid, 'couponid' => $couponid, 'userid' => $userid,
     'from' => $todate($fromstr, false), 'to' => $todate($tostr, true)];
 $baseparams = ['tab' => $tab, 'q' => $q, 'productid' => $productid, 'couponid' => $couponid,
     'from' => $fromstr, 'to' => $tostr];
+if ($userid) {
+    $baseparams['userid'] = $userid;
+}
 $baseurl = new moodle_url('/local/kabshop/orders.php', $baseparams);
 
 $fmt = get_string('strftimedatetimeshort', 'langconfig');
@@ -96,18 +100,37 @@ if ($tab === 'attempts') {
     } else {
         $t = new html_table();
         $t->head = [get_string('col_serviceref', $p), get_string('col_orderdate', $p), get_string('col_buyer', $p),
-            get_string('col_email', $p), get_string('col_subamount', $p), get_string('col_paymethod', $p),
-            get_string('substatus', $p)];
+            get_string('col_email', $p), get_string('col_subproduct', $p), get_string('col_subamount', $p),
+            get_string('col_paymethod', $p), get_string('substatus', $p)];
         $t->attributes['class'] = 'generaltable';
         foreach ($list as $a) {
-            $t->data[] = [$a->id, userdate($a->timecreated, $fmt), fullname($a), s($a->email),
+            $method = $a->gateway === 'kbb1'
+                ? get_string('method_' . $a->method, 'paygw_kbb1') : get_string('pluginname', 'paygw_' . $a->gateway);
+            $productcell = $a->productid
+                ? html_writer::link(new moodle_url('/local/kabshop/product.php', ['id' => $a->productid]),
+                    format_string($a->productname ?? ('#' . $a->productid)))
+                : '—';
+            $t->data[] = [$a->ref, userdate($a->timecreated, $fmt),
+                html_writer::link(new moodle_url('/local/kabshop/orders.php', ['userid' => $a->userid]), fullname($a),
+                    ['title' => get_string('buyerorders', $p)]),
+                s($a->email), $productcell,
                 \core_payment\helper::get_cost_as_string((float) $a->amount, $a->currency),
-                get_string('method_' . $a->method, 'paygw_kbb1'), get_string('attempt_' . $a->status, $p)];
+                $method, get_string('attempt_' . $a->status, $p)];
         }
         echo html_writer::table($t);
     }
     echo $OUTPUT->footer();
     exit;
+}
+
+// Все заказы одного покупателя — ссылкой из заказа, из списка, из профиля.
+if ($userid && ($buyer = core_user::get_user($userid))) {
+    $reset = new moodle_url($baseurl);
+    $reset->remove_params('userid');
+    echo $OUTPUT->notification(get_string('buyerfilter', $p, (object) [
+        'name' => html_writer::link(new moodle_url('/user/profile.php', ['id' => $buyer->id]), fullname($buyer)),
+        'email' => s($buyer->email),
+    ]) . ' ' . html_writer::link($reset, get_string('buyerfilterreset', $p)), 'info', false);
 }
 
 // Фильтры.
@@ -116,6 +139,9 @@ $products = [0 => get_string('allproducts', $p)] +
 echo html_writer::start_tag('form', ['method' => 'get', 'action' => $baseurl->out_omit_querystring(),
     'class' => 'd-flex flex-wrap gap-2 align-items-end mb-3']);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'tab', 'value' => 'orders']);
+if ($userid) {
+    echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'userid', 'value' => $userid]);
+}
 echo html_writer::div(html_writer::label(get_string('search'), 'kq', true, ['class' => 'd-block small']) .
     html_writer::empty_tag('input', ['type' => 'text', 'name' => 'q', 'id' => 'kq', 'value' => $q,
         'class' => 'form-control', 'placeholder' => get_string('searchhint', $p)]));
@@ -154,7 +180,10 @@ if (!$rows) {
     foreach ($rows as $r) {
         $cells = $row($r);
         $cells[0] = html_writer::link(new moodle_url('/local/kabshop/order.php', ['id' => $r->id]), $cells[0]);
-        $cells[2] = html_writer::link(new moodle_url('/user/profile.php', ['id' => $r->userid]), s($cells[2]));
+        $cells[2] = html_writer::link(new moodle_url('/local/kabshop/orders.php', ['userid' => $r->userid]),
+            s($cells[2]), ['title' => get_string('buyerorders', $p)]) . ' ' .
+            html_writer::link(new moodle_url('/user/profile.php', ['id' => $r->userid]), '↗',
+                ['title' => get_string('profile')]);
         $cells[3] = s($cells[3]);
         $t->data[] = $cells;
     }

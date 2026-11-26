@@ -24,10 +24,10 @@
     «Запись ещё не открыта», «Запись завершена»).
 
     У товара с темами уроков или блоком «Этот курс» (rich) пустого места под карточкой нет:
-    справа от неё — «В программе курса» (program), ниже на всю ширину — «Этот курс»
-    (aboutband, абзацы колонками) и описание в две колонки. Без программы «Этот курс» встаёт
-    справа от карточки (aboutside). У остальных товаров описание справа, карточка на
-    компьютере липнет при прокрутке.
+    справа от неё — «Этот курс» одной колонкой (aboutside, заголовок — abouttitle), ниже на всю
+    ширину — «В программе курса» (programwide) и описание одной колонкой. Без «Этот курс»
+    справа от карточки — программа (programside). У остальных товаров описание справа,
+    карточка на компьютере липнет при прокрутке. Поток — первым пунктом facts.
     Название в шапке — для глаз: заголовок страницы Moodle остаётся для чтения с экрана.
 
     currencies — выбор «чем платить» у товара с двумя ценами (ссылки на ту же страницу в
@@ -42,10 +42,11 @@
      "section": "Начать обучение", "price": "70,00 $", "priceother": "или 5 250,00 ₽", "free": false,
      "image": null, "paid": false,
      "hasfacts": true,
-     "facts": [{"key": "start", "icon": "#", "label": "Начало", "value": "1 октября"},
+     "facts": [{"key": "stream", "icon": "#", "label": "Поток", "value": "Весна 2027"},
+               {"key": "start", "icon": "#", "label": "Начало", "value": "1 октября"},
                {"key": "duration", "icon": "#", "label": "Продолжительность", "value": "15 недель"}],
-     "hasprogram": true, "program": ["Суть науки каббала", "Развитие желаний"],
-     "about": ["Знакомит с основами каббалы."], "aboutside": false, "aboutband": true, "rich": true,
+     "program": ["Суть науки каббала", "Развитие желаний"], "programside": false, "programwide": true,
+     "about": ["Знакомит с основами каббалы."], "abouttitle": "Этот курс", "aboutside": true, "rich": true,
      "sale": {"state": "closed", "title": "Запись завершена", "text": null, "note": "Следующий поток — весной"},
      "saleuntil": null, "ownednote": null,
      "nopayment": false, "canmanage": false, "editurl": "#", "catalogurl": "#",
@@ -340,20 +341,20 @@
             </div>
         </div>
         <div class="kabshop-pp-main">
-            {{#hasprogram}}
+            {{#aboutside}}
+            <section class="kabshop-aboutcourse" aria-labelledby="kabshop-aboutcourse-title">
+                <h2 class="kabshop-aboutcourse-title" id="kabshop-aboutcourse-title">{{abouttitle}}</h2>
+                <div class="kabshop-aboutcourse-text">{{#about}}<p>{{{.}}}</p>{{/about}}</div>
+            </section>
+            {{/aboutside}}
+            {{#programside}}
             <section class="kabshop-program" aria-labelledby="kabshop-program-title">
                 <h2 class="kabshop-pp-heading" id="kabshop-program-title">{{#str}} programtitle, local_kabshop {{/str}}</h2>
                 <ol class="kabshop-program-list">
                     {{#program}}<li>{{{.}}}</li>{{/program}}
                 </ol>
             </section>
-            {{/hasprogram}}
-            {{#aboutside}}
-            <section class="kabshop-aboutcourse" aria-labelledby="kabshop-aboutcourse-title">
-                <h2 class="kabshop-aboutcourse-title" id="kabshop-aboutcourse-title">{{#str}} abouttitle, local_kabshop {{/str}}</h2>
-                <div class="kabshop-aboutcourse-text">{{#about}}<p>{{{.}}}</p>{{/about}}</div>
-            </section>
-            {{/aboutside}}
+            {{/programside}}
             {{^rich}}
             {{#description}}
             <div class="kabshop-product-description">{{{description}}}</div>
@@ -364,12 +365,14 @@
     </div>
     {{#rich}}
     <div class="kabshop-pp-wide">
-        {{#aboutband}}
-        <section class="kabshop-aboutcourse kabshop-aboutcourse-band" aria-labelledby="kabshop-aboutcourse-title">
-            <h2 class="kabshop-aboutcourse-title" id="kabshop-aboutcourse-title">{{#str}} abouttitle, local_kabshop {{/str}}</h2>
-            <div class="kabshop-aboutcourse-text">{{#about}}<p>{{{.}}}</p>{{/about}}</div>
+        {{#programwide}}
+        <section class="kabshop-program kabshop-program-wide" aria-labelledby="kabshop-program-title">
+            <h2 class="kabshop-pp-heading" id="kabshop-program-title">{{#str}} programtitle, local_kabshop {{/str}}</h2>
+            <ol class="kabshop-program-list">
+                {{#program}}<li>{{{.}}}</li>{{/program}}
+            </ol>
         </section>
-        {{/aboutband}}
+        {{/programwide}}
         {{#description}}
         <div class="kabshop-product-description kabshop-product-description-wide">{{{description}}}</div>
         {{/description}}

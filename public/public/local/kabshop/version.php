@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_kabshop';
-$plugin->version   = 2026112600;
+$plugin->version   = 2026112700;
 $plugin->requires  = 2025041400; // Moodle 5.0+.
 $plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = '0.16.0';
+$plugin->release   = '0.17.0';

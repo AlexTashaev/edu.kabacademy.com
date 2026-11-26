@@ -78,6 +78,11 @@ class product_form extends \moodleform {
         $mform->setType('program', PARAM_TEXT);
         $mform->addHelpButton('program', 'program', $p);
 
+        $mform->addElement('text', 'abouttitle', get_string('abouttitlefield', $p), ['size' => 30, 'maxlength' => 100,
+            'placeholder' => get_string('abouttitle', $p)]);
+        $mform->setType('abouttitle', PARAM_TEXT);
+        $mform->addHelpButton('abouttitle', 'abouttitlefield', $p);
+
         $mform->addElement('textarea', 'about', get_string('about', $p), ['rows' => 6, 'cols' => 60]);
         $mform->setType('about', PARAM_TEXT);
         $mform->addHelpButton('about', 'about', $p);
@@ -187,10 +192,6 @@ class product_form extends \moodleform {
         $mform->setType('courseid', PARAM_INT);
         $mform->addHelpButton('courseid', 'courseid', $p);
 
-        $mform->addElement('text', 'requirecourses', get_string('requirecourses', $p), ['size' => 20]);
-        $mform->setType('requirecourses', PARAM_SEQUENCE);
-        $mform->addHelpButton('requirecourses', 'requirecourses', $p);
-
         $mform->addElement('duration', 'enrolperiod', get_string('enrolperiod', $p), ['optional' => true,
             'defaultunit' => DAYSECS]);
         $mform->addHelpButton('enrolperiod', 'enrolperiod', $p);
@@ -201,9 +202,13 @@ class product_form extends \moodleform {
         $mform->addElement('text', 'sortorder', get_string('sortorder', $p), ['size' => 4]);
         $mform->setType('sortorder', PARAM_INT);
         $mform->setDefault('sortorder', 0);
+        $mform->addHelpButton('sortorder', 'sortorder', $p);
 
         $mform->addElement('advcheckbox', 'visible', get_string('visible'));
         $mform->setDefault('visible', 1);
+
+        // Кто видит товар и может его купить: курсы, глобальные группы, адреса.
+        conditions::add($mform, true);
 
         $this->add_action_buttons();
     }
@@ -221,14 +226,10 @@ class product_form extends \moodleform {
         if ($data['courseid'] && !$DB->record_exists('course', ['id' => $data['courseid']])) {
             $errors['courseid'] = get_string('coursenotfound', 'local_kabshop');
         }
+        $errors += conditions::validate($data);
         $required = \local_kabshop\catalog::parse_courseids((string) ($data['requirecourses'] ?? ''));
-        if ($required) {
-            $missing = array_diff($required, array_keys($DB->get_records_list('course', 'id', $required, '', 'id')));
-            if ($missing) {
-                $errors['requirecourses'] = get_string('coursenotfound', 'local_kabshop') . ': ' . implode(', ', $missing);
-            } else if ($data['courseid'] && in_array((int) $data['courseid'], $required, true)) {
-                $errors['requirecourses'] = get_string('requireself', 'local_kabshop');
-            }
+        if (empty($errors['requirecourses']) && $data['courseid'] && in_array((int) $data['courseid'], $required, true)) {
+            $errors['requirecourses'] = get_string('requireself', 'local_kabshop');
         }
         if ($data['price'] < 0) {
             $errors['price'] = get_string('invalidprice', 'local_kabshop');

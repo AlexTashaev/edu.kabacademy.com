@@ -54,6 +54,29 @@ if ($do && data_submitted() && confirm_sesskey()) {
         redirect($url, get_string($ok ? 'revoked' : 'revokefailed', $p), null,
             $ok ? \core\output\notification::NOTIFY_SUCCESS : \core\output\notification::NOTIFY_WARNING);
     }
+    if ($do === 'refund') {
+        $ok = catalog::refund($purchase->id, $USER->id, optional_param('note', '', PARAM_TEXT),
+            (bool) optional_param('unenrol', 0, PARAM_BOOL));
+        redirect($url, get_string($ok ? 'refunded' : 'refundfailed', $p), null,
+            $ok ? \core\output\notification::NOTIFY_SUCCESS : \core\output\notification::NOTIFY_WARNING);
+    }
+    if ($do === 'transfer') {
+        // Куда переносим — по адресу: живой аккаунт, адрес ровно у одного.
+        $email = core_text::strtolower(trim(optional_param('email', '', PARAM_RAW_TRIMMED)));
+        $targets = $email === '' ? [] : $DB->get_records_select('user',
+            'deleted = 0 AND ' . $DB->sql_equal('email', ':email', false), ['email' => $email], 'id', 'id, email');
+        if (count($targets) !== 1) {
+            redirect($url, get_string(count($targets) ? 'transfermany' : 'transfernouser', $p, s($email)), null,
+                \core\output\notification::NOTIFY_WARNING);
+        }
+        $target = reset($targets);
+        if ((int) $target->id === (int) $purchase->userid || isguestuser($target)) {
+            redirect($url, get_string('transferbaduser', $p), null, \core\output\notification::NOTIFY_WARNING);
+        }
+        $n = catalog::transfer($purchase->id, (int) $target->id, $USER->id);
+        redirect($url, get_string('transferred', $p, (object) ['count' => $n, 'email' => s($target->email)]), null,
+            \core\output\notification::NOTIFY_SUCCESS);
+    }
     if ($do === 'resend' && $product && $user) {
         if ($payment) {
             \local_kabshop\mailer::paid($product, $user->id, $purchase->id, $payment, $sub ?: null);
@@ -73,6 +96,8 @@ echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('orderno', $p, $purchase->id));
 if ($purchase->status === 'revoked') {
     echo $OUTPUT->notification(get_string('orderrevoked', $p, userdate($purchase->timerevoked)), 'warning');
+} else if ($purchase->status === 'refunded') {
+    echo $OUTPUT->notification(get_string('orderrefunded', $p, userdate($purchase->timerevoked)), 'warning');
 }
 
 [$rows] = orders::search(['q' => (string) $purchase->id], 0, 1);
@@ -81,7 +106,10 @@ $fmt = get_string('strftimedatetime', 'langconfig');
 $dl = [
     get_string('col_orderdate', $p) => userdate($purchase->timecreated, $fmt),
     get_string('col_buyer', $p) => $user ? html_writer::link(new moodle_url('/user/profile.php', ['id' => $user->id]),
-        fullname($user)) . ' · ' . s($user->email) : $purchase->userid,
+        fullname($user)) . ' · ' . s($user->email) . ' · ' .
+        html_writer::link(new moodle_url('/local/kabshop/orders.php', ['userid' => $user->id]),
+            get_string('buyerordersn', $p, $DB->count_records('local_kabshop_purchase', ['userid' => $user->id])))
+        : $purchase->userid,
     get_string('col_subproduct', $p) => $product ? html_writer::link(new moodle_url('/local/kabshop/product.php',
         ['id' => $product->id]), format_string($product->name)) : '#' . $purchase->productid,
     get_string('col_ordertype', $p) => $r ? orders::type($r) : '',
@@ -141,11 +169,37 @@ echo $btn('resend', get_string('mailresend', $p), 'btn-secondary');
 if ($sub && $sub->status === 'active') {
     echo $btn('cancelsub', get_string('subcancel_admin', $p), 'btn-outline-secondary');
 }
-if ($purchase->status !== 'revoked') {
+echo html_writer::end_div();
+
+// Возврат денег: сами деньги возвращают в кабинете шлюза, здесь — отметка, подписка и доступ.
+if ($purchase->status === 'ok' && $purchase->paymentid > 0) {
+    $unenrol = '';
+    if ($product && $product->courseid) {
+        $unenrol = html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'unenrol', 'value' => 0])
+            . html_writer::tag('label', html_writer::empty_tag('input', ['type' => 'checkbox', 'name' => 'unenrol',
+                'value' => 1, 'checked' => 'checked', 'class' => 'form-check-input me-1']) .
+                get_string('refundunenrol', $p), ['class' => 'form-check-label me-3']);
+    }
+    $note = html_writer::empty_tag('input', ['type' => 'text', 'name' => 'note', 'required' => 'required',
+        'class' => 'form-control d-inline-block w-auto me-2', 'placeholder' => get_string('refundnote', $p)]);
+    echo html_writer::tag('h3', get_string('refundtitle', $p), ['class' => 'h5 mt-4']);
+    echo html_writer::tag('p', get_string('refundhelp', $p), ['class' => 'text-muted small mb-2']);
+    echo $btn('refund', get_string('refund', $p), 'btn-warning', $note . $unenrol);
+}
+
+// Отозвать доступ без возврата денег (или после возврата, если доступ тогда оставили).
+if ($purchase->status === 'ok' || ($purchase->status === 'refunded' && $product && $product->courseid)) {
     $note = html_writer::empty_tag('input', ['type' => 'text', 'name' => 'note', 'class' => 'form-control d-inline-block w-auto me-2',
         'placeholder' => get_string('revokenote', $p), 'required' => 'required']);
+    echo html_writer::tag('h3', get_string('revoketitle', $p), ['class' => 'h5 mt-4']);
     echo $btn('revoke', get_string('revoke', $p), 'btn-danger', $note);
 }
-echo html_writer::end_div();
+
+// Перенос на другой аккаунт (дубль): заказ, подписка с её оплатами, доступ к курсу.
+$email = html_writer::empty_tag('input', ['type' => 'email', 'name' => 'email', 'required' => 'required',
+    'class' => 'form-control d-inline-block w-auto me-2', 'placeholder' => get_string('transferemail', $p)]);
+echo html_writer::tag('h3', get_string('transfertitle', $p), ['class' => 'h5 mt-4']);
+echo html_writer::tag('p', get_string('transferhelp', $p), ['class' => 'text-muted small mb-2']);
+echo $btn('transfer', get_string('transfer', $p), 'btn-outline-primary', $email);
 echo html_writer::div(html_writer::link(new moodle_url('/local/kabshop/orders.php'), '← ' . get_string('orders', $p)), 'mt-3');
 echo $OUTPUT->footer();

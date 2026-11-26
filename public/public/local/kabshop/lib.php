@@ -64,3 +64,29 @@ function local_kabshop_pluginfile($course, $cm, $context, $filearea, $args, $for
     }
     send_stored_file($file, DAYSECS, 0, $forcedownload, $options);
 }
+
+/**
+ * Профиль пользователя: управляющему витриной — ссылка «Заказы витрины (N)» на все заказы этого
+ * человека (раньше заказы из профиля было не найти, только поиском в списке заказов).
+ *
+ * @param \core_user\output\myprofile\tree $tree
+ * @param stdClass $user
+ * @param bool $iscurrentuser
+ * @param stdClass|null $course
+ * @return void
+ */
+function local_kabshop_myprofile_navigation(\core_user\output\myprofile\tree $tree, $user, $iscurrentuser, $course) {
+    global $DB;
+    try {
+        if (!has_capability('local/kabshop:manage', context_system::instance())) {
+            return;
+        }
+        $count = $DB->count_records('local_kabshop_purchase', ['userid' => $user->id]);
+        $tree->add_node(new \core_user\output\myprofile\node('administration', 'local_kabshop_orders',
+            get_string('profileorders', 'local_kabshop', $count), null,
+            new moodle_url('/local/kabshop/orders.php', ['userid' => $user->id])));
+    } catch (\Throwable $e) {
+        // Профиль важнее ссылки.
+        debugging('local_kabshop_myprofile_navigation: ' . $e->getMessage(), DEBUG_DEVELOPER);
+    }
+}

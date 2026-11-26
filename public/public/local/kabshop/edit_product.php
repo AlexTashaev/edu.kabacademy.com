@@ -51,7 +51,7 @@ $product = file_prepare_standard_filemanager($product, 'image', $fileoptions, $c
     $product->id ?: null);
 
 $form = new \local_kabshop\form\product_form();
-$form->set_data($product);
+$form->set_data(\local_kabshop\form\conditions::prepare($product));
 
 if ($form->is_cancelled()) {
     redirect($manageurl);
@@ -61,8 +61,8 @@ if ($form->is_cancelled()) {
     $data->courseid = (int)$data->courseid;
     $data->sku = trim((string) ($data->sku ?? '')) ?: null;
     $data->notifyemails = implode(', ', \local_kabshop\mailer::notify_emails((string) ($data->notifyemails ?? ''))) ?: null;
-    $data->requirecourses = implode(',', \local_kabshop\catalog::parse_courseids((string) ($data->requirecourses ?? '')))
-        ?: null;
+    $data = \local_kabshop\form\conditions::clean($data);
+    $data->abouttitle = trim((string) ($data->abouttitle ?? '')) ?: null;
     // Взнос за курс — всегда сумма на выбор.
     if ($data->kind === 'contribution') {
         $data->customamount = 1;

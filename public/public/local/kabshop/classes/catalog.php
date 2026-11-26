@@ -214,21 +214,32 @@ class catalog {
         $where = $all ? [] : ['visible' => 1];
         $sections = $DB->get_records('local_kabshop_section', $where, 'sortorder, id');
         $products = $DB->get_records('local_kabshop_product', $where, 'sortorder, id');
-        // Товар с условием записи видят только прошедшие его; управляющий витриной — все.
+        // Раздел и товар с условиями видимости видят только прошедшие их; управляющий витриной — все.
         $viewer = ($all || has_capability('local/kabshop:manage', context_system::instance()))
             ? null : (int) ($USER->id ?? 0);
         foreach ($sections as $s) {
             $s->products = [];
+            $s->restricted = 0;
         }
         foreach ($products as $p) {
             if ($market !== null && !($p = self::for_market($p, $market))) {
                 continue;
             }
-            if ($viewer !== null && !self::prerequisite_ok($p, $viewer)) {
+            if (!isset($sections[$p->sectionid])) {
                 continue;
             }
-            if (isset($sections[$p->sectionid])) {
-                $sections[$p->sectionid]->products[] = $p;
+            if ($viewer !== null && !self::prerequisite_ok($p, $viewer)) {
+                // Товар на этом рынке есть, но человеку не виден — для заглушки раздела.
+                $sections[$p->sectionid]->restricted++;
+                continue;
+            }
+            $sections[$p->sectionid]->products[] = $p;
+        }
+        if ($viewer !== null) {
+            foreach ($sections as $id => $s) {
+                if (!self::section_ok($s, $viewer)) {
+                    unset($sections[$id]);
+                }
             }
         }
         return $sections;
@@ -765,34 +776,196 @@ class catalog {
         return array_values(array_diff(array_unique($ids), [$courseid]));
     }
 
+    /** @var array userid => ['courses' => int[], 'cohorts' => int[], 'email' => string] — на время запроса */
+    protected static $viewers = [];
+
     /**
-     * Проходит ли человек условие записи товара: есть запись на любой из курсов-условий или на
-     * сам курс товара — любым способом, активная или приостановленная (так же считает «Условия
-     * записи» local_kabsignup). Отчисленный право теряет: Moodle удаляет запись целиком.
+     * Адреса из списка: по одному на строку (или через запятую, пробел), нижним регистром, без дублей.
+     *
+     * @param string|null $raw
+     * @return string[]
+     */
+    public static function parse_emails(?string $raw): array {
+        $out = [];
+        foreach (preg_split('/[\s,;]+/', (string) $raw, -1, PREG_SPLIT_NO_EMPTY) as $email) {
+            $email = \core_text::strtolower(trim($email));
+            if (validate_email($email)) {
+                $out[$email] = $email;
+            }
+        }
+        return array_values($out);
+    }
+
+    /**
+     * Курсы (любая запись, активная или приостановленная), глобальные группы и адрес человека.
+     *
+     * Адрес не засчитывается, пока аккаунт помечен local_kabsignup «не подтверждён» (создан
+     * формой buy.php по введённому адресу без входа): иначе персональный товар увидел бы любой,
+     * кто первым завёл аккаунт на чужой адрес.
+     *
+     * @param int $userid
+     * @return array
+     */
+    protected static function viewer(int $userid): array {
+        global $DB;
+        if (!isset(self::$viewers[$userid])) {
+            $email = '';
+            $user = $DB->get_record('user', ['id' => $userid, 'deleted' => 0], 'id, email');
+            if ($user && !get_user_preferences('local_kabsignup_unverified', 0, $userid)) {
+                $email = \core_text::strtolower(trim((string) $user->email));
+            }
+            self::$viewers[$userid] = [
+                'courses' => array_map('intval', $DB->get_fieldset_sql(
+                    "SELECT DISTINCT e.courseid
+                       FROM {user_enrolments} ue
+                       JOIN {enrol} e ON e.id = ue.enrolid
+                      WHERE ue.userid = ?", [$userid])),
+                'cohorts' => array_map('intval', $DB->get_fieldset_select('cohort_members', 'cohortid', 'userid = ?',
+                    [$userid])),
+                'email' => $email,
+            ];
+        }
+        return self::$viewers[$userid];
+    }
+
+    /**
+     * Проходит ли человек условия видимости: курсы (записан на любой), глобальные группы (состоит
+     * в любой), адреса (его адрес в списке). Пустое условие не участвует; режим 'all' — нужны все
+     * заданные, иначе — любое. Без условий — да; гостю с условиями — нет.
+     *
+     * @param int[] $courses
+     * @param int[] $cohorts
+     * @param string[] $emails
+     * @param string $mode 'any' | 'all'
+     * @param int $userid
+     * @return bool
+     */
+    protected static function conditions_ok(array $courses, array $cohorts, array $emails, string $mode,
+            int $userid): bool {
+        $checks = [];
+        if ($courses) {
+            $checks[] = 'courses';
+        }
+        if ($cohorts) {
+            $checks[] = 'cohorts';
+        }
+        if ($emails) {
+            $checks[] = 'emails';
+        }
+        if (!$checks) {
+            return true;
+        }
+        if ($userid <= 0 || isguestuser($userid)) {
+            return false;
+        }
+        $v = self::viewer($userid);
+        $passed = 0;
+        foreach ($checks as $check) {
+            if ($check === 'courses') {
+                $ok = (bool) array_intersect($courses, $v['courses']);
+            } else if ($check === 'cohorts') {
+                $ok = (bool) array_intersect($cohorts, $v['cohorts']);
+            } else {
+                $ok = $v['email'] !== '' && in_array($v['email'], $emails, true);
+            }
+            if ($ok && $mode !== 'all') {
+                return true;
+            }
+            $passed += (int) $ok;
+        }
+        return $mode === 'all' && $passed === count($checks);
+    }
+
+    /**
+     * Есть ли у товара или раздела хоть одно условие видимости.
+     *
+     * @param \stdClass $item товар (курсы-условия — с учётом других товаров его курса) или раздел
+     * @param bool $isproduct
+     * @return bool
+     */
+    public static function has_restrictions(\stdClass $item, bool $isproduct = true): bool {
+        return ($isproduct ? (bool) self::required_courses($item)
+                : (bool) self::parse_courseids((string) ($item->requirecourses ?? '')))
+            || self::parse_courseids((string) ($item->requirecohorts ?? ''))
+            || self::parse_emails($item->requireemails ?? '');
+    }
+
+    /**
+     * Проходит ли человек условия товара — видимость в каталоге и право купить или записаться.
+     *
+     * Курсы: запись на любой из курсов-условий или на сам курс товара — любым способом, активная
+     * или приостановленная (так же считает «Условия записи» local_kabsignup). Отчисленный право
+     * теряет: Moodle удаляет запись целиком. Плюс глобальные группы и адреса, «любое/все».
      *
      * @param \stdClass $product
      * @param int $userid 0 — гость
      * @return bool
      */
     public static function prerequisite_ok(\stdClass $product, int $userid): bool {
-        global $DB;
-        $required = self::required_courses($product);
-        if (!$required) {
-            return true;
+        $courses = self::required_courses($product);
+        if ($courses && $product->courseid) {
+            $courses[] = (int) $product->courseid;
         }
-        if ($userid <= 0 || isguestuser($userid)) {
+        return self::conditions_ok($courses, self::parse_courseids((string) ($product->requirecohorts ?? '')),
+            self::parse_emails($product->requireemails ?? ''), (string) ($product->requiremode ?? 'any'), $userid);
+    }
+
+    /**
+     * Не прошёл ли человек именно курсовое условие товара — тогда объяснение называет курсы.
+     *
+     * @param \stdClass $product
+     * @param int $userid
+     * @return bool
+     */
+    public static function prerequisite_course_failed(\stdClass $product, int $userid): bool {
+        $courses = self::required_courses($product);
+        if (!$courses) {
             return false;
         }
         if ($product->courseid) {
-            $required[] = (int) $product->courseid;
+            $courses[] = (int) $product->courseid;
         }
-        [$insql, $params] = $DB->get_in_or_equal($required, SQL_PARAMS_NAMED);
-        return $DB->record_exists_sql(
-            "SELECT 1
-               FROM {user_enrolments} ue
-               JOIN {enrol} e ON e.id = ue.enrolid
-              WHERE ue.userid = :userid AND e.courseid $insql",
-            ['userid' => $userid] + $params);
+        return !self::conditions_ok($courses, [], [], 'any', $userid);
+    }
+
+    /**
+     * Видит ли человек раздел в каталоге. Только каталог: товары раздела по прямой ссылке
+     * открываются (как у раздела со снятой «Видимостью»), их ограничивают условия самого товара.
+     *
+     * @param \stdClass $section
+     * @param int $userid
+     * @return bool
+     */
+    public static function section_ok(\stdClass $section, int $userid): bool {
+        return self::conditions_ok(self::parse_courseids((string) ($section->requirecourses ?? '')),
+            self::parse_courseids((string) ($section->requirecohorts ?? '')),
+            self::parse_emails($section->requireemails ?? ''), (string) ($section->requiremode ?? 'any'), $userid);
+    }
+
+    /**
+     * Условия видимости коротко — для списка в «Витрине»: «курсы 231, 232 · группы 5 · 3 адреса · все».
+     *
+     * @param \stdClass $item
+     * @param bool $isproduct
+     * @return string
+     */
+    public static function restrictions_summary(\stdClass $item, bool $isproduct = true): string {
+        $p = 'local_kabshop';
+        $parts = [];
+        $courses = $isproduct ? self::required_courses($item) : self::parse_courseids((string) ($item->requirecourses ?? ''));
+        if ($courses) {
+            $parts[] = get_string('cond_courses', $p, implode(', ', $courses));
+        }
+        if ($cohorts = self::parse_courseids((string) ($item->requirecohorts ?? ''))) {
+            $parts[] = get_string('cond_cohorts', $p, implode(', ', $cohorts));
+        }
+        if ($emails = self::parse_emails($item->requireemails ?? '')) {
+            $parts[] = get_string('cond_emails', $p, count($emails));
+        }
+        if (count($parts) > 1) {
+            $parts[] = get_string(($item->requiremode ?? 'any') === 'all' ? 'cond_all' : 'cond_any', $p);
+        }
+        return implode(' · ', $parts);
     }
 
     /**
@@ -976,8 +1149,49 @@ class catalog {
         if (!$purchase || $purchase->status === 'revoked') {
             return false;
         }
+        // После «Отметить возврат» без снятия доступа отзыв доступа статус возврата не стирает.
+        self::close_purchase($purchase, $adminid, $purchase->status === 'refunded' ? 'refunded' : 'revoked',
+            'revokednote', $note, true);
+        return true;
+    }
+
+    /**
+     * Отметить возврат денег по заказу. Сами деньги возвращают в кабинете шлюза (Robokassa) или
+     * через бухгалтерию в сервисе оплаты (карта, PayPal) — сайт возврат не делает, только помнит.
+     * Заказ — «возврат» (из «итого» в списке заказов и из отчётов секретарю выпадает), подписка
+     * на товар останавливается, запись на курс снимается, если $unenrol.
+     *
+     * @param int $purchaseid
+     * @param int $adminid
+     * @param string $note причина
+     * @param bool $unenrol снять доступ к курсу товара
+     * @return bool
+     */
+    public static function refund(int $purchaseid, int $adminid, string $note, bool $unenrol): bool {
+        global $DB;
+        $purchase = $DB->get_record('local_kabshop_purchase', ['id' => $purchaseid]);
+        if (!$purchase || $purchase->status !== 'ok') {
+            return false;
+        }
+        self::close_purchase($purchase, $adminid, 'refunded', 'refundednote', $note, $unenrol);
+        return true;
+    }
+
+    /**
+     * Общее у отзыва и возврата: снять запись на курс, остановить подписку, пометить заказ.
+     *
+     * @param \stdClass $purchase
+     * @param int $adminid
+     * @param string $status 'revoked' | 'refunded'
+     * @param string $notestring строка заметки ('revokednote' | 'refundednote')
+     * @param string $note
+     * @param bool $unenrol
+     */
+    protected static function close_purchase(\stdClass $purchase, int $adminid, string $status, string $notestring,
+            string $note, bool $unenrol): void {
+        global $DB;
         $product = self::get_product($purchase->productid, IGNORE_MISSING);
-        if ($product && $product->courseid) {
+        if ($unenrol && $product && $product->courseid) {
             $instance = $DB->get_record('enrol', ['courseid' => $product->courseid, 'enrol' => 'manual'],
                 '*', IGNORE_MULTIPLE);
             if ($instance) {
@@ -990,10 +1204,127 @@ class catalog {
         }
         $who = fullname(\core_user::get_user($adminid));
         $text = trim(($purchase->note ? $purchase->note . ' · ' : '') .
-            get_string('revokednote', 'local_kabshop', (object) ['who' => $who, 'note' => trim($note)]));
-        $DB->update_record('local_kabshop_purchase', (object) ['id' => $purchase->id, 'status' => 'revoked',
+            get_string($notestring, 'local_kabshop', (object) ['who' => $who, 'note' => trim($note)]));
+        $DB->update_record('local_kabshop_purchase', (object) ['id' => $purchase->id, 'status' => $status,
             'timerevoked' => time(), 'note' => \core_text::substr($text, 0, 250)]);
-        return true;
+    }
+
+    /**
+     * Подписка, к которой относится заказ: первая оплата подписки или её автосписание.
+     *
+     * @param \stdClass $purchase
+     * @return \stdClass|null
+     */
+    public static function purchase_sub(\stdClass $purchase): ?\stdClass {
+        global $DB;
+        if (empty($purchase->paymentid) || $purchase->paymentid < 0) {
+            return null;
+        }
+        $payment = $DB->get_record('payments', ['id' => $purchase->paymentid]);
+        if (!$payment || $payment->component !== 'local_kabshop') {
+            return null;
+        }
+        if ($payment->paymentarea === 'renewal') {
+            return $DB->get_record('local_kabshop_sub', ['id' => $payment->itemid]) ?: null;
+        }
+        return $DB->get_record('local_kabshop_sub', ['productid' => $purchase->productid,
+            'firstpaymentid' => $payment->id], '*', IGNORE_MULTIPLE) ?: null;
+    }
+
+    /**
+     * Перенести заказ на другой аккаунт (человек оплатил или записался со второго адреса, дубль
+     * удаляют). Переносятся: заказ, а если он из подписки — подписка со всеми её оплатами; платежи
+     * Moodle и строки шлюза kbb1 этих оплат (по ним продлевается подписка), использование купона;
+     * запись на курс товара — новому аккаунту с тем же сроком, у прежнего снимается, если других
+     * действующих покупок этого курса у него не осталось.
+     *
+     * @param int $purchaseid
+     * @param int $touserid
+     * @param int $adminid
+     * @return int сколько заказов перенесено
+     */
+    public static function transfer(int $purchaseid, int $touserid, int $adminid): int {
+        global $DB;
+        $purchase = $DB->get_record('local_kabshop_purchase', ['id' => $purchaseid], '*', MUST_EXIST);
+        $fromid = (int) $purchase->userid;
+        $to = \core_user::get_user($touserid, 'id, email, deleted', MUST_EXIST);
+        if ($fromid === (int) $to->id || $to->deleted || isguestuser($to)) {
+            throw new \moodle_exception('transferbaduser', 'local_kabshop');
+        }
+        $from = \core_user::get_user($fromid, 'id, email');
+        $product = self::get_product($purchase->productid, IGNORE_MISSING);
+
+        // Какие заказы и платежи идут вместе: у подписки — все её оплаты.
+        $sub = self::purchase_sub($purchase);
+        $paymentids = $purchase->paymentid > 0 ? [(int) $purchase->paymentid] : [];
+        if ($sub && (int) $sub->userid === $fromid) {
+            $paymentids[] = (int) $sub->firstpaymentid;
+            $paymentids = array_merge($paymentids, array_map('intval', $DB->get_fieldset_select('payments', 'id',
+                "component = 'local_kabshop' AND paymentarea = 'renewal' AND itemid = ?", [$sub->id])));
+        } else {
+            $sub = null;
+        }
+        $paymentids = array_values(array_unique(array_filter($paymentids, fn($id) => $id > 0)));
+        $purchaseids = [(int) $purchase->id];
+        if ($paymentids) {
+            [$in, $params] = $DB->get_in_or_equal($paymentids, SQL_PARAMS_NAMED);
+            $purchaseids = array_values(array_unique(array_merge($purchaseids, array_map('intval',
+                $DB->get_fieldset_select('local_kabshop_purchase', 'id', "userid = :uid AND paymentid $in",
+                    ['uid' => $fromid] + $params)))));
+        }
+
+        $tx = $DB->start_delegated_transaction();
+        $who = fullname(\core_user::get_user($adminid));
+        $note = get_string('transferrednote', 'local_kabshop', (object) ['from' => $from ? $from->email : '#' . $fromid,
+            'who' => $who, 'date' => userdate(time(), get_string('strftimedatetimeshort', 'langconfig'))]);
+        foreach ($DB->get_records_list('local_kabshop_purchase', 'id', $purchaseids) as $pu) {
+            $DB->update_record('local_kabshop_purchase', (object) ['id' => $pu->id, 'userid' => $to->id,
+                'note' => \core_text::substr(trim(($pu->note ? $pu->note . ' · ' : '') . $note), 0, 250)]);
+        }
+        [$pin, $pparams] = $DB->get_in_or_equal($purchaseids, SQL_PARAMS_NAMED);
+        $DB->execute("UPDATE {local_kabshop_coupon_use} SET userid = :to WHERE purchaseid $pin",
+            ['to' => $to->id] + $pparams);
+        if ($paymentids) {
+            [$in, $params] = $DB->get_in_or_equal($paymentids, SQL_PARAMS_NAMED);
+            $DB->execute("UPDATE {payments} SET userid = :to WHERE userid = :from AND id $in",
+                ['to' => $to->id, 'from' => $fromid] + $params);
+            if ($DB->get_manager()->table_exists('paygw_kbb1')) {
+                $DB->execute("UPDATE {paygw_kbb1} SET userid = :to WHERE userid = :from AND paymentid $in",
+                    ['to' => $to->id, 'from' => $fromid] + $params);
+            }
+        }
+        if ($sub) {
+            $DB->update_record('local_kabshop_sub', (object) ['id' => $sub->id, 'userid' => $to->id,
+                'timemodified' => time()]);
+        }
+
+        // Доступ к курсу идёт за заказом: новому — с тем же сроком, что был у прежнего.
+        if ($product && $product->courseid && $purchase->status === 'ok') {
+            $instance = $DB->get_record('enrol', ['courseid' => $product->courseid, 'enrol' => 'manual'],
+                '*', IGNORE_MULTIPLE);
+            $old = $instance ? $DB->get_record('user_enrolments', ['enrolid' => $instance->id, 'userid' => $fromid])
+                : null;
+            if ($old) {
+                $new = $DB->get_record('user_enrolments', ['enrolid' => $instance->id, 'userid' => $to->id]);
+                // Свою запись у нового аккаунта не укорачиваем: бессрочная или дольше — не трогаем.
+                $keep = $new && $new->status == ENROL_USER_ACTIVE
+                    && ((int) $new->timeend === 0 || ($old->timeend && (int) $new->timeend >= (int) $old->timeend));
+                if (!$keep) {
+                    $roleid = $instance->roleid ?: $DB->get_field('role', 'id', ['shortname' => 'student']);
+                    enrol_get_plugin('manual')->enrol_user($instance, $to->id, $roleid, (int) $old->timestart,
+                        (int) $old->timeend, ENROL_USER_ACTIVE);
+                }
+                $others = $DB->record_exists_sql(
+                    "SELECT 1 FROM {local_kabshop_purchase} pu
+                       JOIN {local_kabshop_product} pr ON pr.id = pu.productid
+                      WHERE pu.userid = ? AND pu.status = 'ok' AND pr.courseid = ?", [$fromid, $product->courseid]);
+                if (!$others) {
+                    enrol_get_plugin('manual')->unenrol_user($instance, $fromid);
+                }
+            }
+        }
+        $tx->allow_commit();
+        return count($purchaseids);
     }
 
     /**
@@ -1090,12 +1421,19 @@ class catalog {
         global $OUTPUT;
         $out = [];
         foreach (self::get_sections(false, $market) as $s) {
+            // Пустой для человека раздел скрыт, а с текстом заглушки — показан с ним, если товары
+            // на этом рынке у раздела есть и все скрыты условиями видимости.
+            $emptytext = null;
             if (!$s->products) {
-                continue;
+                if (!$s->restricted || trim((string) ($s->emptytext ?? '')) === '') {
+                    continue;
+                }
+                $emptytext = format_string($s->emptytext);
             }
             $icon = in_array($s->icon ?? '', self::SECTION_ICONS, true)
                 ? $OUTPUT->image_url('icons/' . $s->icon, 'local_kabshop')->out(false) : null;
             $out[] = [
+                'emptytext' => $emptytext,
                 'id' => $s->id,
                 'name' => format_string($s->name),
                 'description' => format_text($s->description ?? '', FORMAT_HTML),
@@ -1104,7 +1442,7 @@ class catalog {
                 'open' => empty($s->collapsed),
                 'count' => count($s->products),
                 'products' => array_map([self::class, 'card'], array_values($s->products)),
-                'hasproducts' => true,
+                'hasproducts' => !empty($s->products),
             ];
         }
         // Первый раздел — витринный: его первый товар рисуется крупно (герой), раздел всегда открыт,

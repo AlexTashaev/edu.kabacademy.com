@@ -33,12 +33,15 @@ require_capability('local/kabshop:manage', context_system::instance());
 $manageurl = new moodle_url('/local/kabshop/manage.php');
 $form = new \local_kabshop\form\section_form();
 if ($id) {
-    $form->set_data($DB->get_record('local_kabshop_section', ['id' => $id], '*', MUST_EXIST));
+    $form->set_data(\local_kabshop\form\conditions::prepare(
+        $DB->get_record('local_kabshop_section', ['id' => $id], '*', MUST_EXIST)));
 }
 
 if ($form->is_cancelled()) {
     redirect($manageurl);
 } else if ($data = $form->get_data()) {
+    $data = \local_kabshop\form\conditions::clean($data);
+    $data->emptytext = trim((string) ($data->emptytext ?? '')) ?: null;
     $data->timemodified = time();
     if ($data->id) {
         $DB->update_record('local_kabshop_section', $data);

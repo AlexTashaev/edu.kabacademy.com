@@ -313,5 +313,29 @@ function xmldb_local_kabshop_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026112406, 'local', 'kabshop');
     }
 
+    if ($oldversion < 2026112700) {
+        // Условия видимости раздела и товара (курсы, глобальные группы, e-mail, «любое/все»),
+        // заглушка пустого раздела, заголовок блока «Этот курс». Все поля пустые или с дефолтом —
+        // существующие разделы и товары ведут себя как раньше.
+        $section = new xmldb_table('local_kabshop_section');
+        $product = new xmldb_table('local_kabshop_product');
+        foreach ([
+            [$section, new xmldb_field('requirecourses', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'collapsed')],
+            [$section, new xmldb_field('requirecohorts', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'requirecourses')],
+            [$section, new xmldb_field('requireemails', XMLDB_TYPE_TEXT, null, null, null, null, null, 'requirecohorts')],
+            [$section, new xmldb_field('requiremode', XMLDB_TYPE_CHAR, '3', null, XMLDB_NOTNULL, null, 'any', 'requireemails')],
+            [$section, new xmldb_field('emptytext', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'requiremode')],
+            [$product, new xmldb_field('abouttitle', XMLDB_TYPE_CHAR, '100', null, null, null, null, 'about')],
+            [$product, new xmldb_field('requirecohorts', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'requirecourses')],
+            [$product, new xmldb_field('requireemails', XMLDB_TYPE_TEXT, null, null, null, null, null, 'requirecohorts')],
+            [$product, new xmldb_field('requiremode', XMLDB_TYPE_CHAR, '3', null, XMLDB_NOTNULL, null, 'any', 'requireemails')],
+        ] as [$table, $field]) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        upgrade_plugin_savepoint(true, 2026112700, 'local', 'kabshop');
+    }
+
     return true;
 }

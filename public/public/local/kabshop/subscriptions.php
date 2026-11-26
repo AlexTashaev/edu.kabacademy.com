@@ -61,8 +61,13 @@ $table->head = [get_string('subproduct', $p), get_string('subamount', $p), get_s
     get_string('subnext', $p), ''];
 $table->attributes['class'] = 'generaltable';
 $fmt = get_string('strftimedate', 'langconfig');
+// Фраза про доступ после отмены — только если подписка его даёт (курс товара или сервис из
+// «Товары, дающие доступ»); ежемесячный взнос в фонд доступа не даёт.
+$accessproducts = \local_kabshop\access::product_ids();
+$givesaccess = false;
 foreach ($subs as $sub) {
     $product = catalog::get_product($sub->productid, IGNORE_MISSING);
+    $givesaccess = $givesaccess || ($product && ($product->courseid || in_array((int) $product->id, $accessproducts, true)));
     $name = $product
         ? html_writer::link(new moodle_url('/local/kabshop/product.php', ['id' => $product->id]), format_string($product->name))
         : '—';
@@ -83,5 +88,6 @@ foreach ($subs as $sub) {
     ];
 }
 echo html_writer::table($table);
-echo html_writer::tag('p', get_string('subcancelnote', $p), ['class' => 'text-muted']);
+echo html_writer::tag('p', get_string($givesaccess ? 'subcancelnote' : 'subcancelnote_noaccess', $p),
+    ['class' => 'text-muted']);
 echo $OUTPUT->footer();

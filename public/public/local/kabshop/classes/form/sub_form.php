@@ -54,6 +54,7 @@ class sub_form extends \moodleform {
         ]);
 
         $mform->addElement('advcheckbox', 'resetfails', get_string('subresetfails', $p));
+        $mform->addHelpButton('resetfails', 'subresetfails', $p);
 
         $this->add_action_buttons(false, get_string('savechanges'));
     }

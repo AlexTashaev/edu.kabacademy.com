@@ -14,6 +14,11 @@
         <FIELD NAME="icon" TYPE="char" LENGTH="20" NOTNULL="false" SEQUENCE="false" COMMENT="Иконка раздела из pix/icons; пусто — без иконки"/>
         <FIELD NAME="sidelabel" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="Вертикальная подпись слева от раздела"/>
         <FIELD NAME="collapsed" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Свёрнут при открытии каталога"/>
+        <FIELD NAME="requirecourses" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Видят записанные на один из курсов: ID через запятую"/>
+        <FIELD NAME="requirecohorts" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Видят участники одной из глобальных групп: ID через запятую"/>
+        <FIELD NAME="requireemails" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Видят только эти адреса: по одному на строку"/>
+        <FIELD NAME="requiremode" TYPE="char" LENGTH="3" NOTNULL="true" DEFAULT="any" SEQUENCE="false" COMMENT="any — любое из условий, all — все условия"/>
+        <FIELD NAME="emptytext" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Текст, если доступных товаров нет; пусто — раздел скрыт"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>
@@ -33,6 +38,7 @@
         <FIELD NAME="stream" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="Название потока на обложке в каталоге: Осень 2026"/>
         <FIELD NAME="program" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Темы уроков, по строке на тему"/>
         <FIELD NAME="about" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Блок «Этот курс»: короткий текст, абзац на строку"/>
+        <FIELD NAME="abouttitle" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="Заголовок блока about; пусто — «Этот курс»"/>
         <FIELD NAME="salestate" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="auto" SEQUENCE="false" COMMENT="Запись: auto — по датам, soon — ещё не открыта, closed — завершена"/>
         <FIELD NAME="saleopen" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Запись открывается; 0 — без границы"/>
         <FIELD NAME="saleclose" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Запись закрывается; 0 — без границы"/>
@@ -55,6 +61,9 @@
         <FIELD NAME="notifyemails" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Кого оповещать о покупке: адреса через запятую"/>
         <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Курс, куда записывает"/>
         <FIELD NAME="requirecourses" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Только для записанных на один из курсов: ID через запятую"/>
+        <FIELD NAME="requirecohorts" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Только для участников одной из глобальных групп: ID через запятую"/>
+        <FIELD NAME="requireemails" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Только для этих адресов: по одному на строку"/>
+        <FIELD NAME="requiremode" TYPE="char" LENGTH="3" NOTNULL="true" DEFAULT="any" SEQUENCE="false" COMMENT="any — любое из условий, all — все условия"/>
         <FIELD NAME="enrolperiod" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Срок доступа, сек; 0 = бессрочно"/>
         <FIELD NAME="externalurl" TYPE="char" LENGTH="1333" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
